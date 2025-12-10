@@ -16,7 +16,7 @@ import { useAppTheme } from '@/contexts/ThemeContext';
 const { width } = Dimensions.get('window');
 
 export const SpaceHeader: React.FC = () => {
-  const theme = useAppTheme();
+  const { theme } = useAppTheme();
   const opacity = useSharedValue(0.6);
   const scale = useSharedValue(1);
 
@@ -50,7 +50,8 @@ export const SpaceHeader: React.FC = () => {
       -1,
       false
     );
-  }, [opacity, scale]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -114,9 +115,6 @@ const styles = StyleSheet.create({
   },
   emoji: {
     fontSize: 64,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 8,
   },
   title: {
     fontSize: 36,
@@ -124,9 +122,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 3,
     fontFamily: 'SpaceMono',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
   },
   subtitle: {
     fontSize: 18,
@@ -135,9 +130,6 @@ const styles = StyleSheet.create({
     letterSpacing: 5,
     marginTop: 6,
     fontFamily: 'SpaceMono',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
   },
   divider: {
     width: 60,
@@ -151,8 +143,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.95)',
     fontFamily: 'SpaceMono',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
   },
 });

@@ -17,7 +17,7 @@ interface SearchBarProps {
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
-  const theme = useAppTheme();
+  const { theme } = useAppTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -69,7 +69,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
         easing: Easing.inOut(Easing.ease),
       });
     }
-  }, [searchQuery, suggestionsHeight, suggestionsOpacity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   const animatedSuggestionsStyle = useAnimatedStyle(() => {
     return {

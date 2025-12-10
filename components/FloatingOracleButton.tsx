@@ -17,7 +17,7 @@ interface FloatingOracleButtonProps {
 }
 
 export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPress }) => {
-  const theme = useAppTheme();
+  const { theme } = useAppTheme();
   const scale = useSharedValue(1);
   const rotate = useSharedValue(0);
 
@@ -45,7 +45,8 @@ export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPr
       -1,
       false
     );
-  }, [scale, rotate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -56,6 +57,8 @@ export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPr
     };
   });
 
+  const goldColor = theme?.colors?.gold || '#d4af37';
+
   return (
     <TouchableOpacity
       style={styles.container}
@@ -64,7 +67,7 @@ export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPr
     >
       <Animated.View style={animatedStyle}>
         <LinearGradient
-          colors={['#8B5CF6', '#6366F1', theme.colors.gold]}
+          colors={['#8B5CF6', '#6366F1', goldColor]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
@@ -98,9 +101,6 @@ const styles = StyleSheet.create({
   },
   emoji: {
     fontSize: 36,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
   label: {
     marginTop: 8,
@@ -108,8 +108,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     fontFamily: 'SpaceMono',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
 });

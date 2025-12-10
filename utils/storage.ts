@@ -34,6 +34,10 @@ const defaultSettings: AppSettings = {
 export const storage = {
   async saveData<T>(key: string, data: T): Promise<void> {
     try {
+      if (data === null || data === undefined) {
+        console.warn(`Attempted to save null/undefined data for key: ${key}`);
+        return;
+      }
       const jsonValue = JSON.stringify(data);
       await AsyncStorage.setItem(key, jsonValue);
       console.log(`Data saved to storage: ${key}`);
@@ -45,9 +49,15 @@ export const storage = {
   async getData<T>(key: string): Promise<T | null> {
     try {
       const jsonValue = await AsyncStorage.getItem(key);
-      if (jsonValue !== null) {
-        console.log(`Data retrieved from storage: ${key}`);
-        return JSON.parse(jsonValue) as T;
+      if (jsonValue !== null && jsonValue !== undefined) {
+        try {
+          const parsed = JSON.parse(jsonValue) as T;
+          console.log(`Data retrieved from storage: ${key}`);
+          return parsed;
+        } catch (parseError) {
+          console.error(`Error parsing data from storage: ${key}`, parseError);
+          return null;
+        }
       }
       return null;
     } catch (error) {
@@ -94,31 +104,50 @@ export const storage = {
   },
 
   async saveCategories(categories: any[]): Promise<void> {
+    if (!categories || !Array.isArray(categories)) {
+      console.warn('Invalid categories data, skipping save');
+      return;
+    }
     await this.saveData(STORAGE_KEYS.CATEGORIES, categories);
   },
 
   async getCategories(): Promise<any[] | null> {
-    return await this.getData(STORAGE_KEYS.CATEGORIES);
+    const categories = await this.getData<any[]>(STORAGE_KEYS.CATEGORIES);
+    return Array.isArray(categories) ? categories : null;
   },
 
   async saveFacts(facts: any[]): Promise<void> {
+    if (!facts || !Array.isArray(facts)) {
+      console.warn('Invalid facts data, skipping save');
+      return;
+    }
     await this.saveData(STORAGE_KEYS.FACTS, facts);
   },
 
   async getFacts(): Promise<any[] | null> {
-    return await this.getData(STORAGE_KEYS.FACTS);
+    const facts = await this.getData<any[]>(STORAGE_KEYS.FACTS);
+    return Array.isArray(facts) ? facts : null;
   },
 
   async saveFavorites(favorites: string[]): Promise<void> {
+    if (!favorites || !Array.isArray(favorites)) {
+      console.warn('Invalid favorites data, skipping save');
+      return;
+    }
     await this.saveData(STORAGE_KEYS.FAVORITES, favorites);
   },
 
-  async getFavorites(): Promise<string[] | null> {
-    return await this.getData(STORAGE_KEYS.FAVORITES);
+  async getFavorites(): Promise<string[]> {
+    const favorites = await this.getData<string[]>(STORAGE_KEYS.FAVORITES);
+    return Array.isArray(favorites) ? favorites : [];
   },
 
   async addFavorite(id: string): Promise<void> {
-    const favorites = (await this.getFavorites()) || [];
+    if (!id) {
+      console.warn('Invalid favorite id');
+      return;
+    }
+    const favorites = await this.getFavorites();
     if (!favorites.includes(id)) {
       favorites.push(id);
       await this.saveFavorites(favorites);
@@ -126,13 +155,20 @@ export const storage = {
   },
 
   async removeFavorite(id: string): Promise<void> {
-    const favorites = (await this.getFavorites()) || [];
+    if (!id) {
+      console.warn('Invalid favorite id');
+      return;
+    }
+    const favorites = await this.getFavorites();
     const filtered = favorites.filter(fav => fav !== id);
     await this.saveFavorites(filtered);
   },
 
   async isFavorite(id: string): Promise<boolean> {
-    const favorites = (await this.getFavorites()) || [];
+    if (!id) {
+      return false;
+    }
+    const favorites = await this.getFavorites();
     return favorites.includes(id);
   },
 
@@ -154,18 +190,29 @@ export const storage = {
   },
 
   async saveSettings(settings: AppSettings): Promise<void> {
+    if (!settings || typeof settings !== 'object') {
+      console.warn('Invalid settings data, skipping save');
+      return;
+    }
     await this.saveData(STORAGE_KEYS.SETTINGS, settings);
   },
 
   async getSettings(): Promise<AppSettings> {
     const settings = await this.getData<AppSettings>(STORAGE_KEYS.SETTINGS);
-    return settings || defaultSettings;
+    if (!settings || typeof settings !== 'object') {
+      return defaultSettings;
+    }
+    return { ...defaultSettings, ...settings };
   },
 
   async updateSetting<K extends keyof AppSettings>(
     key: K,
     value: AppSettings[K]
   ): Promise<void> {
+    if (!key || value === undefined) {
+      console.warn('Invalid setting key or value');
+      return;
+    }
     const settings = await this.getSettings();
     settings[key] = value;
     await this.saveSettings(settings);
@@ -173,6 +220,10 @@ export const storage = {
 
   async saveSearchHistory(query: string): Promise<void> {
     try {
+      if (!query || typeof query !== 'string') {
+        console.warn('Invalid search query');
+        return;
+      }
       const history = await this.getSearchHistory();
       const updatedHistory = [query, ...history.filter(q => q !== query)].slice(0, 20);
       await this.saveData(STORAGE_KEYS.SEARCH_HISTORY, updatedHistory);
@@ -183,7 +234,7 @@ export const storage = {
 
   async getSearchHistory(): Promise<string[]> {
     const history = await this.getData<string[]>(STORAGE_KEYS.SEARCH_HISTORY);
-    return history || [];
+    return Array.isArray(history) ? history : [];
   },
 
   async clearSearchHistory(): Promise<void> {

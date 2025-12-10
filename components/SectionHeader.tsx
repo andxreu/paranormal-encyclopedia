@@ -9,14 +9,15 @@ interface SectionHeaderProps {
 }
 
 export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, subtitle }) => {
-  const theme = useAppTheme();
+  const { theme } = useAppTheme();
+  const goldColor = theme?.colors?.gold || '#d4af37';
 
   return (
     <View style={styles.container}>
       <View style={styles.titleContainer}>
-        <View style={[styles.decorLine, { backgroundColor: theme.colors.gold }]} />
+        <View style={[styles.decorLine, { backgroundColor: goldColor }]} />
         <Text style={styles.title}>{title}</Text>
-        <View style={[styles.decorLine, { backgroundColor: theme.colors.gold }]} />
+        <View style={[styles.decorLine, { backgroundColor: goldColor }]} />
       </View>
       {subtitle && (
         <Text style={styles.subtitle}>{subtitle}</Text>
@@ -48,9 +49,6 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    textShadowColor: 'rgba(139, 92, 246, 0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
   },
   subtitle: {
     fontSize: 13,

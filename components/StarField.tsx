@@ -41,7 +41,8 @@ const StarParticle: React.FC<{ star: Star }> = ({ star }) => {
         true
       )
     );
-  }, [opacity, star.delay, star.duration]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {

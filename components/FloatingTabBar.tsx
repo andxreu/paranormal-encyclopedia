@@ -62,7 +62,8 @@ const TabButton: React.FC<{
         stiffness: 300,
       });
     }
-  }, [isActive, iconScale, glowOpacity, translateY]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive]);
 
   const animatedIconStyle = useAnimatedStyle(() => {
     return {
@@ -229,9 +230,6 @@ const styles = StyleSheet.create({
   },
   tabIconActive: {
     color: '#FFFFFF',
-    textShadowColor: 'rgba(139, 92, 246, 0.8)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
   },
   tabLabel: {
     fontSize: 10,
@@ -242,8 +240,5 @@ const styles = StyleSheet.create({
   tabLabelActive: {
     color: '#FFFFFF',
     fontWeight: '700',
-    textShadowColor: 'rgba(139, 92, 246, 0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
   },
 });

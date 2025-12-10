@@ -16,7 +16,7 @@ interface DailyMysteryProps {
 }
 
 export const DailyMystery: React.FC<DailyMysteryProps> = ({ onPress }) => {
-  const theme = useAppTheme();
+  const { theme } = useAppTheme();
   const glowOpacity = useSharedValue(0.3);
 
   useEffect(() => {
@@ -28,13 +28,16 @@ export const DailyMystery: React.FC<DailyMysteryProps> = ({ onPress }) => {
       -1,
       true
     );
-  }, [glowOpacity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const glowStyle = useAnimatedStyle(() => {
     return {
       opacity: glowOpacity.value,
     };
   });
+
+  const goldColor = theme?.colors?.gold || '#d4af37';
 
   return (
     <TouchableOpacity
@@ -52,7 +55,7 @@ export const DailyMystery: React.FC<DailyMysteryProps> = ({ onPress }) => {
         <View style={styles.content}>
           <Text style={styles.emoji}>🌙</Text>
           <View style={styles.textContainer}>
-            <Text style={[styles.label, { color: theme.colors.gold }]}>
+            <Text style={[styles.label, { color: goldColor }]}>
               DAILY MYSTERY
             </Text>
             <Text style={styles.title}>The Voynich Manuscript</Text>
@@ -99,9 +102,6 @@ const styles = StyleSheet.create({
   },
   emoji: {
     fontSize: 52,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
   textContainer: {
     flex: 1,
@@ -120,9 +120,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 6,
     fontFamily: 'SpaceMono',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   description: {
     fontSize: 13,

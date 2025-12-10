@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
@@ -18,6 +18,7 @@ interface LightningButtonProps {
 
 export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => {
   const scale = useSharedValue(1);
+  const rotate = useSharedValue(0);
   const glowOpacity = useSharedValue(0.5);
 
   useEffect(() => {
@@ -36,6 +37,15 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
       false
     );
 
+    rotate.value = withRepeat(
+      withTiming(360, {
+        duration: 20000,
+        easing: Easing.linear,
+      }),
+      -1,
+      false
+    );
+
     glowOpacity.value = withRepeat(
       withSequence(
         withTiming(0.9, {
@@ -50,11 +60,12 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
       -1,
       false
     );
-  }, [scale, glowOpacity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ scale: scale.value }],
+      transform: [{ scale: scale.value }, { rotate: `${rotate.value}deg` }],
     };
   });
 
@@ -70,31 +81,32 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
   };
 
   return (
-    <TouchableOpacity
-      style={styles.container}
-      onPress={handlePress}
-      activeOpacity={0.8}
-    >
-      <Animated.View style={[styles.glowContainer, glowStyle]}>
-        <LinearGradient
-          colors={['rgba(255, 215, 0, 0.4)', 'rgba(255, 165, 0, 0.2)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.glow}
-        />
-      </Animated.View>
-      
-      <Animated.View style={animatedStyle}>
-        <LinearGradient
-          colors={['#FFD700', '#FFA500', '#FF6B6B']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
-        >
-          <Text style={styles.emoji}>⚡</Text>
-        </LinearGradient>
-      </Animated.View>
-    </TouchableOpacity>
+    <View style={styles.container}>
+      <TouchableOpacity
+        onPress={handlePress}
+        activeOpacity={0.8}
+      >
+        <Animated.View style={[styles.glowContainer, glowStyle]}>
+          <LinearGradient
+            colors={['rgba(255, 215, 0, 0.4)', 'rgba(255, 165, 0, 0.2)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.glow}
+          />
+        </Animated.View>
+        
+        <Animated.View style={animatedStyle}>
+          <LinearGradient
+            colors={['#FFD700', '#FFA500', '#FF6B6B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradient}
+          >
+            <Text style={styles.emoji}>⚡</Text>
+          </LinearGradient>
+        </Animated.View>
+      </TouchableOpacity>
+    </View>
   );
 };
 
@@ -132,8 +144,5 @@ const styles = StyleSheet.create({
   },
   emoji: {
     fontSize: 28,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
 });
