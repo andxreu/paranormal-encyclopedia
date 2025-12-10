@@ -50,7 +50,7 @@ export const SpaceHeader: React.FC = () => {
       -1,
       false
     );
-  }, []);
+  }, [opacity, scale]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {

@@ -41,7 +41,7 @@ const StarParticle: React.FC<{ star: Star }> = ({ star }) => {
         true
       )
     );
-  }, []);
+  }, [opacity, star.delay, star.duration]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {

@@ -62,7 +62,7 @@ const TabButton: React.FC<{
         stiffness: 300,
       });
     }
-  }, [isActive]);
+  }, [isActive, iconScale, glowOpacity, translateY]);
 
   const animatedIconStyle = useAnimatedStyle(() => {
     return {

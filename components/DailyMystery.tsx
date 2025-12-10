@@ -28,7 +28,7 @@ export const DailyMystery: React.FC<DailyMysteryProps> = ({ onPress }) => {
       -1,
       true
     );
-  }, []);
+  }, [glowOpacity]);
 
   const glowStyle = useAnimatedStyle(() => {
     return {

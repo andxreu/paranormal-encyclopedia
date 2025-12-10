@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
@@ -60,7 +60,7 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
       -1,
       false
     );
-  }, []);
+  }, [scale, rotate, glowOpacity]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {

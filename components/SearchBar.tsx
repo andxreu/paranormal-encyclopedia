@@ -69,7 +69,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
         easing: Easing.inOut(Easing.ease),
       });
     }
-  }, [searchQuery]);
+  }, [searchQuery, suggestionsHeight, suggestionsOpacity]);
 
   const animatedSuggestionsStyle = useAnimatedStyle(() => {
     return {

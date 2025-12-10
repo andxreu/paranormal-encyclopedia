@@ -45,7 +45,7 @@ export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPr
       -1,
       false
     );
-  }, []);
+  }, [scale, rotate]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {

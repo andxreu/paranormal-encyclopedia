@@ -49,7 +49,7 @@ export const HeroBanner: React.FC = () => {
       -1,
       false
     );
-  }, []);
+  }, [opacity, scale]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
