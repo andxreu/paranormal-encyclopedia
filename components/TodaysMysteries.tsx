@@ -107,9 +107,9 @@ export const TodaysMysteries: React.FC = () => {
       </View>
 
       <Animated.View style={[styles.cardsContainer, animatedStyle]}>
-        {mysteries.map((mystery, index) => (
+        {mysteries.map((mystery) => (
           <TouchableOpacity
-            key={index}
+            key={`${mystery.categoryId}-${mystery.id}`}
             style={styles.cardWrapper}
             onPress={() => handleMysteryPress(mystery)}
             activeOpacity={0.8}

@@ -60,8 +60,7 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
       -1,
       false
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [scale, rotate, glowOpacity]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -85,6 +84,9 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
       <TouchableOpacity
         onPress={handlePress}
         activeOpacity={0.8}
+        accessibilityLabel="Lightning button"
+        accessibilityHint="Get a random paranormal fact"
+        accessibilityRole="button"
       >
         <Animated.View style={[styles.glowContainer, glowStyle]}>
           <LinearGradient

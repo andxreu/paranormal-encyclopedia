@@ -1,49 +1,55 @@
 
-// Central export file for all paranormal data modules
-// All imports at the top
-import { creaturesData } from './creatures';
-import { ufosData } from './ufos';
-import { ghostsData } from './ghosts';
-import { occultData } from './occult';
-import { psychicData } from './psychic';
-import { ancientsData } from './ancients';
-import { folkloreData } from './folklore';
-import { phenomenaData } from './phenomena';
-import { peopleData } from './people';
-import { trulyStrangeData } from './trulyStrange';
+import { creaturesData, getCreatureById, getCreatureByName } from './creatures';
+import { ufosData, getUFOById, getUFOByName } from './ufos';
+import { ghostsData, getGhostById, getGhostByName } from './ghosts';
+import { occultData, getOccultById, getOccultByName } from './occult';
+import { psychicData, getPsychicById, getPsychicByName } from './psychic';
+import { ancientsData, getAncientById, getAncientByName } from './ancients';
+import { folkloreData, getFolkloreById, getFolkloreByName } from './folklore';
+import { phenomenaData, getPhenomenaById, getPhenomenaByName } from './phenomena';
+import { peopleData, getPeopleById, getPeopleByName } from './people';
+import { trulyStrangeData, getTrulyStrangeById, getTrulyStrangeByName } from './trulyStrange';
 
-// Export shared types
 export * from './types';
-
-// Export categories and facts
 export * from './categories';
 export * from './facts';
+export * from './hauntedLocations';
+export * from './codex';
+export * from './glossary';
 
-// Export all category data arrays
-export { creaturesData } from './creatures';
-export { ufosData } from './ufos';
-export { ghostsData } from './ghosts';
-export { occultData } from './occult';
-export { psychicData } from './psychic';
-export { ancientsData } from './ancients';
-export { folkloreData } from './folklore';
-export { phenomenaData } from './phenomena';
-export { peopleData } from './people';
-export { trulyStrangeData } from './trulyStrange';
+export {
+  creaturesData,
+  ufosData,
+  ghostsData,
+  occultData,
+  psychicData,
+  ancientsData,
+  folkloreData,
+  phenomenaData,
+  peopleData,
+  trulyStrangeData,
+  getCreatureById,
+  getCreatureByName,
+  getUFOById,
+  getUFOByName,
+  getGhostById,
+  getGhostByName,
+  getOccultById,
+  getOccultByName,
+  getPsychicById,
+  getPsychicByName,
+  getAncientById,
+  getAncientByName,
+  getFolkloreById,
+  getFolkloreByName,
+  getPhenomenaById,
+  getPhenomenaByName,
+  getPeopleById,
+  getPeopleByName,
+  getTrulyStrangeById,
+  getTrulyStrangeByName,
+};
 
-// Export helper functions from each module
-export { getCreatureById, getCreatureByName } from './creatures';
-export { getUFOById, getUFOByName } from './ufos';
-export { getGhostById, getGhostByName } from './ghosts';
-export { getOccultById, getOccultByName } from './occult';
-export { getPsychicById, getPsychicByName } from './psychic';
-export { getAncientById, getAncientByName } from './ancients';
-export { getFolkloreById, getFolkloreByName } from './folklore';
-export { getPhenomenaById, getPhenomenaByName } from './phenomena';
-export { getPeopleById, getPeopleByName } from './people';
-export { getTrulyStrangeById, getTrulyStrangeByName } from './trulyStrange';
-
-// Helper function to get all topic data by category
 export const getCategoryTopics = (categoryId: string) => {
   switch (categoryId) {
     case 'creatures':
