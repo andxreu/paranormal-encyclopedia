@@ -1,10 +1,18 @@
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Share, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Share } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  Easing,
+} from 'react-native-reanimated';
 import { ParanormalFact } from '@/data/paranormal/facts';
+import { ParticleEffect } from './ParticleEffect';
+import { HapticFeedback } from '@/utils/haptics';
 
 interface RandomFactModalProps {
   visible: boolean;
@@ -13,13 +21,45 @@ interface RandomFactModalProps {
 }
 
 export const RandomFactModal: React.FC<RandomFactModalProps> = ({ visible, fact, onClose }) => {
+  const scale = useSharedValue(0.8);
+  const opacity = useSharedValue(0);
+
+  React.useEffect(() => {
+    if (visible) {
+      scale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 200,
+      });
+      opacity.value = withTiming(1, {
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+      });
+    } else {
+      scale.value = withTiming(0.8, {
+        duration: 200,
+        easing: Easing.inOut(Easing.ease),
+      });
+      opacity.value = withTiming(0, {
+        duration: 200,
+        easing: Easing.inOut(Easing.ease),
+      });
+    }
+  }, [visible, scale, opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    };
+  });
+
   const handleShare = async () => {
     if (!fact) {
       return;
     }
 
     try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      HapticFeedback.light();
       await Share.share({
         message: `🔮 Paranormal Fact:\n\n${fact.fact}\n\nCategory: ${fact.categoryName}`,
         title: 'Paranormal Encyclopedia Fact',
@@ -30,7 +70,7 @@ export const RandomFactModal: React.FC<RandomFactModalProps> = ({ visible, fact,
   };
 
   const handleClose = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    HapticFeedback.light();
     onClose();
   };
 
@@ -42,19 +82,21 @@ export const RandomFactModal: React.FC<RandomFactModalProps> = ({ visible, fact,
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={handleClose}
     >
       <View style={styles.modalOverlay}>
         <BlurView intensity={80} style={StyleSheet.absoluteFill} tint="dark" />
         
-        <View style={styles.modalContent}>
+        <Animated.View style={[styles.modalContent, animatedStyle]}>
           <LinearGradient
             colors={[fact.color + '80', fact.color + '40', 'rgba(42, 27, 78, 0.95)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.factCard}
           >
+            <ParticleEffect count={12} color={fact.color + '60'} />
+            
             <View style={styles.factHeader}>
               <Text style={styles.lightningIcon}>⚡</Text>
               <Text style={[styles.categoryBadge, { color: fact.color }]}>
@@ -86,7 +128,7 @@ export const RandomFactModal: React.FC<RandomFactModalProps> = ({ visible, fact,
 
             <View style={[styles.cardBorder, { borderColor: fact.color + '60' }]} />
           </LinearGradient>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -110,12 +152,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(139, 92, 246, 0.5)',
     boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.5)',
     elevation: 12,
+    overflow: 'hidden',
   },
   factHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     marginBottom: 16,
+    zIndex: 2,
   },
   lightningIcon: {
     fontSize: 36,
@@ -139,6 +183,7 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+    zIndex: 2,
   },
   factText: {
     fontSize: 15,
@@ -146,10 +191,12 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontFamily: 'SpaceMono',
     marginBottom: 24,
+    zIndex: 2,
   },
   buttonContainer: {
     flexDirection: 'row',
     gap: 12,
+    zIndex: 2,
   },
   button: {
     flex: 1,

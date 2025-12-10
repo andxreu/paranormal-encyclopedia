@@ -1,29 +1,36 @@
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
+  Easing,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { categories, Category } from '@/data/paranormal/categories';
+import { ParticleEffect } from '@/components/ParticleEffect';
+import { HapticFeedback } from '@/utils/haptics';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 2;
 
 const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = ({ category, onPress }) => {
   const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{ scale: scale.value }],
+      opacity: opacity.value,
     };
   });
 
   const handlePressIn = () => {
+    HapticFeedback.soft();
     scale.value = withSpring(0.95, {
       damping: 15,
       stiffness: 300,
@@ -52,6 +59,8 @@ const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = 
           end={{ x: 1, y: 1 }}
           style={styles.card}
         >
+          <ParticleEffect count={4} color={category.color + '60'} />
+          
           <View style={styles.cardContent}>
             <Text style={styles.cardIcon}>{category.icon}</Text>
             <Text style={styles.cardName}>{category.name}</Text>
@@ -75,14 +84,31 @@ const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = 
 
 export default function ExploreScreen() {
   const theme = useAppTheme();
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleCategoryPress = (category: Category) => {
+    HapticFeedback.light();
     console.log('Category pressed:', category.name);
     Alert.alert(
       category.name,
       `${category.description}\n\nTopics: ${category.topics.length}`,
       [{ text: 'OK' }]
     );
+  };
+
+  const onRefresh = async () => {
+    HapticFeedback.medium();
+    setRefreshing(true);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      HapticFeedback.success();
+    } catch (error) {
+      console.error('Error refreshing:', error);
+      HapticFeedback.error();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
@@ -105,6 +131,15 @@ export default function ExploreScreen() {
             style={styles.scrollView}
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#8B5CF6"
+                colors={['#8B5CF6', '#6366F1', '#D4AF37']}
+                progressBackgroundColor="rgba(42, 27, 78, 0.8)"
+              />
+            }
           >
             <View style={styles.grid}>
               {categories.map((category, index) => (
