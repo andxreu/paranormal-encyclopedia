@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -85,16 +86,13 @@ const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = 
 
 export default function ExploreScreen() {
   const { theme, textScale } = useAppTheme();
+  const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
 
   const handleCategoryPress = (category: Category) => {
     HapticFeedback.light();
     console.log('Category pressed:', category.name);
-    Alert.alert(
-      category.name,
-      `${category.description}\n\nTopics: ${category.topics.length}`,
-      [{ text: 'OK' }]
-    );
+    router.push(`/explore/${category.id}`);
   };
 
   const onRefresh = async () => {

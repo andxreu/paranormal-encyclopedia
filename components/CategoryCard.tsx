@@ -2,12 +2,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
-  Easing,
 } from 'react-native-reanimated';
 import { Category } from '@/data/paranormal/categories';
 import { useAppTheme } from '@/contexts/ThemeContext';
@@ -23,7 +22,8 @@ const { width } = Dimensions.get('window');
 const cardWidth = (width - 60) / 2;
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress }) => {
-  const theme = useAppTheme();
+  const { theme } = useAppTheme();
+  const router = useRouter();
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
@@ -51,7 +51,11 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
 
   const handlePress = () => {
     HapticFeedback.light();
-    onPress?.();
+    if (onPress) {
+      onPress();
+    } else {
+      router.push(`/explore/${category.id}`);
+    }
   };
 
   return (
