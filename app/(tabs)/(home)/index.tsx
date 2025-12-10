@@ -1,6 +1,7 @@
 
-import React, { useEffect, useState, useCallback, useMemo, memo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text } from "react-native";
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
@@ -8,24 +9,20 @@ import Animated, {
   withTiming,
   withSpring,
   Easing,
-  useAnimatedScrollHandler,
 } from 'react-native-reanimated';
 import { SpaceHeader } from "@/components/SpaceHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { TodaysMysteries } from "@/components/TodaysMysteries";
 import { SectionHeader } from "@/components/SectionHeader";
 import { CategoryCard } from "@/components/CategoryCard";
-import { GlowButton } from "@/components/GlowButton";
+import { LightningButton } from "@/components/LightningButton";
 import { RandomFactModal } from "@/components/RandomFactModal";
 import { OnboardingScreen } from "@/components/OnboardingScreen";
 import { HomeLoadingSkeleton } from "@/components/LoadingSkeleton";
-import { AnimatedGradientBackground } from "@/components/AnimatedGradientBackground";
-import { ParticleField } from "@/components/ParticleField";
 import { categories } from "@/data/paranormal/categories";
 import { getRandomFact, ParanormalFact } from "@/data/paranormal/facts";
 import { storage } from "@/utils/storage";
 import { useAppTheme } from "@/contexts/ThemeContext";
-import { useEnlightenedMode } from "@/contexts/EnlightenedModeContext";
 import { HapticFeedback } from "@/utils/haptics";
 
 interface ResourceCard {
@@ -60,92 +57,19 @@ const resources: ResourceCard[] = [
   },
 ];
 
-interface ResourceCardComponentProps {
-  resource: ResourceCard;
-  onPress: () => void;
-}
-
-const ResourceCardComponent = memo<ResourceCardComponentProps>(({ resource, onPress }) => {
-  const { theme, textScale } = useAppTheme();
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-    };
-  });
-
-  const handlePressIn = useCallback(() => {
-    HapticFeedback.soft();
-    scale.value = withSpring(0.98, {
-      damping: 15,
-      stiffness: 300,
-    });
-  }, [scale]);
-
-  const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
-  }, [scale]);
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      activeOpacity={1}
-      style={styles.resourceCard}
-      accessibilityLabel={resource.title}
-      accessibilityHint={resource.description}
-      accessibilityRole="button"
-    >
-      <Animated.View style={animatedStyle}>
-        <View style={[
-          styles.resourceCardGradient,
-          {
-            backgroundColor: theme.colors.glassBg,
-            borderColor: theme.colors.border,
-            boxShadow: `0 8px 32px ${theme.colors.shadow}`,
-          }
-        ]}>
-          <Text style={styles.resourceIcon}>{resource.icon}</Text>
-          <Text style={[styles.resourceTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
-            {resource.title}
-          </Text>
-          <Text style={[styles.resourceDescription, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]}>
-            {resource.description}
-          </Text>
-          <View style={[styles.resourceBorder, { borderColor: theme.colors.violet + '60' }]} />
-        </View>
-      </Animated.View>
-    </TouchableOpacity>
-  );
-});
-
-ResourceCardComponent.displayName = 'ResourceCardComponent';
-
-export default function HomeScreen(): React.ReactElement {
+export default function HomeScreen() {
   const { theme } = useAppTheme();
-  const { isEnlightened } = useEnlightenedMode();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showFactModal, setShowFactModal] = useState(false);
   const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const fadeOpacity = useSharedValue(0);
-  const scrollY = useSharedValue(0);
 
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
-
-  const loadData = useCallback(async (): Promise<void> => {
+  const loadData = useCallback(async () => {
     try {
       await storage.saveCategories(categories);
       await storage.saveLastSync();
@@ -157,13 +81,20 @@ export default function HomeScreen(): React.ReactElement {
         duration: 600,
         easing: Easing.inOut(Easing.ease),
       });
+
+      const firstLaunchAfterOnboarding = await storage.getData<boolean>('@first_launch_after_onboarding');
+      if (firstLaunchAfterOnboarding !== false) {
+        setShowConfetti(true);
+        await storage.saveData('@first_launch_after_onboarding', false);
+        setTimeout(() => setShowConfetti(false), 3000);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
       setIsLoading(false);
     }
   }, [fadeOpacity]);
 
-  const initializeApp = useCallback(async (): Promise<void> => {
+  const initializeApp = useCallback(async () => {
     try {
       console.log('Initializing app...');
       
@@ -185,33 +116,34 @@ export default function HomeScreen(): React.ReactElement {
     initializeApp();
   }, [initializeApp]);
 
-  const handleOnboardingComplete = useCallback(async (): Promise<void> => {
+  const handleOnboardingComplete = async () => {
     await storage.setOnboardingComplete(true);
+    await storage.saveData('@first_launch_after_onboarding', true);
     setShowOnboarding(false);
     setIsLoading(true);
     await loadData();
-  }, [loadData]);
+  };
 
-  const handleLightningPress = useCallback((): void => {
+  const handleLightningPress = () => {
     HapticFeedback.medium();
-    console.log('Glow button pressed');
+    console.log('Lightning button pressed');
     const randomFact = getRandomFact();
     setCurrentFact(randomFact);
     setShowFactModal(true);
-  }, []);
+  };
 
-  const handleSearchResultPress = useCallback((result: unknown): void => {
+  const handleSearchResultPress = (result: any) => {
     HapticFeedback.light();
     console.log('Search result pressed:', result);
-  }, []);
+  };
 
-  const handleResourcePress = useCallback((resource: ResourceCard): void => {
+  const handleResourcePress = (resource: ResourceCard) => {
     HapticFeedback.light();
     console.log('Resource pressed:', resource.id);
-    router.push(resource.route as never);
-  }, [router]);
+    router.push(resource.route as any);
+  };
 
-  const onRefresh = useCallback(async (): Promise<void> => {
+  const onRefresh = async () => {
     HapticFeedback.medium();
     setRefreshing(true);
     
@@ -226,18 +158,13 @@ export default function HomeScreen(): React.ReactElement {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  };
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
       opacity: fadeOpacity.value,
     };
   });
-
-  const containerStyle = useMemo(() => [
-    styles.container,
-    isEnlightened && styles.enlightenedContainer,
-  ], [isEnlightened]);
 
   if (showOnboarding) {
     return <OnboardingScreen onComplete={handleOnboardingComplete} />;
@@ -246,24 +173,31 @@ export default function HomeScreen(): React.ReactElement {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <AnimatedGradientBackground>
+        <LinearGradient
+          colors={theme.colors.backgroundGradient}
+          style={styles.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        >
           <HomeLoadingSkeleton />
-        </AnimatedGradientBackground>
+        </LinearGradient>
       </View>
     );
   }
 
   return (
-    <View style={containerStyle}>
-      <AnimatedGradientBackground>
-        <ParticleField count={isEnlightened ? 40 : 20} />
+    <View style={styles.container}>
+      <LinearGradient
+        colors={theme.colors.backgroundGradient}
+        style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      >
         <Animated.View style={[styles.animatedContainer, animatedStyle]}>
-          <Animated.ScrollView
+          <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
-            onScroll={scrollHandler}
-            scrollEventThrottle={16}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -309,9 +243,9 @@ export default function HomeScreen(): React.ReactElement {
             </View>
 
             <View style={styles.bottomSpacer} />
-          </Animated.ScrollView>
+          </ScrollView>
 
-          <GlowButton onPress={handleLightningPress} icon={isEnlightened ? '🔮' : '⚡'} />
+          <LightningButton onPress={handleLightningPress} />
 
           <RandomFactModal
             visible={showFactModal}
@@ -319,17 +253,79 @@ export default function HomeScreen(): React.ReactElement {
             onClose={() => setShowFactModal(false)}
           />
         </Animated.View>
-      </AnimatedGradientBackground>
+      </LinearGradient>
     </View>
   );
 }
+
+interface ResourceCardComponentProps {
+  resource: ResourceCard;
+  onPress: () => void;
+}
+
+const ResourceCardComponent: React.FC<ResourceCardComponentProps> = ({ resource, onPress }) => {
+  const { theme, textScale } = useAppTheme();
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
+
+  const handlePressIn = () => {
+    HapticFeedback.soft();
+    scale.value = withSpring(0.98, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
+      style={styles.resourceCard}
+      accessibilityLabel={resource.title}
+      accessibilityHint={resource.description}
+      accessibilityRole="button"
+    >
+      <Animated.View style={animatedStyle}>
+        <LinearGradient
+          colors={[theme.colors.violet + '40', theme.colors.indigo + '20', theme.colors.cardBg]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.resourceCardGradient, { borderColor: theme.colors.border }]}
+        >
+          <Text style={styles.resourceIcon}>{resource.icon}</Text>
+          <Text style={[styles.resourceTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
+            {resource.title}
+          </Text>
+          <Text style={[styles.resourceDescription, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]}>
+            {resource.description}
+          </Text>
+          <View style={[styles.resourceBorder, { borderColor: theme.colors.violet + '60' }]} />
+        </LinearGradient>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  enlightenedContainer: {
-    transform: [{ scaleX: -1 }],
+  gradient: {
+    flex: 1,
   },
   animatedContainer: {
     flex: 1,
@@ -363,6 +359,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderRadius: 20,
+    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.4)',
     elevation: 8,
   },
   resourceIcon: {

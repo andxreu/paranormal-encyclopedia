@@ -1,11 +1,4 @@
 
-export * from './types';
-export * from './categories';
-export * from './facts';
-export * from './hauntedLocations';
-export * from './codex';
-export * from './glossary';
-
 import { creaturesData, getCreatureById, getCreatureByName } from './creatures';
 import { ufosData, getUFOById, getUFOByName } from './ufos';
 import { ghostsData, getGhostById, getGhostByName } from './ghosts';
@@ -17,68 +10,68 @@ import { phenomenaData, getPhenomenaById, getPhenomenaByName } from './phenomena
 import { peopleData, getPeopleById, getPeopleByName } from './people';
 import { trulyStrangeData, getTrulyStrangeById, getTrulyStrangeByName } from './trulyStrange';
 
+export * from './types';
+export * from './categories';
+export * from './facts';
+export * from './hauntedLocations';
+export * from './codex';
+export * from './glossary';
+
 export {
   creaturesData,
+  ufosData,
+  ghostsData,
+  occultData,
+  psychicData,
+  ancientsData,
+  folkloreData,
+  phenomenaData,
+  peopleData,
+  trulyStrangeData,
   getCreatureById,
   getCreatureByName,
-  ufosData,
   getUFOById,
   getUFOByName,
-  ghostsData,
   getGhostById,
   getGhostByName,
-  occultData,
   getOccultById,
   getOccultByName,
-  psychicData,
   getPsychicById,
   getPsychicByName,
-  ancientsData,
   getAncientById,
   getAncientByName,
-  folkloreData,
   getFolkloreById,
   getFolkloreByName,
-  phenomenaData,
   getPhenomenaById,
   getPhenomenaByName,
-  peopleData,
   getPeopleById,
   getPeopleByName,
-  trulyStrangeData,
   getTrulyStrangeById,
   getTrulyStrangeByName,
 };
 
-interface Topic {
-  id: string;
-  name: string;
-  description: string;
-  sections?: unknown[];
-}
-
-export const getCategoryTopics = (categoryId: string): Topic[] => {
+export const getCategoryTopics = (categoryId: string) => {
   switch (categoryId) {
     case 'creatures':
-      return creaturesData as Topic[];
+      return creaturesData;
     case 'ufos':
-      return ufosData as Topic[];
+      return ufosData;
     case 'ghosts':
-      return ghostsData as Topic[];
+      return ghostsData;
     case 'occult':
-      return occultData as Topic[];
+      return occultData;
     case 'psychic':
-      return psychicData as Topic[];
+      return psychicData;
     case 'ancients':
-      return ancientsData as Topic[];
+      return ancientsData;
     case 'folklore':
-      return folkloreData as Topic[];
+      return folkloreData;
     case 'phenomena':
-      return phenomenaData as Topic[];
+      return phenomenaData;
     case 'people':
-      return peopleData as Topic[];
+      return peopleData;
     case 'truly-strange':
-      return trulyStrangeData as Topic[];
+      return trulyStrangeData;
     default:
       return [];
   }

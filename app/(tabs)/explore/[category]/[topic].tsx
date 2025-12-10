@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Share, Clipboard, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Clipboard from 'expo-clipboard';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -22,18 +21,15 @@ import { RandomFactModal } from '@/components/RandomFactModal';
 import { HapticFeedback } from '@/utils/haptics';
 import { storage } from '@/utils/storage';
 
-interface Section {
-  title: string;
-  content: string;
-}
+const { width } = Dimensions.get('window');
 
 interface SectionCardProps {
-  section: Section;
+  section: any;
   categoryColor: string;
   index: number;
 }
 
-const SectionCard = memo<SectionCardProps>(({ section, categoryColor, index }) => {
+const SectionCard: React.FC<SectionCardProps> = ({ section, categoryColor, index }) => {
   const { theme, textScale } = useAppTheme();
   const [expanded, setExpanded] = useState(false);
   const scale = useSharedValue(1);
@@ -44,24 +40,24 @@ const SectionCard = memo<SectionCardProps>(({ section, categoryColor, index }) =
     };
   });
 
-  const handlePress = useCallback(() => {
+  const handlePress = () => {
     HapticFeedback.soft();
     setExpanded(!expanded);
-  }, [expanded]);
+  };
 
-  const handlePressIn = useCallback(() => {
+  const handlePressIn = () => {
     scale.value = withSpring(0.98, {
       damping: 15,
       stiffness: 300,
     });
-  }, [scale]);
+  };
 
-  const handlePressOut = useCallback(() => {
+  const handlePressOut = () => {
     scale.value = withSpring(1, {
       damping: 15,
       stiffness: 300,
     });
-  }, [scale]);
+  };
 
   return (
     <Animated.View
@@ -107,18 +103,16 @@ const SectionCard = memo<SectionCardProps>(({ section, categoryColor, index }) =
       </TouchableOpacity>
     </Animated.View>
   );
-});
-
-SectionCard.displayName = 'SectionCard';
+};
 
 export default function TopicDetailScreen() {
   const { category: categoryId, topic: topicId } = useLocalSearchParams<{ category: string; topic: string }>();
   const router = useRouter();
   const { theme, textScale } = useAppTheme();
-  const [category, setCategory] = useState<unknown>(null);
-  const [topic, setTopic] = useState<unknown>(null);
+  const [category, setCategory] = useState<any>(null);
+  const [topic, setTopic] = useState<any>(null);
   const [showOracleModal, setShowOracleModal] = useState(false);
-  const [oracleFact, setOracleFact] = useState<unknown>(null);
+  const [oracleFact, setOracleFact] = useState<any>(null);
   const [isFavorite, setIsFavorite] = useState(false);
 
   const fadeOpacity = useSharedValue(0);
@@ -129,7 +123,7 @@ export default function TopicDetailScreen() {
 
     const categoryData = getCategoryById(categoryId as string);
     const categoryTopics = getCategoryTopics(categoryId as string);
-    const topicData = categoryTopics.find((t: { id: string }) => t.id === topicId);
+    const topicData = categoryTopics.find((t: any) => t.id === topicId);
 
     setCategory(categoryData);
     setTopic(topicData);
@@ -152,41 +146,37 @@ export default function TopicDetailScreen() {
     loadTopicData();
   }, [loadTopicData]);
 
-  const handleBackPress = useCallback(() => {
+  const handleBackPress = () => {
     HapticFeedback.light();
     router.back();
-  }, [router]);
+  };
 
-  const handleOraclePress = useCallback(() => {
+  const handleOraclePress = () => {
     HapticFeedback.medium();
     const randomFact = getRandomFact();
     setOracleFact(randomFact);
     setShowOracleModal(true);
-  }, []);
+  };
 
-  const handleCopyToClipboard = useCallback(async () => {
+  const handleCopyToClipboard = () => {
     HapticFeedback.success();
-    const topicData = topic as { name: string; description: string };
-    const categoryData = category as { name: string };
-    const text = `${topicData.name}\n\n${topicData.description}\n\nCategory: ${categoryData.name}`;
-    await Clipboard.setStringAsync(text);
+    const text = `${topic.name}\n\n${topic.description}\n\nCategory: ${category.name}`;
+    Clipboard.setString(text);
     Alert.alert('Copied!', 'Topic details copied to clipboard');
-  }, [topic, category]);
+  };
 
-  const handleShare = useCallback(async () => {
+  const handleShare = async () => {
     HapticFeedback.light();
     try {
-      const topicData = topic as { name: string; description: string };
-      const categoryData = category as { name: string };
       await Share.share({
-        message: `${topicData.name}\n\n${topicData.description}\n\nCategory: ${categoryData.name}\n\nFrom Paranormal Encyclopedia`,
+        message: `${topic.name}\n\n${topic.description}\n\nCategory: ${category.name}\n\nFrom Paranormal Encyclopedia`,
       });
     } catch (error) {
       console.error('Error sharing:', error);
     }
-  }, [topic, category]);
+  };
 
-  const handleToggleFavorite = useCallback(async () => {
+  const handleToggleFavorite = async () => {
     HapticFeedback.medium();
     const favoriteId = `${categoryId}-${topicId}`;
     if (isFavorite) {
@@ -196,7 +186,7 @@ export default function TopicDetailScreen() {
       await storage.addFavorite(favoriteId);
       setIsFavorite(true);
     }
-  }, [categoryId, topicId, isFavorite]);
+  };
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -222,20 +212,17 @@ export default function TopicDetailScreen() {
     );
   }
 
-  const categoryData = category as { color: string; name: string };
-  const topicData = topic as { name: string; description: string; sections?: Section[] };
-
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={[categoryData.color + '25', ...theme.colors.backgroundGradient.slice(1)]}
+        colors={[category.color + '25', ...theme.colors.backgroundGradient.slice(1)]}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <Animated.View style={[styles.animatedContainer, animatedStyle]}>
-            <ParticleEffect count={12} color={categoryData.color + '25'} />
+            <ParticleEffect count={12} color={category.color + '25'} />
             
             <View style={styles.header}>
               <View style={styles.headerTop}>
@@ -280,14 +267,14 @@ export default function TopicDetailScreen() {
               
               <View style={styles.headerContent}>
                 <Text style={[styles.topicTitle, { color: theme.colors.textPrimary, fontSize: 28 * textScale }]}>
-                  {topicData.name}
+                  {topic.name}
                 </Text>
                 <Text style={[styles.topicDescription, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                  {topicData.description}
+                  {topic.description}
                 </Text>
-                <View style={[styles.categoryBadge, { backgroundColor: categoryData.color + '30', borderColor: categoryData.color + '60' }]}>
+                <View style={[styles.categoryBadge, { backgroundColor: category.color + '30', borderColor: category.color + '60' }]}>
                   <Text style={[styles.categoryBadgeText, { color: theme.colors.textPrimary, fontSize: 11 * textScale }]}>
-                    {categoryData.name}
+                    {category.name}
                   </Text>
                 </View>
               </View>
@@ -302,13 +289,14 @@ export default function TopicDetailScreen() {
                 Explore Sections
               </Text>
               
-              {topicData.sections?.map((section, index) => (
-                <SectionCard
-                  key={`section-${index}`}
-                  section={section}
-                  categoryColor={categoryData.color}
-                  index={index}
-                />
+              {topic.sections?.map((section: any, index: number) => (
+                <React.Fragment key={index}>
+                  <SectionCard
+                    section={section}
+                    categoryColor={category.color}
+                    index={index}
+                  />
+                </React.Fragment>
               ))}
 
               <View style={styles.bottomSpacer} />
@@ -323,7 +311,7 @@ export default function TopicDetailScreen() {
               accessibilityRole="button"
             >
               <LinearGradient
-                colors={[categoryData.color + '80', categoryData.color + '60']}
+                colors={[category.color + '80', category.color + '60']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.oracleButtonGradient}

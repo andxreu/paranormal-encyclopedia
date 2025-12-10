@@ -1,364 +1,271 @@
 
-import React, { useState, useCallback, useMemo, memo } from 'react';
-import {
-  View,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  FlatList,
-  Modal,
-  Dimensions,
-} from 'react-native';
-import { BlurView } from 'expo-blur';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
+  Easing,
 } from 'react-native-reanimated';
-import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { useAppTheme } from '@/contexts/ThemeContext';
-import { fuzzySearch, SearchResult } from '@/utils/fuzzySearch';
-import { HapticFeedback } from '@/utils/haptics';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { paranormalFacts } from '@/data/paranormal/facts';
+import { getAllTopics } from '@/data/paranormal/categories';
 
 interface SearchBarProps {
-  onResultPress?: (result: SearchResult) => void;
+  onResultPress?: (result: any) => void;
 }
 
-interface SearchResultItemProps {
-  result: SearchResult;
-  onPress: () => void;
-}
+export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
+  const { theme } = useAppTheme();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  
+  const suggestionsHeight = useSharedValue(0);
+  const suggestionsOpacity = useSharedValue(0);
 
-const SearchResultItem = memo<SearchResultItemProps>(({ result, onPress }) => {
-  const { theme, textScale } = useAppTheme();
-  const scale = useSharedValue(1);
+  const updateSuggestions = useCallback((query: string) => {
+    if (query.trim().length > 1) {
+      const lowerQuery = query.toLowerCase();
+      
+      const factResults = paranormalFacts
+        .filter(fact =>
+          fact.fact.toLowerCase().includes(lowerQuery) ||
+          fact.categoryName.toLowerCase().includes(lowerQuery)
+        )
+        .slice(0, 3)
+        .map(fact => ({ ...fact, type: 'fact' }));
 
-  const animatedStyle = useAnimatedStyle(() => {
+      const topicResults = getAllTopics()
+        .filter(topic =>
+          topic.name.toLowerCase().includes(lowerQuery) ||
+          topic.description.toLowerCase().includes(lowerQuery)
+        )
+        .slice(0, 3)
+        .map(topic => ({ ...topic, type: 'topic' }));
+
+      const results = [...factResults, ...topicResults].slice(0, 5);
+      setSuggestions(results);
+      setShowSuggestions(results.length > 0);
+      
+      suggestionsHeight.value = withTiming(results.length > 0 ? Math.min(results.length * 70, 280) : 0, {
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+      });
+      suggestionsOpacity.value = withTiming(results.length > 0 ? 1 : 0, {
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+      });
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      suggestionsHeight.value = withTiming(0, {
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+      });
+      suggestionsOpacity.value = withTiming(0, {
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+      });
+    }
+  }, [suggestionsHeight, suggestionsOpacity]);
+
+  useEffect(() => {
+    updateSuggestions(searchQuery);
+  }, [searchQuery, updateSuggestions]);
+
+  const animatedSuggestionsStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ scale: scale.value }],
+      height: suggestionsHeight.value,
+      opacity: suggestionsOpacity.value,
     };
   });
 
-  const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.98);
-  }, [scale]);
-
-  const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1);
-  }, [scale]);
-
-  const getTypeIcon = (type: string): string => {
-    switch (type) {
-      case 'category': return '📁';
-      case 'topic': return '📄';
-      case 'glossary': return '📖';
-      case 'codex': return '📜';
-      case 'location': return '🏚️';
-      case 'fact': return '💡';
-      default: return '🔍';
+  const highlightText = (text: string, query: string) => {
+    if (!query.trim()) {
+      return text;
     }
+    
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return parts.map((part, index) => {
+      if (part.toLowerCase() === query.toLowerCase()) {
+        return (
+          <Text key={index} style={styles.highlightedText}>
+            {part}
+          </Text>
+        );
+      }
+      return part;
+    });
+  };
+
+  const handleResultPress = (result: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowSuggestions(false);
+    setSearchQuery('');
+    onResultPress?.(result);
+  };
+
+  const handleClear = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSearchQuery('');
+    setShowSuggestions(false);
   };
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      activeOpacity={1}
-      accessibilityLabel={result.title}
-      accessibilityRole="button"
-    >
-      <Animated.View style={[
-        styles.resultItem,
-        {
-          backgroundColor: theme.colors.glassBg,
-          borderColor: theme.colors.border,
-        },
-        animatedStyle,
-      ]}>
-        <Text style={styles.resultIcon}>{getTypeIcon(result.type)}</Text>
-        <View style={styles.resultTextContainer}>
-          <Text style={[styles.resultTitle, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]} numberOfLines={1}>
-            {result.title}
-          </Text>
-          <Text style={[styles.resultDescription, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]} numberOfLines={2}>
-            {result.description}
-          </Text>
-        </View>
-        <Text style={[styles.resultType, { color: theme.colors.violet, fontSize: 10 * textScale }]}>
-          {result.type}
-        </Text>
-      </Animated.View>
-    </TouchableOpacity>
-  );
-});
-
-SearchResultItem.displayName = 'SearchResultItem';
-
-export const SearchBar = memo<SearchBarProps>(({ onResultPress }) => {
-  const { theme, textScale, colorScheme } = useAppTheme();
-  const router = useRouter();
-  const [query, setQuery] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
-
-  const scale = useSharedValue(1);
-
-  const results = useMemo(() => {
-    if (!query || query.trim().length < 2) {
-      return [];
-    }
-    return fuzzySearch.search(query, 15);
-  }, [query]);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-    };
-  });
-
-  const handleFocus = useCallback(() => {
-    HapticFeedback.soft();
-    setIsFocused(true);
-    setShowResults(true);
-    scale.value = withSpring(1.02);
-  }, [scale]);
-
-  const handleBlur = useCallback(() => {
-    setIsFocused(false);
-    scale.value = withSpring(1);
-  }, [scale]);
-
-  const handleResultPress = useCallback((result: SearchResult) => {
-    HapticFeedback.light();
-    setQuery('');
-    setShowResults(false);
-    
-    setSearchHistory(prev => {
-      const newHistory = [result.title, ...prev.filter(item => item !== result.title)].slice(0, 10);
-      return newHistory;
-    });
-
-    if (result.route !== '/') {
-      router.push(result.route as never);
-    }
-    
-    onResultPress?.(result);
-  }, [router, onResultPress]);
-
-  const handleClear = useCallback(() => {
-    HapticFeedback.soft();
-    setQuery('');
-    setShowResults(false);
-  }, []);
-
-  const handleClose = useCallback(() => {
-    HapticFeedback.soft();
-    setShowResults(false);
-    setQuery('');
-  }, []);
-
-  return (
-    <>
-      <Animated.View style={[
-        styles.container,
-        {
-          backgroundColor: theme.colors.glassBg,
-          borderColor: isFocused ? theme.colors.violet : theme.colors.border,
-          boxShadow: isFocused ? `0 0 20px ${theme.colors.violet}40` : 'none',
-        },
-        animatedStyle,
-      ]}>
+    <View style={styles.container}>
+      <View style={styles.searchInputContainer}>
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
-          style={[
-            styles.input,
-            {
-              color: theme.colors.textPrimary,
-              fontSize: 15 * textScale,
-            },
-          ]}
-          placeholder="Search mysteries, locations, terms..."
-          placeholderTextColor={theme.colors.textSecondary}
-          value={query}
-          onChangeText={setQuery}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          returnKeyType="search"
+          style={styles.searchInput}
+          placeholder="Search mysteries, facts, topics..."
+          placeholderTextColor="#808080"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
           autoCapitalize="none"
           autoCorrect={false}
         />
-        {query.length > 0 && (
-          <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
+        {searchQuery.length > 0 && (
+          <TouchableOpacity
+            onPress={handleClear}
+            style={styles.clearButton}
+          >
             <Text style={styles.clearIcon}>✕</Text>
           </TouchableOpacity>
         )}
-      </Animated.View>
+      </View>
 
-      <Modal
-        visible={showResults && (results.length > 0 || query.length >= 2)}
-        transparent
-        animationType="fade"
-        onRequestClose={handleClose}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={handleClose}
-        >
-          <BlurView
-            intensity={colorScheme === 'dark' ? 80 : 60}
-            tint={colorScheme}
-            style={styles.blurView}
+      {showSuggestions && (
+        <Animated.View style={[styles.suggestionsContainer, animatedSuggestionsStyle]}>
+          <ScrollView 
+            style={styles.suggestionsList}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
           >
-            <View style={[styles.resultsContainer, { backgroundColor: theme.colors.background + 'E6' }]}>
-              <View style={styles.resultsHeader}>
-                <Text style={[styles.resultsTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
-                  Search Results
-                </Text>
-                <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-                  <Text style={[styles.closeIcon, { color: theme.colors.textPrimary }]}>✕</Text>
-                </TouchableOpacity>
-              </View>
-              
-              {results.length === 0 && query.length >= 2 ? (
-                <View style={styles.noResults}>
-                  <Text style={[styles.noResultsText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                    No results found for &quot;{query}&quot;
-                  </Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={results}
-                  keyExtractor={(item, index) => `${item.id}-${index}`}
-                  renderItem={({ item }) => (
-                    <SearchResultItem
-                      result={item}
-                      onPress={() => handleResultPress(item)}
-                    />
-                  )}
-                  contentContainerStyle={styles.resultsList}
-                  showsVerticalScrollIndicator={false}
-                />
-              )}
-            </View>
-          </BlurView>
-        </TouchableOpacity>
-      </Modal>
-    </>
+            {suggestions.map((result, index) => (
+              <TouchableOpacity
+                key={`suggestion-${result.type}-${index}`}
+                style={styles.suggestionItem}
+                onPress={() => handleResultPress(result)}
+                activeOpacity={0.7}
+              >
+                {result.type === 'fact' ? (
+                  <React.Fragment>
+                    <View style={[styles.suggestionBadge, { backgroundColor: result.color + '40' }]}>
+                      <Text style={[styles.suggestionBadgeText, { color: result.color }]}>
+                        {result.categoryName}
+                      </Text>
+                    </View>
+                    <Text style={styles.suggestionText} numberOfLines={2}>
+                      {highlightText(result.fact, searchQuery)}
+                    </Text>
+                  </React.Fragment>
+                ) : (
+                  <React.Fragment>
+                    <Text style={styles.suggestionTitle}>
+                      {highlightText(result.name, searchQuery)}
+                    </Text>
+                    <Text style={styles.suggestionDescription} numberOfLines={1}>
+                      {result.description}
+                    </Text>
+                  </React.Fragment>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </Animated.View>
+      )}
+    </View>
   );
-});
-
-SearchBar.displayName = 'SearchBar';
+};
 
 const styles = StyleSheet.create({
   container: {
+    marginBottom: 20,
+    zIndex: 100,
+  },
+  searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: 'rgba(42, 27, 78, 0.8)',
     borderRadius: 16,
     borderWidth: 2,
-    marginBottom: 20,
+    borderColor: 'rgba(139, 92, 246, 0.4)',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    boxShadow: '0px 4px 16px rgba(139, 92, 246, 0.3)',
+    elevation: 6,
   },
   searchIcon: {
     fontSize: 20,
     marginRight: 12,
   },
-  input: {
+  searchInput: {
     flex: 1,
-    fontFamily: 'SpaceMono',
     fontSize: 15,
+    color: '#FFFFFF',
+    fontFamily: 'SpaceMono',
   },
   clearButton: {
     padding: 4,
   },
   clearIcon: {
     fontSize: 18,
-    color: '#999',
+    color: '#808080',
   },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  blurView: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  resultsContainer: {
-    width: '90%',
-    maxHeight: SCREEN_HEIGHT * 0.7,
-    borderRadius: 20,
-    padding: 20,
-    elevation: 10,
-  },
-  resultsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  resultsTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    fontFamily: 'SpaceMono',
-  },
-  closeButton: {
-    padding: 8,
-  },
-  closeIcon: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  resultsList: {
-    gap: 12,
-  },
-  resultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
+  suggestionsContainer: {
+    marginTop: 8,
+    backgroundColor: 'rgba(42, 27, 78, 0.95)',
+    borderRadius: 16,
     borderWidth: 1,
-    gap: 12,
+    borderColor: 'rgba(139, 92, 246, 0.4)',
+    overflow: 'hidden',
+    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.4)',
+    elevation: 8,
   },
-  resultIcon: {
-    fontSize: 24,
+  suggestionsList: {
+    maxHeight: 280,
   },
-  resultTextContainer: {
-    flex: 1,
+  suggestionItem: {
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(139, 92, 246, 0.2)',
   },
-  resultTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    fontFamily: 'SpaceMono',
-    marginBottom: 4,
+  suggestionBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 6,
   },
-  resultDescription: {
-    fontSize: 12,
-    fontFamily: 'SpaceMono',
-    lineHeight: 16,
-  },
-  resultType: {
+  suggestionBadgeText: {
     fontSize: 10,
     fontWeight: '700',
     fontFamily: 'SpaceMono',
     textTransform: 'uppercase',
   },
-  noResults: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  noResultsText: {
+  suggestionTitle: {
     fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
-    textAlign: 'center',
+    marginBottom: 4,
+  },
+  suggestionText: {
+    fontSize: 13,
+    color: '#E0E0E0',
+    lineHeight: 20,
+    fontFamily: 'SpaceMono',
+  },
+  suggestionDescription: {
+    fontSize: 12,
+    color: '#B0B0B0',
+    fontFamily: 'SpaceMono',
+  },
+  highlightedText: {
+    color: '#FFD700',
+    fontWeight: '700',
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
   },
 });

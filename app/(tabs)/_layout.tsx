@@ -1,53 +1,53 @@
 
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Stack } from 'expo-router';
 import FloatingTabBar, { TabBarItem } from '@/components/FloatingTabBar';
 import { storage } from '@/utils/storage';
 
-const tabs: TabBarItem[] = [
-  {
-    name: '(home)',
-    route: '/(tabs)/(home)/',
-    icon: 'home',
-    label: 'Home',
-  },
-  {
-    name: 'explore',
-    route: '/(tabs)/explore',
-    icon: 'explore',
-    label: 'Explore',
-  },
-  {
-    name: 'favorites',
-    route: '/(tabs)/favorites',
-    icon: 'favorite',
-    label: 'Favorites',
-  },
-  {
-    name: 'search',
-    route: '/(tabs)/search',
-    icon: 'search',
-    label: 'Search',
-  },
-  {
-    name: 'settings',
-    route: '/(tabs)/settings',
-    icon: 'settings',
-    label: 'Settings',
-  },
-];
-
-const TabLayout = memo(() => {
+export default function TabLayout() {
   const [showTabBar, setShowTabBar] = useState(true);
 
   useEffect(() => {
     checkOnboarding();
   }, []);
 
-  const checkOnboarding = async (): Promise<void> => {
+  const checkOnboarding = async () => {
     const onboardingComplete = await storage.isOnboardingComplete();
     setShowTabBar(onboardingComplete);
   };
+
+  const tabs: TabBarItem[] = [
+    {
+      name: '(home)',
+      route: '/(tabs)/(home)/',
+      icon: 'home',
+      label: 'Home',
+    },
+    {
+      name: 'explore',
+      route: '/(tabs)/explore',
+      icon: 'explore',
+      label: 'Explore',
+    },
+    {
+      name: 'favorites',
+      route: '/(tabs)/favorites',
+      icon: 'favorite',
+      label: 'Favorites',
+    },
+    {
+      name: 'search',
+      route: '/(tabs)/search',
+      icon: 'search',
+      label: 'Search',
+    },
+    {
+      name: 'settings',
+      route: '/(tabs)/settings',
+      icon: 'settings',
+      label: 'Settings',
+    },
+  ];
 
   return (
     <>
@@ -67,8 +67,4 @@ const TabLayout = memo(() => {
       {showTabBar && <FloatingTabBar tabs={tabs} containerWidth={350} />}
     </>
   );
-});
-
-TabLayout.displayName = 'TabLayout';
-
-export default TabLayout;
+}

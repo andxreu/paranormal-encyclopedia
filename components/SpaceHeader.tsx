@@ -1,131 +1,147 @@
 
-import React, { memo, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
+  withRepeat,
+  withTiming,
   withSequence,
+  Easing,
 } from 'react-native-reanimated';
+import { StarField } from './StarField';
 import { useAppTheme } from '@/contexts/ThemeContext';
-import { useEnlightenedMode } from '@/contexts/EnlightenedModeContext';
-import { HapticFeedback } from '@/utils/haptics';
 
-export const SpaceHeader = memo(() => {
-  const { theme, textScale } = useAppTheme();
-  const { isEnlightened, tapCount, handleCrystalBallTap } = useEnlightenedMode();
+const { width } = Dimensions.get('window');
+
+export const SpaceHeader: React.FC = () => {
+  const { theme } = useAppTheme();
+  const opacity = useSharedValue(0.6);
   const scale = useSharedValue(1);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(1, {
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        withTiming(0.6, {
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+        })
+      ),
+      -1,
+      false
+    );
+
+    scale.value = withRepeat(
+      withSequence(
+        withTiming(1.05, {
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        withTiming(1, {
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+        })
+      ),
+      -1,
+      false
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
+      opacity: opacity.value,
       transform: [{ scale: scale.value }],
     };
   });
 
-  const handlePress = useCallback(() => {
-    HapticFeedback.soft();
-    handleCrystalBallTap();
-    
-    scale.value = withSequence(
-      withSpring(0.85, { damping: 10, stiffness: 400 }),
-      withSpring(1.1, { damping: 10, stiffness: 400 }),
-      withSpring(1, { damping: 10, stiffness: 400 })
-    );
-
-    if (tapCount >= 6) {
-      HapticFeedback.heavy();
-    }
-  }, [handleCrystalBallTap, tapCount, scale]);
-
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        onPress={handlePress}
-        activeOpacity={0.8}
-        accessibilityLabel="Crystal ball logo"
-        accessibilityHint="Tap 7 times quickly to activate Enlightened Mode"
-        accessibilityRole="button"
+      <LinearGradient
+        colors={['#6B21A8', '#7C3AED', '#8B5CF6', '#A855F7']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradient}
       >
-        <Animated.View style={animatedStyle}>
-          <Text style={[
-            styles.logo,
-            isEnlightened && styles.enlightenedLogo,
-          ]}>
-            🔮
-          </Text>
-        </Animated.View>
-      </TouchableOpacity>
-      <Text style={[
-        styles.title,
-        {
-          color: isEnlightened ? theme.colors.gold : theme.colors.textPrimary,
-          fontSize: 28 * textScale,
-        },
-        isEnlightened && styles.enlightenedText,
-      ]}>
-        Paranormal Encyclopedia
-      </Text>
-      <Text style={[
-        styles.subtitle,
-        {
-          color: theme.colors.textSecondary,
-          fontSize: 13 * textScale,
-        },
-      ]}>
-        Explore the unexplained mysteries of our world
-      </Text>
-      {tapCount > 0 && tapCount < 7 && (
-        <Text style={[styles.tapIndicator, { color: theme.colors.gold }]}>
-          {tapCount}/7
-        </Text>
-      )}
+        <StarField starCount={40} containerHeight={280} />
+        
+        <View style={styles.overlay} />
+        
+        <View style={styles.content}>
+          <Animated.View style={[styles.iconContainer, animatedStyle]}>
+            <Text style={styles.emoji}>🔮</Text>
+          </Animated.View>
+          <Text style={styles.title}>PARANORMAL</Text>
+          <Text style={styles.subtitle}>ENCYCLOPEDIA</Text>
+          <View style={styles.divider} />
+          <Text style={styles.tagline}>✨ Explore the Unknown ✨</Text>
+        </View>
+      </LinearGradient>
     </View>
   );
-});
-
-SpaceHeader.displayName = 'SpaceHeader';
+};
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    paddingVertical: 20,
+    width: width - 32,
+    height: 280,
+    borderRadius: 24,
+    overflow: 'hidden',
     marginBottom: 20,
+    boxShadow: '0px 8px 32px rgba(139, 92, 246, 0.5)',
+    elevation: 12,
   },
-  logo: {
-    fontSize: 64,
+  gradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+  },
+  content: {
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  iconContainer: {
     marginBottom: 12,
-    textShadowColor: 'rgba(139, 92, 246, 0.8)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
   },
-  enlightenedLogo: {
-    textShadowColor: 'rgba(212, 175, 55, 1)',
-    textShadowRadius: 30,
+  emoji: {
+    fontSize: 64,
   },
   title: {
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 3,
     fontFamily: 'SpaceMono',
-    textAlign: 'center',
-    marginBottom: 8,
-    textShadowColor: 'rgba(139, 92, 246, 0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  enlightenedText: {
-    textShadowColor: 'rgba(212, 175, 55, 0.8)',
-    textShadowRadius: 15,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 5,
+    marginTop: 6,
     fontFamily: 'SpaceMono',
-    textAlign: 'center',
-    paddingHorizontal: 40,
   },
-  tapIndicator: {
-    fontSize: 10,
+  divider: {
+    width: 60,
+    height: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    marginVertical: 12,
+    borderRadius: 1,
+  },
+  tagline: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.95)',
     fontFamily: 'SpaceMono',
-    marginTop: 8,
-    opacity: 0.6,
   },
 });

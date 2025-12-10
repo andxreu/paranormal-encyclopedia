@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -24,13 +24,13 @@ interface MysteryCard {
   label: string;
 }
 
-export const TodaysMysteries = memo(() => {
+export const TodaysMysteries: React.FC = () => {
   const theme = useAppTheme();
   const router = useRouter();
   const [mysteries, setMysteries] = useState<MysteryCard[]>([]);
   const fadeOpacity = useSharedValue(1);
 
-  const generateMysteries = useCallback(() => {
+  const generateMysteries = () => {
     const allTopics = getAllTopics();
     const shuffled = [...allTopics].sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, 3);
@@ -50,13 +50,13 @@ export const TodaysMysteries = memo(() => {
     });
 
     setMysteries(newMysteries);
-  }, []);
+  };
 
   useEffect(() => {
     generateMysteries();
-  }, [generateMysteries]);
+  }, []);
 
-  const handleReroll = useCallback(() => {
+  const handleReroll = () => {
     HapticFeedback.medium();
     
     fadeOpacity.value = withSequence(
@@ -73,13 +73,13 @@ export const TodaysMysteries = memo(() => {
     setTimeout(() => {
       generateMysteries();
     }, 200);
-  }, [fadeOpacity, generateMysteries]);
+  };
 
-  const handleMysteryPress = useCallback((mystery: MysteryCard) => {
+  const handleMysteryPress = (mystery: MysteryCard) => {
     HapticFeedback.light();
     console.log('Navigating to topic:', mystery.categoryId, mystery.id);
     router.push(`/explore/${mystery.categoryId}/${mystery.id}`);
-  }, [router]);
+  };
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -142,9 +142,7 @@ export const TodaysMysteries = memo(() => {
       </Animated.View>
     </View>
   );
-});
-
-TodaysMysteries.displayName = 'TodaysMysteries';
+};
 
 const styles = StyleSheet.create({
   container: {

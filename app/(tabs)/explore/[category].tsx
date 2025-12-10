@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,22 +19,16 @@ import { ParticleEffect } from '@/components/ParticleEffect';
 import { HapticFeedback } from '@/utils/haptics';
 
 const { width } = Dimensions.get('window');
-
-interface Topic {
-  id: string;
-  name: string;
-  description: string;
-  sections?: unknown[];
-}
+const cardWidth = width - 32;
 
 interface TopicCardProps {
-  topic: Topic;
+  topic: any;
   categoryColor: string;
   onPress: () => void;
   index: number;
 }
 
-const TopicCard = memo<TopicCardProps>(({ topic, categoryColor, onPress, index }) => {
+const TopicCard: React.FC<TopicCardProps> = ({ topic, categoryColor, onPress, index }) => {
   const { theme, textScale } = useAppTheme();
   const scale = useSharedValue(1);
 
@@ -44,20 +38,20 @@ const TopicCard = memo<TopicCardProps>(({ topic, categoryColor, onPress, index }
     };
   });
 
-  const handlePressIn = useCallback(() => {
+  const handlePressIn = () => {
     HapticFeedback.soft();
     scale.value = withSpring(0.98, {
       damping: 15,
       stiffness: 300,
     });
-  }, [scale]);
+  };
 
-  const handlePressOut = useCallback(() => {
+  const handlePressOut = () => {
     scale.value = withSpring(1, {
       damping: 15,
       stiffness: 300,
     });
-  }, [scale]);
+  };
 
   return (
     <Animated.View entering={FadeIn.delay(index * 80).duration(400)} style={styles.topicCardWrapper}>
@@ -102,17 +96,15 @@ const TopicCard = memo<TopicCardProps>(({ topic, categoryColor, onPress, index }
       </TouchableOpacity>
     </Animated.View>
   );
-});
-
-TopicCard.displayName = 'TopicCard';
+};
 
 export default function CategoryScreen() {
   const { category: categoryId } = useLocalSearchParams<{ category: string }>();
   const router = useRouter();
   const { theme, textScale } = useAppTheme();
   const [refreshing, setRefreshing] = useState(false);
-  const [category, setCategory] = useState<unknown>(null);
-  const [topics, setTopics] = useState<Topic[]>([]);
+  const [category, setCategory] = useState<any>(null);
+  const [topics, setTopics] = useState<any[]>([]);
 
   const fadeOpacity = useSharedValue(0);
   const scale = useSharedValue(0.95);
@@ -124,7 +116,7 @@ export default function CategoryScreen() {
     const categoryTopics = getCategoryTopics(categoryId as string);
 
     setCategory(categoryData);
-    setTopics(categoryTopics as Topic[]);
+    setTopics(categoryTopics);
 
     fadeOpacity.value = withTiming(1, {
       duration: 600,
@@ -141,18 +133,18 @@ export default function CategoryScreen() {
     loadCategoryData();
   }, [loadCategoryData]);
 
-  const handleTopicPress = useCallback((topic: Topic) => {
+  const handleTopicPress = (topic: any) => {
     HapticFeedback.light();
     console.log('Topic pressed:', topic.name);
-    router.push(`/explore/${categoryId}/${topic.id}` as never);
-  }, [router, categoryId]);
+    router.push(`/explore/${categoryId}/${topic.id}`);
+  };
 
-  const handleBackPress = useCallback(() => {
+  const handleBackPress = () => {
     HapticFeedback.light();
     router.back();
-  }, [router]);
+  };
 
-  const onRefresh = useCallback(async () => {
+  const onRefresh = async () => {
     HapticFeedback.medium();
     setRefreshing(true);
     
@@ -166,7 +158,7 @@ export default function CategoryScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, [loadCategoryData]);
+  };
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -192,12 +184,10 @@ export default function CategoryScreen() {
     );
   }
 
-  const categoryData = category as { color: string; icon: string; name: string; description: string };
-
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={[categoryData.color + '20', ...theme.colors.backgroundGradient.slice(1)]}
+        colors={[category.color + '20', ...theme.colors.backgroundGradient.slice(1)]}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -217,14 +207,14 @@ export default function CategoryScreen() {
               </TouchableOpacity>
               
               <View style={styles.headerContent}>
-                <Text style={styles.categoryIcon}>{categoryData.icon}</Text>
+                <Text style={styles.categoryIcon}>{category.icon}</Text>
                 <Text style={[styles.categoryTitle, { color: theme.colors.textPrimary, fontSize: 32 * textScale }]}>
-                  {categoryData.name}
+                  {category.name}
                 </Text>
                 <Text style={[styles.categoryDescription, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                  {categoryData.description}
+                  {category.description}
                 </Text>
-                <View style={[styles.topicCountBadge, { backgroundColor: categoryData.color + '30', borderColor: categoryData.color + '60' }]}>
+                <View style={[styles.topicCountBadge, { backgroundColor: category.color + '30', borderColor: category.color + '60' }]}>
                   <Text style={[styles.topicCountText, { color: theme.colors.textPrimary, fontSize: 12 * textScale }]}>
                     {topics.length} Topics
                   </Text>
@@ -240,22 +230,23 @@ export default function CategoryScreen() {
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={onRefresh}
-                  tintColor={categoryData.color}
-                  colors={[categoryData.color, theme.colors.violet, theme.colors.indigo]}
+                  tintColor={category.color}
+                  colors={[category.color, theme.colors.violet, theme.colors.indigo]}
                   progressBackgroundColor={theme.colors.cardBg}
                 />
               }
             >
-              <ParticleEffect count={8} color={categoryData.color + '30'} />
+              <ParticleEffect count={8} color={category.color + '30'} />
               
               {topics.map((topic, index) => (
-                <TopicCard
-                  key={`topic-${topic.id}-${index}`}
-                  topic={topic}
-                  categoryColor={categoryData.color}
-                  onPress={() => handleTopicPress(topic)}
-                  index={index}
-                />
+                <React.Fragment key={index}>
+                  <TopicCard
+                    topic={topic}
+                    categoryColor={category.color}
+                    onPress={() => handleTopicPress(topic)}
+                    index={index}
+                  />
+                </React.Fragment>
               ))}
 
               <View style={styles.bottomSpacer} />
