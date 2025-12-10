@@ -1,9 +1,11 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
+import { cosmicColors } from '@/constants/Colors';
 
 interface ThemeColors {
   background: string;
   backgroundAlt: string;
+  backgroundGradient: string[];
   gold: string;
   indigo: string;
   violet: string;
@@ -11,31 +13,62 @@ interface ThemeColors {
   textPrimary: string;
   textSecondary: string;
   cardBg: string;
+  cardBgTranslucent: string;
   border: string;
+  glow: string;
+  shadow: string;
 }
 
 interface Theme {
   colors: ThemeColors;
   fontFamily: string;
+  borderRadius: {
+    small: number;
+    medium: number;
+    large: number;
+  };
+  spacing: {
+    xs: number;
+    sm: number;
+    md: number;
+    lg: number;
+    xl: number;
+  };
 }
 
-const darkTheme: Theme = {
+const cosmicTheme: Theme = {
   colors: {
-    background: '#08080B',
-    backgroundAlt: '#12121A',
-    gold: '#D4AF37',
+    background: cosmicColors.purpleBlack,
+    backgroundAlt: cosmicColors.darkPurple,
+    backgroundGradient: [cosmicColors.purpleBlack, cosmicColors.darkPurple, cosmicColors.deepViolet],
+    gold: cosmicColors.starGold,
     indigo: '#6366F1',
     violet: '#8B5CF6',
     white: '#FFFFFF',
     textPrimary: '#FFFFFF',
-    textSecondary: '#A0A0A0',
-    cardBg: '#1A1A24',
-    border: '#2A2A3A',
+    textSecondary: '#B0B0B0',
+    cardBg: 'rgba(42, 27, 78, 0.6)',
+    cardBgTranslucent: 'rgba(42, 27, 78, 0.4)',
+    border: 'rgba(139, 92, 246, 0.3)',
+    glow: 'rgba(139, 92, 246, 0.5)',
+    shadow: 'rgba(0, 0, 0, 0.5)',
   },
   fontFamily: 'SpaceMono',
+  borderRadius: {
+    small: 8,
+    medium: 16,
+    large: 24,
+  },
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+    xl: 32,
+  },
 };
 
-const ThemeContext = createContext<Theme>(darkTheme);
+const ThemeContext = createContext<Theme>(cosmicTheme);
 
 export const useAppTheme = () => {
   const context = useContext(ThemeContext);
@@ -51,7 +84,7 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   return (
-    <ThemeContext.Provider value={darkTheme}>
+    <ThemeContext.Provider value={cosmicTheme}>
       {children}
     </ThemeContext.Provider>
   );

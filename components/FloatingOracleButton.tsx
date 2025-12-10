@@ -10,13 +10,16 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
 interface FloatingOracleButtonProps {
   onPress?: () => void;
 }
 
 export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPress }) => {
+  const theme = useAppTheme();
   const scale = useSharedValue(1);
+  const rotate = useSharedValue(0);
 
   useEffect(() => {
     scale.value = withRepeat(
@@ -33,61 +36,80 @@ export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPr
       -1,
       false
     );
+
+    rotate.value = withRepeat(
+      withTiming(360, {
+        duration: 20000,
+        easing: Easing.linear,
+      }),
+      -1,
+      false
+    );
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ scale: scale.value }],
+      transform: [
+        { scale: scale.value },
+        { rotate: `${rotate.value}deg` },
+      ],
     };
   });
 
   return (
-    <Animated.View style={[styles.container, animatedStyle]}>
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.8}
-        style={styles.touchable}
-      >
+    <TouchableOpacity
+      style={styles.container}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <Animated.View style={animatedStyle}>
         <LinearGradient
-          colors={['#D4AF37', '#8B5CF6', '#6366F1']}
+          colors={['#8B5CF6', '#6366F1', theme.colors.gold]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
           <Text style={styles.emoji}>🔮</Text>
-          <Text style={styles.text}>Ask the Oracle</Text>
         </LinearGradient>
-      </TouchableOpacity>
-    </Animated.View>
+      </Animated.View>
+      <Text style={styles.label}>Oracle</Text>
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 24,
-    marginBottom: 32,
-  },
-  touchable: {
-    borderRadius: 30,
-    overflow: 'hidden',
-    boxShadow: '0px 8px 20px rgba(212, 175, 55, 0.4)',
-    elevation: 8,
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    alignItems: 'center',
+    zIndex: 1000,
   },
   gradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    gap: 12,
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    boxShadow: '0px 8px 32px rgba(139, 92, 246, 0.6)',
+    elevation: 12,
   },
   emoji: {
-    fontSize: 24,
+    fontSize: 36,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
-  text: {
-    fontSize: 18,
+  label: {
+    marginTop: 8,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
     fontFamily: 'SpaceMono',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });

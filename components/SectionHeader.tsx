@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
 interface SectionHeaderProps {
   title: string;
@@ -8,42 +9,53 @@ interface SectionHeaderProps {
 }
 
 export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, subtitle }) => {
+  const theme = useAppTheme();
+
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.arrow}>→</Text>
+      <View style={styles.titleContainer}>
+        <View style={[styles.decorLine, { backgroundColor: theme.colors.gold }]} />
         <Text style={styles.title}>{title}</Text>
+        <View style={[styles.decorLine, { backgroundColor: theme.colors.gold }]} />
       </View>
-      {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+      {subtitle && (
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    marginBottom: 16,
+    marginBottom: 20,
+    alignItems: 'center',
   },
-  headerRow: {
+  titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+    marginBottom: 6,
   },
-  arrow: {
-    fontSize: 20,
-    color: '#D4AF37',
+  decorLine: {
+    width: 30,
+    height: 2,
+    borderRadius: 1,
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#FFFFFF',
     fontFamily: 'SpaceMono',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(139, 92, 246, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#A0A0A0',
-    marginTop: 4,
-    marginLeft: 28,
+    fontSize: 13,
+    color: '#B0B0B0',
     fontFamily: 'SpaceMono',
+    textAlign: 'center',
   },
 });

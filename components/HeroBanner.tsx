@@ -7,45 +7,75 @@ import Animated, {
   useAnimatedStyle,
   withRepeat,
   withTiming,
+  withSequence,
   Easing,
 } from 'react-native-reanimated';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
 export const HeroBanner: React.FC = () => {
-  const opacity = useSharedValue(0.5);
+  const theme = useAppTheme();
+  const opacity = useSharedValue(0.6);
+  const scale = useSharedValue(1);
 
   useEffect(() => {
     opacity.value = withRepeat(
-      withTiming(1, {
-        duration: 2000,
-        easing: Easing.inOut(Easing.ease),
-      }),
+      withSequence(
+        withTiming(1, {
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        withTiming(0.6, {
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+        })
+      ),
       -1,
-      true
+      false
+    );
+
+    scale.value = withRepeat(
+      withSequence(
+        withTiming(1.05, {
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        withTiming(1, {
+          duration: 2000,
+          easing: Easing.inOut(Easing.ease),
+        })
+      ),
+      -1,
+      false
     );
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
       opacity: opacity.value,
+      transform: [{ scale: scale.value }],
     };
   });
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#6366F1', '#8B5CF6', '#D4AF37']}
+        colors={['#6366F1', '#8B5CF6', '#a855f7', theme.colors.gold]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
       >
-        <Animated.View style={[styles.content, animatedStyle]}>
-          <Text style={styles.emoji}>🔮</Text>
+        <View style={styles.overlay} />
+        <View style={styles.content}>
+          <Animated.View style={[styles.iconContainer, animatedStyle]}>
+            <Text style={styles.emoji}>🔮</Text>
+          </Animated.View>
           <Text style={styles.title}>PARANORMAL</Text>
           <Text style={styles.subtitle}>ENCYCLOPEDIA</Text>
-          <Text style={styles.tagline}>Explore the Unknown</Text>
-        </Animated.View>
+          <View style={styles.divider} />
+          <Text style={styles.tagline}>✨ Explore the Unknown ✨</Text>
+        </View>
       </LinearGradient>
     </View>
   );
@@ -54,44 +84,71 @@ export const HeroBanner: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     width: width - 32,
-    height: 200,
-    borderRadius: 20,
+    height: 220,
+    borderRadius: 24,
     overflow: 'hidden',
-    marginBottom: 24,
+    marginBottom: 28,
+    boxShadow: '0px 8px 32px rgba(139, 92, 246, 0.4)',
+    elevation: 12,
   },
   gradient: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   content: {
     alignItems: 'center',
+    zIndex: 1,
+  },
+  iconContainer: {
+    marginBottom: 12,
   },
   emoji: {
-    fontSize: 48,
-    marginBottom: 8,
+    fontSize: 56,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 8,
   },
   title: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '900',
     color: '#FFFFFF',
-    letterSpacing: 2,
+    letterSpacing: 3,
     fontFamily: 'SpaceMono',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: 4,
-    marginTop: 4,
+    letterSpacing: 5,
+    marginTop: 6,
     fontFamily: 'SpaceMono',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  divider: {
+    width: 60,
+    height: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    marginVertical: 12,
+    borderRadius: 1,
   },
   tagline: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 8,
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.95)',
     fontFamily: 'SpaceMono',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 });

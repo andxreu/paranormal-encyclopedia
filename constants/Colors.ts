@@ -1,3 +1,4 @@
+
 const tintColorLight = "#0a7ea4";
 const tintColorDark = "#fff";
 
@@ -20,6 +21,33 @@ export const appleRed = "#FF3B30";
 
 export const borderColor = "#A1A1AA80";
 export const appleGreen = "#34C759";
+
+// Paranormal Category Colors
+export const categoryColors = {
+  creatures: '#16a34a',      // Deep green
+  ufos: '#06b6d4',           // Neon blue/cyan
+  ghosts: '#d1d5db',         // Pale gray
+  occult: '#7c3aed',         // Deep purple
+  psychic: '#ec4899',        // Magenta/pink
+  ancients: '#d4af37',       // Gold
+  folklore: '#10b981',       // Emerald green
+  phenomena: '#f59e0b',      // Amber
+  people: '#ef4444',         // Red
+  trulyStrange: '#14b8a6',   // Teal
+};
+
+// Cosmic theme colors
+export const cosmicColors = {
+  purpleBlack: '#0a0118',    // Deep purple-black
+  darkPurple: '#1a0b2e',     // Dark purple
+  deepViolet: '#2d1b4e',     // Deep violet
+  cosmicPurple: '#4a1d7e',   // Cosmic purple
+  nebulaPink: '#8b3a9c',     // Nebula pink
+  starGold: '#d4af37',       // Star gold
+  moonSilver: '#c0c0c0',     // Moon silver
+  glowBlue: '#4d7cff',       // Glow blue
+};
+
 export const Colors = {
   light: {
     text: "#11181C",
