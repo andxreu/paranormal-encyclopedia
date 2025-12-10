@@ -22,19 +22,35 @@ export default function SearchScreen() {
 
     const lowerQuery = query.toLowerCase();
     
-    // Search in facts
     const factResults = paranormalFacts.filter(fact =>
       fact.fact.toLowerCase().includes(lowerQuery) ||
       fact.categoryName.toLowerCase().includes(lowerQuery)
     ).map(fact => ({ ...fact, type: 'fact' }));
 
-    // Search in topics
     const topicResults = getAllTopics().filter(topic =>
       topic.name.toLowerCase().includes(lowerQuery) ||
       topic.description.toLowerCase().includes(lowerQuery)
     ).map(topic => ({ ...topic, type: 'topic' }));
 
-    setSearchResults([...factResults.slice(0, 10), ...topicResults.slice(0, 10)]);
+    setSearchResults([...factResults.slice(0, 15), ...topicResults.slice(0, 15)]);
+  };
+
+  const highlightText = (text: string, query: string) => {
+    if (!query.trim()) {
+      return text;
+    }
+    
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return parts.map((part, index) => {
+      if (part.toLowerCase() === query.toLowerCase()) {
+        return (
+          <Text key={index} style={styles.highlightedText}>
+            {part}
+          </Text>
+        );
+      }
+      return part;
+    });
   };
 
   return (
@@ -109,12 +125,16 @@ export default function SearchScreen() {
                         <Text style={[styles.resultType, { color: result.color }]}>
                           FACT • {result.categoryName}
                         </Text>
-                        <Text style={styles.resultText}>{result.fact}</Text>
+                        <Text style={styles.resultText}>
+                          {highlightText(result.fact, searchQuery)}
+                        </Text>
                       </View>
                     ) : (
                       <View style={styles.resultCard}>
                         <Text style={styles.resultType}>TOPIC</Text>
-                        <Text style={styles.resultTitle}>{result.name}</Text>
+                        <Text style={styles.resultTitle}>
+                          {highlightText(result.name, searchQuery)}
+                        </Text>
                         <Text style={styles.resultDescription}>{result.description}</Text>
                       </View>
                     )}
@@ -145,7 +165,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '900',
     color: '#FFFFFF',
     fontFamily: 'SpaceMono',
@@ -166,12 +186,14 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(42, 27, 78, 0.6)',
+    backgroundColor: 'rgba(42, 27, 78, 0.8)',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
+    borderWidth: 2,
+    borderColor: 'rgba(139, 92, 246, 0.4)',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    boxShadow: '0px 4px 16px rgba(139, 92, 246, 0.3)',
+    elevation: 6,
   },
   searchIcon: {
     fontSize: 20,
@@ -266,5 +288,10 @@ const styles = StyleSheet.create({
     color: '#B0B0B0',
     lineHeight: 20,
     fontFamily: 'SpaceMono',
+  },
+  highlightedText: {
+    color: '#FFD700',
+    fontWeight: '700',
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
   },
 });

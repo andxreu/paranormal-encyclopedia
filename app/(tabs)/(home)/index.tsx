@@ -2,19 +2,23 @@
 import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View, Alert } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
-import { HeroBanner } from "@/components/HeroBanner";
+import { SpaceHeader } from "@/components/SpaceHeader";
+import { SearchBar } from "@/components/SearchBar";
+import { TodaysMysteries } from "@/components/TodaysMysteries";
 import { SectionHeader } from "@/components/SectionHeader";
-import { DailyMystery } from "@/components/DailyMystery";
 import { CategoryCard } from "@/components/CategoryCard";
-import { FloatingOracleButton } from "@/components/FloatingOracleButton";
+import { LightningButton } from "@/components/LightningButton";
+import { RandomFactModal } from "@/components/RandomFactModal";
 import { categories } from "@/data/paranormal/categories";
-import { getRandomFact } from "@/data/paranormal/facts";
+import { getRandomFact, ParanormalFact } from "@/data/paranormal/facts";
 import { storage } from "@/utils/storage";
 import { useAppTheme } from "@/contexts/ThemeContext";
 
 export default function HomeScreen() {
   const theme = useAppTheme();
   const [isLoading, setIsLoading] = useState(true);
+  const [showFactModal, setShowFactModal] = useState(false);
+  const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
 
   useEffect(() => {
     initializeData();
@@ -24,7 +28,6 @@ export default function HomeScreen() {
     try {
       console.log('Initializing data...');
       
-      // Cache categories and facts for offline use
       await storage.saveCategories(categories);
       await storage.saveLastSync();
       
@@ -41,15 +44,20 @@ export default function HomeScreen() {
     Alert.alert('Coming Soon', `${categoryName} section will be available soon!`);
   };
 
-  const handleOraclePress = () => {
-    console.log('Oracle button pressed');
+  const handleLightningPress = () => {
+    console.log('Lightning button pressed');
     const randomFact = getRandomFact();
-    Alert.alert('🔮 The Oracle Speaks', randomFact.fact);
+    setCurrentFact(randomFact);
+    setShowFactModal(true);
   };
 
-  const handleMysteryPress = () => {
-    console.log('Daily mystery pressed');
-    Alert.alert('Daily Mystery', 'The Voynich Manuscript remains one of history\'s greatest unsolved mysteries.');
+  const handleSearchResultPress = (result: any) => {
+    console.log('Search result pressed:', result);
+    if (result.type === 'fact') {
+      Alert.alert('Paranormal Fact', result.fact);
+    } else {
+      Alert.alert(result.name, result.description);
+    }
   };
 
   return (
@@ -65,17 +73,17 @@ export default function HomeScreen() {
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
         >
-          <HeroBanner />
+          <SpaceHeader />
+
+          <View style={styles.searchBarContainer}>
+            <SearchBar onResultPress={handleSearchResultPress} />
+          </View>
+
+          <TodaysMysteries />
 
           <SectionHeader
-            title="Daily Mystery"
-            subtitle="Discover something new each day"
-          />
-          <DailyMystery onPress={handleMysteryPress} />
-
-          <SectionHeader
-            title="Categories"
-            subtitle="Explore the paranormal realm"
+            title="Explore Categories"
+            subtitle="Discover the paranormal realm"
           />
           <View style={styles.categoriesGrid}>
             {categories.map((category, index) => (
@@ -91,7 +99,13 @@ export default function HomeScreen() {
           <View style={styles.bottomSpacer} />
         </ScrollView>
 
-        <FloatingOracleButton onPress={handleOraclePress} />
+        <LightningButton onPress={handleLightningPress} />
+
+        <RandomFactModal
+          visible={showFactModal}
+          fact={currentFact}
+          onClose={() => setShowFactModal(false)}
+        />
       </LinearGradient>
     </View>
   );
@@ -111,6 +125,9 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 16,
     paddingBottom: 120,
+  },
+  searchBarContainer: {
+    marginTop: -10,
   },
   categoriesGrid: {
     flexDirection: 'row',
