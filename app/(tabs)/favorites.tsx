@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -11,13 +12,25 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { storage } from '@/utils/storage';
+import { getCategoryTopics, getCategoryById } from '@/data/paranormal/categories';
 import { SortModal, SortOption } from '@/components/SortModal';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { HapticFeedback } from '@/utils/haptics';
 
+interface FavoriteItem {
+  id: string;
+  categoryId: string;
+  topicId: string;
+  name: string;
+  description: string;
+  categoryName: string;
+  categoryColor: string;
+}
+
 export default function FavoritesScreen() {
   const { theme, textScale } = useAppTheme();
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const router = useRouter();
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('date-added');
   const [showSortModal, setShowSortModal] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
@@ -37,9 +50,28 @@ export default function FavoritesScreen() {
 
   const loadFavorites = async () => {
     const savedFavorites = await storage.getFavorites();
-    if (savedFavorites) {
-      setFavorites(savedFavorites);
+    const favoriteItems: FavoriteItem[] = [];
+
+    for (const favoriteId of savedFavorites) {
+      const [categoryId, topicId] = favoriteId.split('-');
+      const category = getCategoryById(categoryId);
+      const topics = getCategoryTopics(categoryId);
+      const topic = topics.find((t: any) => t.id === topicId);
+
+      if (category && topic) {
+        favoriteItems.push({
+          id: favoriteId,
+          categoryId,
+          topicId,
+          name: topic.name,
+          description: topic.description,
+          categoryName: category.name,
+          categoryColor: category.color,
+        });
+      }
     }
+
+    setFavorites(favoriteItems);
   };
 
   const handleSort = (option: SortOption) => {
@@ -48,11 +80,12 @@ export default function FavoritesScreen() {
     
     switch (option) {
       case 'name':
-        sorted.sort((a, b) => a.localeCompare(b));
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
         break;
       case 'date-added':
         break;
       case 'category':
+        sorted.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
         break;
     }
     
@@ -65,6 +98,11 @@ export default function FavoritesScreen() {
     setFavorites([]);
     setShowClearModal(false);
     HapticFeedback.success();
+  };
+
+  const handleFavoritePress = (favorite: FavoriteItem) => {
+    HapticFeedback.light();
+    router.push(`/explore/${favorite.categoryId}/${favorite.topicId}`);
   };
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -106,7 +144,7 @@ export default function FavoritesScreen() {
                     No Favorites Yet
                   </Text>
                   <Text style={[styles.emptyText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                    Start exploring and save your favorite paranormal facts and topics!
+                    Start exploring and save your favorite paranormal topics!
                   </Text>
                 </View>
               ) : (
@@ -118,6 +156,8 @@ export default function FavoritesScreen() {
                         HapticFeedback.light();
                         setShowSortModal(true);
                       }}
+                      accessibilityLabel="Sort favorites"
+                      accessibilityRole="button"
                     >
                       <Text style={styles.sortButtonIcon}>⇅</Text>
                       <Text style={[styles.sortButtonText, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
@@ -131,6 +171,8 @@ export default function FavoritesScreen() {
                         HapticFeedback.light();
                         setShowClearModal(true);
                       }}
+                      accessibilityLabel="Clear all favorites"
+                      accessibilityRole="button"
                     >
                       <Text style={[styles.clearButtonText, { fontSize: 14 * textScale }]}>
                         Clear All
@@ -142,18 +184,31 @@ export default function FavoritesScreen() {
                     <React.Fragment key={index}>
                       <TouchableOpacity
                         style={styles.favoriteCard}
-                        onPress={() => HapticFeedback.light()}
+                        onPress={() => handleFavoritePress(favorite)}
                         activeOpacity={0.8}
+                        accessibilityLabel={favorite.name}
+                        accessibilityHint={`${favorite.categoryName} topic`}
+                        accessibilityRole="button"
                       >
                         <LinearGradient
-                          colors={[theme.colors.cardBg, theme.colors.cardBgTranslucent]}
+                          colors={[favorite.categoryColor + '40', favorite.categoryColor + '20', theme.colors.cardBg]}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
-                          style={[styles.favoriteCardGradient, { borderColor: theme.colors.border }]}
+                          style={[styles.favoriteCardGradient, { borderColor: favorite.categoryColor + '60', borderLeftColor: favorite.categoryColor }]}
                         >
-                          <Text style={[styles.favoriteText, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
-                            {favorite}
-                          </Text>
+                          <View style={styles.favoriteCardContent}>
+                            <View style={[styles.categoryBadge, { backgroundColor: favorite.categoryColor + '30' }]}>
+                              <Text style={[styles.categoryBadgeText, { color: theme.colors.textPrimary, fontSize: 10 * textScale }]}>
+                                {favorite.categoryName}
+                              </Text>
+                            </View>
+                            <Text style={[styles.favoriteTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
+                              {favorite.name}
+                            </Text>
+                            <Text style={[styles.favoriteDescription, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]} numberOfLines={2}>
+                              {favorite.description}
+                            </Text>
+                          </View>
                         </LinearGradient>
                       </TouchableOpacity>
                     </React.Fragment>
@@ -302,11 +357,32 @@ const styles = StyleSheet.create({
   favoriteCardGradient: {
     padding: 16,
     borderWidth: 1,
+    borderLeftWidth: 4,
     borderRadius: 16,
   },
-  favoriteText: {
-    fontSize: 14,
-    lineHeight: 22,
+  favoriteCardContent: {
+    gap: 8,
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  categoryBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: 'SpaceMono',
+    textTransform: 'uppercase',
+  },
+  favoriteTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'SpaceMono',
+  },
+  favoriteDescription: {
+    fontSize: 13,
+    lineHeight: 20,
     fontFamily: 'SpaceMono',
   },
 });

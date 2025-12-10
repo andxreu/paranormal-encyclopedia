@@ -453,7 +453,7 @@ export default function SettingsScreen() {
                     Copyright
                   </Text>
                   <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
-                    © 2024
+                    © 2025
                   </Text>
                 </View>
               </View>

@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -12,9 +12,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { getAllTopics, getCategoryById } from '@/data/paranormal/categories';
 import { useAppTheme } from '@/contexts/ThemeContext';
+import { HapticFeedback } from '@/utils/haptics';
 
 interface MysteryCard {
   id: string;
+  categoryId: string;
   title: string;
   description: string;
   color: string;
@@ -24,6 +26,7 @@ interface MysteryCard {
 
 export const TodaysMysteries: React.FC = () => {
   const theme = useAppTheme();
+  const router = useRouter();
   const [mysteries, setMysteries] = useState<MysteryCard[]>([]);
   const fadeOpacity = useSharedValue(1);
 
@@ -37,6 +40,7 @@ export const TodaysMysteries: React.FC = () => {
       const category = getCategoryById(topic.categoryId);
       return {
         id: topic.id,
+        categoryId: topic.categoryId,
         title: topic.name,
         description: topic.description,
         color: category?.color || '#8B5CF6',
@@ -53,7 +57,7 @@ export const TodaysMysteries: React.FC = () => {
   }, []);
 
   const handleReroll = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    HapticFeedback.medium();
     
     fadeOpacity.value = withSequence(
       withTiming(0, {
@@ -72,8 +76,9 @@ export const TodaysMysteries: React.FC = () => {
   };
 
   const handleMysteryPress = (mystery: MysteryCard) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert(mystery.title, mystery.description);
+    HapticFeedback.light();
+    console.log('Navigating to topic:', mystery.categoryId, mystery.id);
+    router.push(`/explore/${mystery.categoryId}/${mystery.id}`);
   };
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -93,6 +98,9 @@ export const TodaysMysteries: React.FC = () => {
           style={styles.rerollButton}
           onPress={handleReroll}
           activeOpacity={0.7}
+          accessibilityLabel="Reroll mysteries"
+          accessibilityHint="Get three new random mysteries"
+          accessibilityRole="button"
         >
           <Text style={styles.rerollIcon}>🔄</Text>
         </TouchableOpacity>
@@ -105,6 +113,9 @@ export const TodaysMysteries: React.FC = () => {
             style={styles.cardWrapper}
             onPress={() => handleMysteryPress(mystery)}
             activeOpacity={0.8}
+            accessibilityLabel={`${mystery.label}: ${mystery.title}`}
+            accessibilityHint={mystery.description}
+            accessibilityRole="button"
           >
             <LinearGradient
               colors={[mystery.color + '60', mystery.color + '20', 'rgba(42, 27, 78, 0.6)']}

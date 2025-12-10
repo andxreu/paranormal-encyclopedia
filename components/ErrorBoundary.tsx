@@ -1,7 +1,8 @@
 
 import React, { Component, ReactNode } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Clipboard, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as MailComposer from 'expo-mail-composer';
 
 interface Props {
   children: ReactNode;
@@ -39,6 +40,28 @@ export class ErrorBoundary extends Component<Props, State> {
     });
   };
 
+  handleReportError = async () => {
+    const errorMessage = this.state.error?.toString() || 'Unknown error';
+    const errorStack = this.state.error?.stack || 'No stack trace available';
+    const errorReport = `Error Report:\n\n${errorMessage}\n\nStack Trace:\n${errorStack}`;
+
+    Clipboard.setString(errorReport);
+    Alert.alert('Error Copied', 'Error details copied to clipboard');
+
+    try {
+      const isAvailable = await MailComposer.isAvailableAsync();
+      if (isAvailable) {
+        await MailComposer.composeAsync({
+          recipients: ['feedback@paranormalencyclopedia.app'],
+          subject: 'Paranormal Encyclopedia - Error Report',
+          body: errorReport,
+        });
+      }
+    } catch (error) {
+      console.error('Error opening mail composer:', error);
+    }
+  };
+
   render() {
     if (this.state.hasError) {
       return (
@@ -60,20 +83,34 @@ export class ErrorBoundary extends Component<Props, State> {
                   {this.state.error.toString()}
                 </Text>
               )}
-              <TouchableOpacity
-                style={styles.button}
-                onPress={this.handleRetry}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['#8B5CF6', '#6366F1']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.buttonGradient}
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={this.handleRetry}
+                  activeOpacity={0.8}
+                  accessibilityLabel="Retry"
+                  accessibilityRole="button"
                 >
-                  <Text style={styles.buttonText}>Retry</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                  <LinearGradient
+                    colors={['#8B5CF6', '#6366F1']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.buttonGradient}
+                  >
+                    <Text style={styles.buttonText}>Retry</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.reportButton}
+                  onPress={this.handleReportError}
+                  activeOpacity={0.8}
+                  accessibilityLabel="Report error"
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.reportButtonText}>📋 Report Error</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </LinearGradient>
         </View>
@@ -125,6 +162,10 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingHorizontal: 20,
   },
+  buttonContainer: {
+    gap: 12,
+    width: '100%',
+  },
   button: {
     borderRadius: 16,
     overflow: 'hidden',
@@ -134,8 +175,23 @@ const styles = StyleSheet.create({
   buttonGradient: {
     paddingHorizontal: 48,
     paddingVertical: 16,
+    alignItems: 'center',
   },
   buttonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: 'SpaceMono',
+  },
+  reportButton: {
+    paddingHorizontal: 48,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    alignItems: 'center',
+  },
+  reportButtonText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Share, Clipboard, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -15,8 +15,11 @@ import Animated, {
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { getCategoryById } from '@/data/paranormal/categories';
 import { getCategoryTopics } from '@/data/paranormal';
+import { getRandomFact } from '@/data/paranormal/facts';
 import { ParticleEffect } from '@/components/ParticleEffect';
+import { RandomFactModal } from '@/components/RandomFactModal';
 import { HapticFeedback } from '@/utils/haptics';
+import { storage } from '@/utils/storage';
 
 const { width } = Dimensions.get('window');
 
@@ -66,6 +69,9 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, categoryColor, index
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={1}
+        accessibilityLabel={section.title}
+        accessibilityHint={expanded ? 'Collapse section' : 'Expand section'}
+        accessibilityRole="button"
       >
         <Animated.View style={animatedStyle}>
           <LinearGradient
@@ -105,10 +111,14 @@ export default function TopicDetailScreen() {
   const { theme, textScale } = useAppTheme();
   const [category, setCategory] = useState<any>(null);
   const [topic, setTopic] = useState<any>(null);
+  const [showOracleModal, setShowOracleModal] = useState(false);
+  const [oracleFact, setOracleFact] = useState<any>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const fadeOpacity = useSharedValue(0);
+  const scale = useSharedValue(0.95);
 
-  const loadTopicData = useCallback(() => {
+  const loadTopicData = useCallback(async () => {
     if (!categoryId || !topicId) return;
 
     const categoryData = getCategoryById(categoryId as string);
@@ -118,11 +128,19 @@ export default function TopicDetailScreen() {
     setCategory(categoryData);
     setTopic(topicData);
 
+    const favoriteStatus = await storage.isFavorite(`${categoryId}-${topicId}`);
+    setIsFavorite(favoriteStatus);
+
     fadeOpacity.value = withTiming(1, {
       duration: 600,
       easing: Easing.inOut(Easing.ease),
     });
-  }, [categoryId, topicId, fadeOpacity]);
+
+    scale.value = withTiming(1, {
+      duration: 600,
+      easing: Easing.out(Easing.ease),
+    });
+  }, [categoryId, topicId, fadeOpacity, scale]);
 
   useEffect(() => {
     loadTopicData();
@@ -133,9 +151,47 @@ export default function TopicDetailScreen() {
     router.back();
   };
 
+  const handleOraclePress = () => {
+    HapticFeedback.medium();
+    const randomFact = getRandomFact();
+    setOracleFact(randomFact);
+    setShowOracleModal(true);
+  };
+
+  const handleCopyToClipboard = () => {
+    HapticFeedback.success();
+    const text = `${topic.name}\n\n${topic.description}\n\nCategory: ${category.name}`;
+    Clipboard.setString(text);
+    Alert.alert('Copied!', 'Topic details copied to clipboard');
+  };
+
+  const handleShare = async () => {
+    HapticFeedback.light();
+    try {
+      await Share.share({
+        message: `${topic.name}\n\n${topic.description}\n\nCategory: ${category.name}\n\nFrom Paranormal Encyclopedia`,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    HapticFeedback.medium();
+    const favoriteId = `${categoryId}-${topicId}`;
+    if (isFavorite) {
+      await storage.removeFavorite(favoriteId);
+      setIsFavorite(false);
+    } else {
+      await storage.addFavorite(favoriteId);
+      setIsFavorite(true);
+    }
+  };
+
   const animatedStyle = useAnimatedStyle(() => {
     return {
       opacity: fadeOpacity.value,
+      transform: [{ scale: scale.value }],
     };
   });
 
@@ -169,14 +225,47 @@ export default function TopicDetailScreen() {
             <ParticleEffect count={12} color={category.color + '25'} />
             
             <View style={styles.header}>
-              <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-                <Text style={[styles.backButtonText, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
-                  ← Back
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.headerTop}>
+                <TouchableOpacity 
+                  onPress={handleBackPress} 
+                  style={styles.backButton}
+                  accessibilityLabel="Go back"
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.backButtonText, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
+                    ← Back
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity 
+                    onPress={handleToggleFavorite} 
+                    style={styles.iconButton}
+                    accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={handleCopyToClipboard} 
+                    style={styles.iconButton}
+                    accessibilityLabel="Copy to clipboard"
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.iconButtonText}>📋</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={handleShare} 
+                    style={styles.iconButton}
+                    accessibilityLabel="Share topic"
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.iconButtonText}>📤</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
               
               <View style={styles.headerContent}>
-                <Text style={styles.topicIcon}>{topic.icon}</Text>
                 <Text style={[styles.topicTitle, { color: theme.colors.textPrimary, fontSize: 28 * textScale }]}>
                   {topic.name}
                 </Text>
@@ -212,6 +301,30 @@ export default function TopicDetailScreen() {
 
               <View style={styles.bottomSpacer} />
             </ScrollView>
+
+            <TouchableOpacity
+              style={styles.oracleButton}
+              onPress={handleOraclePress}
+              activeOpacity={0.8}
+              accessibilityLabel="Ask the Oracle"
+              accessibilityHint="Get a random paranormal fact"
+              accessibilityRole="button"
+            >
+              <LinearGradient
+                colors={[category.color + '80', category.color + '60']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.oracleButtonGradient}
+              >
+                <Text style={styles.oracleButtonIcon}>🔮</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <RandomFactModal
+              visible={showOracleModal}
+              fact={oracleFact}
+              onClose={() => setShowOracleModal(false)}
+            />
           </Animated.View>
         </SafeAreaView>
       </LinearGradient>
@@ -238,25 +351,40 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     zIndex: 2,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   backButton: {
     paddingVertical: 8,
     paddingHorizontal: 4,
-    marginBottom: 16,
   },
   backButtonText: {
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'SpaceMono',
   },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(139, 92, 246, 0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconButtonText: {
+    fontSize: 18,
+  },
   headerContent: {
     alignItems: 'center',
-  },
-  topicIcon: {
-    fontSize: 72,
-    marginBottom: 12,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
   topicTitle: {
     fontSize: 28,
@@ -293,7 +421,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   sectionsHeader: {
     fontSize: 18,
@@ -346,6 +474,27 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1.5,
     opacity: 0.3,
+  },
+  oracleButton: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
+    boxShadow: '0px 8px 24px rgba(139, 92, 246, 0.6)',
+    elevation: 12,
+    zIndex: 100,
+  },
+  oracleButtonGradient: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  oracleButtonIcon: {
+    fontSize: 28,
   },
   bottomSpacer: {
     height: 20,

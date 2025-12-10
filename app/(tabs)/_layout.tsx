@@ -1,9 +1,21 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Stack } from 'expo-router';
 import FloatingTabBar, { TabBarItem } from '@/components/FloatingTabBar';
+import { storage } from '@/utils/storage';
 
 export default function TabLayout() {
+  const [showTabBar, setShowTabBar] = useState(true);
+
+  useEffect(() => {
+    checkOnboarding();
+  }, []);
+
+  const checkOnboarding = async () => {
+    const onboardingComplete = await storage.isOnboardingComplete();
+    setShowTabBar(onboardingComplete);
+  };
+
   const tabs: TabBarItem[] = [
     {
       name: '(home)',
@@ -42,7 +54,7 @@ export default function TabLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          animation: 'none',
+          animation: 'fade',
           contentStyle: { backgroundColor: '#08080B' },
         }}
       >
@@ -52,7 +64,7 @@ export default function TabLayout() {
         <Stack.Screen key="search" name="search" />
         <Stack.Screen key="settings" name="settings" />
       </Stack>
-      <FloatingTabBar tabs={tabs} containerWidth={350} />
+      {showTabBar && <FloatingTabBar tabs={tabs} containerWidth={350} />}
     </>
   );
 }

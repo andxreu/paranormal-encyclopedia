@@ -10,6 +10,7 @@ import Animated, {
   withSpring,
   withTiming,
   Easing,
+  FadeIn,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { getCategoryById } from '@/data/paranormal/categories';
@@ -24,9 +25,10 @@ interface TopicCardProps {
   topic: any;
   categoryColor: string;
   onPress: () => void;
+  index: number;
 }
 
-const TopicCard: React.FC<TopicCardProps> = ({ topic, categoryColor, onPress }) => {
+const TopicCard: React.FC<TopicCardProps> = ({ topic, categoryColor, onPress, index }) => {
   const { theme, textScale } = useAppTheme();
   const scale = useSharedValue(1);
 
@@ -52,25 +54,26 @@ const TopicCard: React.FC<TopicCardProps> = ({ topic, categoryColor, onPress }) 
   };
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      activeOpacity={1}
-      style={styles.topicCardWrapper}
-    >
-      <Animated.View style={animatedStyle}>
-        <LinearGradient
-          colors={[categoryColor + '40', categoryColor + '20', theme.colors.cardBg]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.topicCard, { borderColor: categoryColor + '60' }]}
-        >
-          <ParticleEffect count={3} color={categoryColor + '40'} />
-          
-          <View style={styles.topicCardContent}>
-            <View style={styles.topicHeader}>
-              <Text style={styles.topicIcon}>{topic.icon}</Text>
+    <Animated.View entering={FadeIn.delay(index * 80).duration(400)} style={styles.topicCardWrapper}>
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+        accessibilityLabel={topic.name}
+        accessibilityHint={topic.description}
+        accessibilityRole="button"
+      >
+        <Animated.View style={animatedStyle}>
+          <LinearGradient
+            colors={[categoryColor + '40', categoryColor + '20', theme.colors.cardBg]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.topicCard, { borderColor: categoryColor + '60' }]}
+          >
+            <ParticleEffect count={3} color={categoryColor + '40'} />
+            
+            <View style={styles.topicCardContent}>
               <View style={styles.topicTextContainer}>
                 <Text style={[styles.topicName, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
                   {topic.name}
@@ -79,19 +82,19 @@ const TopicCard: React.FC<TopicCardProps> = ({ topic, categoryColor, onPress }) 
                   {topic.description}
                 </Text>
               </View>
+              
+              <View style={[styles.sectionBadge, { backgroundColor: categoryColor + '30', borderColor: categoryColor + '60' }]}>
+                <Text style={[styles.sectionBadgeText, { color: theme.colors.textPrimary, fontSize: 11 * textScale }]}>
+                  {topic.sections?.length || 0} sections
+                </Text>
+              </View>
             </View>
             
-            <View style={[styles.sectionBadge, { backgroundColor: categoryColor + '30', borderColor: categoryColor + '60' }]}>
-              <Text style={[styles.sectionBadgeText, { color: theme.colors.textPrimary, fontSize: 11 * textScale }]}>
-                {topic.sections?.length || 0} sections
-              </Text>
-            </View>
-          </View>
-          
-          <View style={[styles.topicCardBorder, { borderColor: categoryColor + '60' }]} />
-        </LinearGradient>
-      </Animated.View>
-    </TouchableOpacity>
+            <View style={[styles.topicCardBorder, { borderColor: categoryColor + '60' }]} />
+          </LinearGradient>
+        </Animated.View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
@@ -104,6 +107,7 @@ export default function CategoryScreen() {
   const [topics, setTopics] = useState<any[]>([]);
 
   const fadeOpacity = useSharedValue(0);
+  const scale = useSharedValue(0.95);
 
   const loadCategoryData = useCallback(() => {
     if (!categoryId) return;
@@ -118,7 +122,12 @@ export default function CategoryScreen() {
       duration: 600,
       easing: Easing.inOut(Easing.ease),
     });
-  }, [categoryId, fadeOpacity]);
+
+    scale.value = withTiming(1, {
+      duration: 600,
+      easing: Easing.out(Easing.ease),
+    });
+  }, [categoryId, fadeOpacity, scale]);
 
   useEffect(() => {
     loadCategoryData();
@@ -154,6 +163,7 @@ export default function CategoryScreen() {
   const animatedStyle = useAnimatedStyle(() => {
     return {
       opacity: fadeOpacity.value,
+      transform: [{ scale: scale.value }],
     };
   });
 
@@ -185,7 +195,12 @@ export default function CategoryScreen() {
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <Animated.View style={[styles.animatedContainer, animatedStyle]}>
             <View style={styles.header}>
-              <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+              <TouchableOpacity 
+                onPress={handleBackPress} 
+                style={styles.backButton}
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
+              >
                 <Text style={[styles.backButtonText, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
                   ← Back
                 </Text>
@@ -229,6 +244,7 @@ export default function CategoryScreen() {
                     topic={topic}
                     categoryColor={category.color}
                     onPress={() => handleTopicPress(topic)}
+                    index={index}
                   />
                 </React.Fragment>
               ))}
@@ -329,20 +345,8 @@ const styles = StyleSheet.create({
   topicCardContent: {
     zIndex: 2,
   },
-  topicHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  topicIcon: {
-    fontSize: 48,
-    marginRight: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
   topicTextContainer: {
-    flex: 1,
+    marginBottom: 12,
   },
   topicName: {
     fontSize: 18,

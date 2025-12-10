@@ -30,6 +30,7 @@ export default function HomeScreen() {
   const [showFactModal, setShowFactModal] = useState(false);
   const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const fadeOpacity = useSharedValue(0);
 
@@ -45,6 +46,13 @@ export default function HomeScreen() {
         duration: 600,
         easing: Easing.inOut(Easing.ease),
       });
+
+      const firstLaunchAfterOnboarding = await storage.getData<boolean>('@first_launch_after_onboarding');
+      if (firstLaunchAfterOnboarding !== false) {
+        setShowConfetti(true);
+        await storage.saveData('@first_launch_after_onboarding', false);
+        setTimeout(() => setShowConfetti(false), 3000);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
       setIsLoading(false);
@@ -75,14 +83,10 @@ export default function HomeScreen() {
 
   const handleOnboardingComplete = async () => {
     await storage.setOnboardingComplete(true);
+    await storage.saveData('@first_launch_after_onboarding', true);
     setShowOnboarding(false);
     setIsLoading(true);
     await loadData();
-  };
-
-  const handleCategoryPress = (categoryName: string) => {
-    HapticFeedback.light();
-    console.log('Category pressed:', categoryName);
   };
 
   const handleLightningPress = () => {
@@ -178,10 +182,7 @@ export default function HomeScreen() {
             <View style={styles.categoriesGrid}>
               {categories.map((category, index) => (
                 <React.Fragment key={index}>
-                  <CategoryCard
-                    category={category}
-                    onPress={() => handleCategoryPress(category.name)}
-                  />
+                  <CategoryCard category={category} />
                 </React.Fragment>
               ))}
             </View>

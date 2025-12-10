@@ -53,9 +53,8 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
     HapticFeedback.light();
     if (onPress) {
       onPress();
-    } else {
-      router.push(`/explore/${category.id}`);
     }
+    router.push(`/explore/${category.id}`);
   };
 
   return (
@@ -65,6 +64,9 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
+      accessibilityLabel={`${category.name} category`}
+      accessibilityHint={`Explore ${category.description}`}
+      accessibilityRole="button"
     >
       <Animated.View style={animatedStyle}>
         <LinearGradient
@@ -80,7 +82,6 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
           <View style={styles.content}>
             <Text style={styles.icon}>{category.icon}</Text>
             <Text style={styles.name}>{category.name}</Text>
-            <Text style={[styles.code, { color: category.color }]}>{category.code}</Text>
           </View>
           <View style={[styles.glowBorder, { borderColor: category.color + '60' }]} />
         </LinearGradient>
@@ -126,17 +127,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     fontFamily: 'SpaceMono',
-    marginBottom: 4,
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
-  },
-  code: {
-    fontSize: 11,
-    fontWeight: '600',
-    textAlign: 'center',
-    fontFamily: 'SpaceMono',
-    opacity: 0.9,
   },
   glowBorder: {
     position: 'absolute',

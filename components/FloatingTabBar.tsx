@@ -3,14 +3,16 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
+  withRepeat,
   Easing,
 } from 'react-native-reanimated';
+import { HapticFeedback } from '@/utils/haptics';
 
 export interface TabBarItem {
   name: string;
@@ -33,6 +35,7 @@ const TabButton: React.FC<{
   const iconScale = useSharedValue(1);
   const glowOpacity = useSharedValue(0);
   const translateY = useSharedValue(0);
+  const borderRotation = useSharedValue(0);
 
   useEffect(() => {
     if (isActive) {
@@ -48,6 +51,14 @@ const TabButton: React.FC<{
         damping: 15,
         stiffness: 300,
       });
+      borderRotation.value = withRepeat(
+        withTiming(360, {
+          duration: 3000,
+          easing: Easing.linear,
+        }),
+        -1,
+        false
+      );
     } else {
       iconScale.value = withSpring(1, {
         damping: 15,
@@ -61,6 +72,7 @@ const TabButton: React.FC<{
         damping: 15,
         stiffness: 300,
       });
+      borderRotation.value = 0;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
@@ -76,6 +88,13 @@ const TabButton: React.FC<{
 
   const animatedGlowStyle = useAnimatedStyle(() => {
     return {
+      opacity: glowOpacity.value,
+    };
+  });
+
+  const animatedBorderStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ rotate: `${borderRotation.value}deg` }],
       opacity: glowOpacity.value,
     };
   });
@@ -101,7 +120,7 @@ const TabButton: React.FC<{
   });
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    HapticFeedback.light();
     onPress();
   };
 
@@ -123,11 +142,24 @@ const TabButton: React.FC<{
       onPressOut={handlePressOut}
       activeOpacity={1}
       style={styles.tabButton}
+      accessibilityLabel={item.label}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isActive }}
     >
       <Animated.View style={animatedButtonStyle}>
         <View style={styles.tabContent}>
           {isActive && (
-            <Animated.View style={[styles.activeGlow, animatedGlowStyle]} />
+            <>
+              <Animated.View style={[styles.activeGlow, animatedGlowStyle]} />
+              <Animated.View style={[styles.animatedBorder, animatedBorderStyle]}>
+                <LinearGradient
+                  colors={['#8B5CF6', '#6366F1', '#D4AF37', '#8B5CF6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradientBorder}
+                />
+              </Animated.View>
+            </>
           )}
           <Animated.Text style={[
             styles.tabIcon,
@@ -222,6 +254,21 @@ const styles = StyleSheet.create({
     bottom: -8,
     backgroundColor: 'rgba(139, 92, 246, 0.3)',
     borderRadius: 20,
+  },
+  animatedBorder: {
+    position: 'absolute',
+    top: -10,
+    left: -10,
+    right: -10,
+    bottom: -10,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  gradientBorder: {
+    flex: 1,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   tabIcon: {
     fontSize: 24,

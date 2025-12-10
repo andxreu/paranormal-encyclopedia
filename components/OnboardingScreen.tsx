@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,7 +9,6 @@ import Animated, {
   withDelay,
   withSequence,
   Easing,
-  runOnJS,
 } from 'react-native-reanimated';
 import { ParticleEffect } from './ParticleEffect';
 import { HapticFeedback } from '@/utils/haptics';
@@ -23,7 +21,7 @@ interface OnboardingScreenProps {
 
 const features = [
   {
-    icon: '🔮',
+    icon: '🛸',
     title: 'Explore Mysteries',
     description: 'Discover 10 categories of paranormal phenomena',
   },
@@ -158,6 +156,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
               style={styles.skipButton}
               onPress={handleSkip}
               activeOpacity={0.7}
+              accessibilityLabel="Skip onboarding"
+              accessibilityRole="button"
             >
               <Text style={styles.skipButtonText}>Skip</Text>
             </TouchableOpacity>
@@ -166,6 +166,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
               style={styles.nextButton}
               onPress={handleNext}
               activeOpacity={0.8}
+              accessibilityLabel={currentStep === features.length - 1 ? 'Get started' : 'Next'}
+              accessibilityRole="button"
             >
               <LinearGradient
                 colors={['#8B5CF6', '#6366F1', '#D4AF37']}

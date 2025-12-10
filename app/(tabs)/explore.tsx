@@ -49,6 +49,9 @@ const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = 
       onPressOut={handlePressOut}
       activeOpacity={1}
       style={styles.cardWrapper}
+      accessibilityLabel={`${category.name} category`}
+      accessibilityHint={category.description}
+      accessibilityRole="button"
     >
       <Animated.View style={animatedStyle}>
         <LinearGradient
@@ -63,9 +66,6 @@ const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = 
             <Text style={styles.cardIcon}>{category.icon}</Text>
             <Text style={[styles.cardName, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
               {category.name}
-            </Text>
-            <Text style={[styles.cardCode, { color: category.color, fontSize: 12 * textScale }]}>
-              {category.code}
             </Text>
             <Text style={[styles.cardDescription, { color: theme.colors.textSecondary, fontSize: 11 * textScale }]} numberOfLines={2}>
               {category.description}
@@ -232,17 +232,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     fontFamily: 'SpaceMono',
-    marginBottom: 6,
+    marginBottom: 10,
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
-  },
-  cardCode: {
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'center',
-    fontFamily: 'SpaceMono',
-    marginBottom: 10,
   },
   cardDescription: {
     fontSize: 11,
