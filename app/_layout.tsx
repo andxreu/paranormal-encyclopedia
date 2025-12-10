@@ -1,5 +1,4 @@
 
-import "react-native-reanimated";
 import React, { useEffect, useState, Suspense } from "react";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { useFonts } from "expo-font";
@@ -19,11 +18,13 @@ export const unstable_settings = {
   initialRouteName: "(tabs)",
 };
 
-const LoadingFallback: React.FC = () => (
+const LoadingFallback = React.memo(() => (
   <View style={styles.loadingContainer}>
     <ActivityIndicator size="large" color="#8B5CF6" />
   </View>
-);
+));
+
+LoadingFallback.displayName = 'LoadingFallback';
 
 function RootLayoutContent(): React.ReactElement {
   const [fontsLoaded] = useFonts({

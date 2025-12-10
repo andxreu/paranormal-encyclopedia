@@ -1,5 +1,5 @@
 
-import React, { memo, useEffect } from 'react';
+import React, { useEffect, memo } from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {

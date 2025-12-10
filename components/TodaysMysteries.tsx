@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -24,13 +24,13 @@ interface MysteryCard {
   label: string;
 }
 
-export const TodaysMysteries: React.FC = () => {
+export const TodaysMysteries = memo(() => {
   const theme = useAppTheme();
   const router = useRouter();
   const [mysteries, setMysteries] = useState<MysteryCard[]>([]);
   const fadeOpacity = useSharedValue(1);
 
-  const generateMysteries = () => {
+  const generateMysteries = useCallback(() => {
     const allTopics = getAllTopics();
     const shuffled = [...allTopics].sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, 3);
@@ -50,13 +50,13 @@ export const TodaysMysteries: React.FC = () => {
     });
 
     setMysteries(newMysteries);
-  };
+  }, []);
 
   useEffect(() => {
     generateMysteries();
-  }, []);
+  }, [generateMysteries]);
 
-  const handleReroll = () => {
+  const handleReroll = useCallback(() => {
     HapticFeedback.medium();
     
     fadeOpacity.value = withSequence(
@@ -73,13 +73,13 @@ export const TodaysMysteries: React.FC = () => {
     setTimeout(() => {
       generateMysteries();
     }, 200);
-  };
+  }, [fadeOpacity, generateMysteries]);
 
-  const handleMysteryPress = (mystery: MysteryCard) => {
+  const handleMysteryPress = useCallback((mystery: MysteryCard) => {
     HapticFeedback.light();
     console.log('Navigating to topic:', mystery.categoryId, mystery.id);
     router.push(`/explore/${mystery.categoryId}/${mystery.id}`);
-  };
+  }, [router]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -142,7 +142,9 @@ export const TodaysMysteries: React.FC = () => {
       </Animated.View>
     </View>
   );
-};
+});
+
+TodaysMysteries.displayName = 'TodaysMysteries';
 
 const styles = StyleSheet.create({
   container: {

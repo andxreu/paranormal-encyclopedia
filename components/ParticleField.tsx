@@ -76,7 +76,7 @@ const Particle = memo<ParticleProps>(({ index, color, opacity }) => {
         true
       )
     );
-  }, [index, translateX, translateY, scale, particleOpacity, opacity]);
+  }, [index, opacity, translateX, translateY, scale, particleOpacity]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -118,7 +118,7 @@ export const ParticleField = memo<ParticleFieldProps>(({ count = 20, color }) =>
     <View style={styles.container} pointerEvents="none">
       {Array.from({ length: count }).map((_, index) => (
         <Particle
-          key={index}
+          key={`particle-${index}`}
           index={index}
           color={particleColor}
           opacity={theme.colors.particleOpacity}

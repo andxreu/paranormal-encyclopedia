@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -21,16 +21,13 @@ export interface TabBarItem {
   label: string;
 }
 
-interface FloatingTabBarProps {
-  tabs: TabBarItem[];
-  containerWidth?: number;
-}
-
-const TabButton: React.FC<{
+interface TabButtonProps {
   item: TabBarItem;
   isActive: boolean;
   onPress: () => void;
-}> = ({ item, isActive, onPress }) => {
+}
+
+const TabButton = memo<TabButtonProps>(({ item, isActive, onPress }) => {
   const { theme } = useAppTheme();
   const scale = useSharedValue(1);
   const iconScale = useSharedValue(1);
@@ -82,7 +79,7 @@ const TabButton: React.FC<{
         stiffness: 300,
       });
     }
-  }, [isActive, iconScale, glowOpacity, glowScale, translateY]);
+  }, [isActive]);
 
   const animatedIconStyle = useAnimatedStyle(() => {
     return {
@@ -125,7 +122,7 @@ const TabButton: React.FC<{
     onPress();
   };
 
-  const getIconForTab = (iconName: string) => {
+  const getIconForTab = (iconName: string): string => {
     const icons: { [key: string]: string } = {
       home: '🏠',
       explore: '👁️',
@@ -171,19 +168,26 @@ const TabButton: React.FC<{
       </Animated.View>
     </TouchableOpacity>
   );
-};
+});
 
-export default function FloatingTabBar({ tabs, containerWidth = 380 }: FloatingTabBarProps) {
+TabButton.displayName = 'TabButton';
+
+interface FloatingTabBarProps {
+  tabs: TabBarItem[];
+  containerWidth?: number;
+}
+
+const FloatingTabBar = memo<FloatingTabBarProps>(({ tabs, containerWidth = 380 }) => {
   const { theme } = useAppTheme();
   const pathname = usePathname();
   const router = useRouter();
 
   const handleTabPress = (route: string) => {
     console.log('Navigating to:', route);
-    router.push(route as any);
+    router.push(route as never);
   };
 
-  const isTabActive = (tabName: string) => {
+  const isTabActive = (tabName: string): boolean => {
     if (tabName === '(home)') {
       return pathname === '/' || pathname.includes('/(home)');
     }
@@ -192,22 +196,25 @@ export default function FloatingTabBar({ tabs, containerWidth = 380 }: FloatingT
 
   return (
     <View style={[styles.container, { width: containerWidth }]}>
-      <BlurView intensity={80} tint={theme.colors.background === '#F5F3FF' ? 'light' : 'dark'} style={styles.blurContainer}>
+      <BlurView intensity={80} tint={theme.colorScheme === 'light' ? 'light' : 'dark'} style={styles.blurContainer}>
         <View style={[styles.tabBar, { backgroundColor: theme.colors.cardBg }]}>
           {tabs.map((item, index) => (
-            <React.Fragment key={`tab-${item.name}-${index}`}>
-              <TabButton
-                item={item}
-                isActive={isTabActive(item.name)}
-                onPress={() => handleTabPress(item.route)}
-              />
-            </React.Fragment>
+            <TabButton
+              key={`tab-${item.name}-${index}`}
+              item={item}
+              isActive={isTabActive(item.name)}
+              onPress={() => handleTabPress(item.route)}
+            />
           ))}
         </View>
       </BlurView>
     </View>
   );
-}
+});
+
+FloatingTabBar.displayName = 'FloatingTabBar';
+
+export default FloatingTabBar;
 
 const styles = StyleSheet.create({
   container: {

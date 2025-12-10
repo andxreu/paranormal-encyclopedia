@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, memo } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -10,13 +10,13 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { HapticFeedback } from '@/utils/haptics';
 
 interface LightningButtonProps {
   onPress?: () => void;
 }
 
-export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => {
+export const LightningButton = memo<LightningButtonProps>(({ onPress }) => {
   const scale = useSharedValue(1);
   const rotate = useSharedValue(0);
   const glowOpacity = useSharedValue(0.5);
@@ -75,7 +75,7 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
   });
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    HapticFeedback.medium();
     onPress?.();
   };
 
@@ -110,7 +110,9 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
       </TouchableOpacity>
     </View>
   );
-};
+});
+
+LightningButton.displayName = 'LightningButton';
 
 const styles = StyleSheet.create({
   container: {

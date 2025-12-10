@@ -1,6 +1,6 @@
 
-import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
-import { Appearance, ColorSchemeName } from 'react-native';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
+import { Appearance } from 'react-native';
 import { cosmicColors } from '@/constants/Colors';
 import { storage } from '@/utils/storage';
 
@@ -143,7 +143,7 @@ interface ThemeProviderProps {
   children: ReactNode;
 }
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+export const ThemeProvider = React.memo<ThemeProviderProps>(({ children }) => {
   const [colorScheme, setColorScheme] = useState<'light' | 'dark'>('dark');
   const [textScale, setTextScaleState] = useState<number>(1);
 
@@ -189,11 +189,21 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     await storage.saveData('@text_scale', scale);
   }, []);
 
-  const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
+  const theme = useMemo(() => colorScheme === 'dark' ? darkTheme : lightTheme, [colorScheme]);
+
+  const contextValue = useMemo<ThemeContextType>(() => ({
+    theme,
+    colorScheme,
+    toggleTheme,
+    textScale,
+    setTextScale,
+  }), [theme, colorScheme, toggleTheme, textScale, setTextScale]);
 
   return (
-    <ThemeContext.Provider value={{ theme, colorScheme, toggleTheme, textScale, setTextScale }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );
-};
+});
+
+ThemeProvider.displayName = 'ThemeProvider';

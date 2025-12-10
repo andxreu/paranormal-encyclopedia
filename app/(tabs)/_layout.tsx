@@ -1,53 +1,53 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Stack } from 'expo-router';
 import FloatingTabBar, { TabBarItem } from '@/components/FloatingTabBar';
 import { storage } from '@/utils/storage';
 
-export default function TabLayout() {
+const tabs: TabBarItem[] = [
+  {
+    name: '(home)',
+    route: '/(tabs)/(home)/',
+    icon: 'home',
+    label: 'Home',
+  },
+  {
+    name: 'explore',
+    route: '/(tabs)/explore',
+    icon: 'explore',
+    label: 'Explore',
+  },
+  {
+    name: 'favorites',
+    route: '/(tabs)/favorites',
+    icon: 'favorite',
+    label: 'Favorites',
+  },
+  {
+    name: 'search',
+    route: '/(tabs)/search',
+    icon: 'search',
+    label: 'Search',
+  },
+  {
+    name: 'settings',
+    route: '/(tabs)/settings',
+    icon: 'settings',
+    label: 'Settings',
+  },
+];
+
+const TabLayout = memo(() => {
   const [showTabBar, setShowTabBar] = useState(true);
 
   useEffect(() => {
     checkOnboarding();
   }, []);
 
-  const checkOnboarding = async () => {
+  const checkOnboarding = async (): Promise<void> => {
     const onboardingComplete = await storage.isOnboardingComplete();
     setShowTabBar(onboardingComplete);
   };
-
-  const tabs: TabBarItem[] = [
-    {
-      name: '(home)',
-      route: '/(tabs)/(home)/',
-      icon: 'home',
-      label: 'Home',
-    },
-    {
-      name: 'explore',
-      route: '/(tabs)/explore',
-      icon: 'explore',
-      label: 'Explore',
-    },
-    {
-      name: 'favorites',
-      route: '/(tabs)/favorites',
-      icon: 'favorite',
-      label: 'Favorites',
-    },
-    {
-      name: 'search',
-      route: '/(tabs)/search',
-      icon: 'search',
-      label: 'Search',
-    },
-    {
-      name: 'settings',
-      route: '/(tabs)/settings',
-      icon: 'settings',
-      label: 'Settings',
-    },
-  ];
 
   return (
     <>
@@ -67,4 +67,8 @@ export default function TabLayout() {
       {showTabBar && <FloatingTabBar tabs={tabs} containerWidth={350} />}
     </>
   );
-}
+});
+
+TabLayout.displayName = 'TabLayout';
+
+export default TabLayout;
