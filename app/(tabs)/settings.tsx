@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Linking, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Linking, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
@@ -13,10 +13,8 @@ import Animated, {
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { storage, AppSettings } from '@/utils/storage';
 import { categories, getAllTopics } from '@/data/paranormal/categories';
-import { paranormalFacts } from '@/data/paranormal/facts';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { HapticFeedback } from '@/utils/haptics';
-import * as MailComposer from 'expo-mail-composer';
 
 const TEXT_SIZE_OPTIONS = [
   { label: 'Small', value: 0.85, key: 'small' },
@@ -139,33 +137,6 @@ export default function SettingsScreen() {
       await Linking.openURL(url);
     } else {
       Alert.alert('Error', 'Unable to open website');
-    }
-  };
-
-  const handleFeedback = async () => {
-    if (settings.hapticsEnabled) {
-      HapticFeedback.light();
-    }
-
-    try {
-      const isAvailable = await MailComposer.isAvailableAsync();
-      
-      if (isAvailable) {
-        await MailComposer.composeAsync({
-          recipients: ['feedback@stormlightfoundry.com'],
-          subject: 'Paranormal Encyclopedia Feedback',
-          body: 'Please share your feedback:\n\n',
-        });
-      } else {
-        Alert.alert(
-          'Email Not Available',
-          'Please send your feedback to feedback@stormlightfoundry.com',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error) {
-      console.error('Error opening email composer:', error);
-      Alert.alert('Error', 'Unable to open email composer');
     }
   };
 
@@ -400,22 +371,6 @@ export default function SettingsScreen() {
                   </Text>
                   <Text style={[styles.actionButtonSubtitle, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
                     Remove all cached data
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
-                onPress={handleFeedback}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.actionButtonEmoji}>💬</Text>
-                <View style={styles.actionButtonTextContainer}>
-                  <Text style={[styles.actionButtonTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
-                    Send Feedback
-                  </Text>
-                  <Text style={[styles.actionButtonSubtitle, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
-                    Share your thoughts with us
                   </Text>
                 </View>
               </TouchableOpacity>

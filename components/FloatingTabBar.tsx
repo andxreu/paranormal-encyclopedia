@@ -1,9 +1,8 @@
 
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -13,6 +12,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { HapticFeedback } from '@/utils/haptics';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
 export interface TabBarItem {
   name: string;
@@ -31,34 +31,39 @@ const TabButton: React.FC<{
   isActive: boolean;
   onPress: () => void;
 }> = ({ item, isActive, onPress }) => {
+  const { theme } = useAppTheme();
   const scale = useSharedValue(1);
   const iconScale = useSharedValue(1);
   const glowOpacity = useSharedValue(0);
+  const glowScale = useSharedValue(0.8);
   const translateY = useSharedValue(0);
-  const borderRotation = useSharedValue(0);
 
   useEffect(() => {
     if (isActive) {
-      iconScale.value = withSpring(1.2, {
+      iconScale.value = withSpring(1.15, {
         damping: 15,
         stiffness: 300,
       });
-      glowOpacity.value = withTiming(1, {
-        duration: 300,
-        easing: Easing.inOut(Easing.ease),
-      });
+      glowOpacity.value = withRepeat(
+        withTiming(1, {
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        -1,
+        true
+      );
+      glowScale.value = withRepeat(
+        withTiming(1.1, {
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        -1,
+        true
+      );
       translateY.value = withSpring(-2, {
         damping: 15,
         stiffness: 300,
       });
-      borderRotation.value = withRepeat(
-        withTiming(360, {
-          duration: 3000,
-          easing: Easing.linear,
-        }),
-        -1,
-        false
-      );
     } else {
       iconScale.value = withSpring(1, {
         damping: 15,
@@ -68,14 +73,16 @@ const TabButton: React.FC<{
         duration: 300,
         easing: Easing.inOut(Easing.ease),
       });
+      glowScale.value = withTiming(0.8, {
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+      });
       translateY.value = withSpring(0, {
         damping: 15,
         stiffness: 300,
       });
-      borderRotation.value = 0;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive]);
+  }, [isActive, iconScale, glowOpacity, glowScale, translateY]);
 
   const animatedIconStyle = useAnimatedStyle(() => {
     return {
@@ -88,14 +95,8 @@ const TabButton: React.FC<{
 
   const animatedGlowStyle = useAnimatedStyle(() => {
     return {
-      opacity: glowOpacity.value,
-    };
-  });
-
-  const animatedBorderStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ rotate: `${borderRotation.value}deg` }],
-      opacity: glowOpacity.value,
+      opacity: glowOpacity.value * 0.6,
+      transform: [{ scale: glowScale.value }],
     };
   });
 
@@ -127,7 +128,7 @@ const TabButton: React.FC<{
   const getIconForTab = (iconName: string) => {
     const icons: { [key: string]: string } = {
       home: '🏠',
-      explore: '🔍',
+      explore: '👁️',
       favorite: '⭐',
       search: '🔎',
       settings: '⚙️',
@@ -149,17 +150,9 @@ const TabButton: React.FC<{
       <Animated.View style={animatedButtonStyle}>
         <View style={styles.tabContent}>
           {isActive && (
-            <>
-              <Animated.View style={[styles.activeGlow, animatedGlowStyle]} />
-              <Animated.View style={[styles.animatedBorder, animatedBorderStyle]}>
-                <LinearGradient
-                  colors={['#8B5CF6', '#6366F1', '#D4AF37', '#8B5CF6']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.gradientBorder}
-                />
-              </Animated.View>
-            </>
+            <Animated.View style={[styles.liquidGlow, animatedGlowStyle]}>
+              <View style={[styles.liquidGlowInner, { backgroundColor: theme.colors.violet }]} />
+            </Animated.View>
           )}
           <Animated.Text style={[
             styles.tabIcon,
@@ -180,7 +173,8 @@ const TabButton: React.FC<{
   );
 };
 
-export default function FloatingTabBar({ tabs, containerWidth = 350 }: FloatingTabBarProps) {
+export default function FloatingTabBar({ tabs, containerWidth = 380 }: FloatingTabBarProps) {
+  const { theme } = useAppTheme();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -198,8 +192,8 @@ export default function FloatingTabBar({ tabs, containerWidth = 350 }: FloatingT
 
   return (
     <View style={[styles.container, { width: containerWidth }]}>
-      <BlurView intensity={80} tint="dark" style={styles.blurContainer}>
-        <View style={styles.tabBar}>
+      <BlurView intensity={80} tint={theme.colors.background === '#F5F3FF' ? 'light' : 'dark'} style={styles.blurContainer}>
+        <View style={[styles.tabBar, { backgroundColor: theme.colors.cardBg }]}>
           {tabs.map((item, index) => (
             <React.Fragment key={index}>
               <TabButton
@@ -220,7 +214,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     left: '50%',
-    transform: [{ translateX: -175 }],
+    transform: [{ translateX: -190 }],
     zIndex: 1000,
   },
   blurContainer: {
@@ -233,9 +227,8 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(42, 27, 78, 0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   tabButton: {
     flex: 1,
@@ -246,29 +239,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
-  activeGlow: {
+  liquidGlow: {
     position: 'absolute',
-    top: -8,
-    left: -8,
-    right: -8,
-    bottom: -8,
-    backgroundColor: 'rgba(139, 92, 246, 0.3)',
-    borderRadius: 20,
+    top: -12,
+    left: -12,
+    right: -12,
+    bottom: -12,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  animatedBorder: {
-    position: 'absolute',
-    top: -10,
-    left: -10,
-    right: -10,
-    bottom: -10,
-    borderRadius: 22,
-    overflow: 'hidden',
-  },
-  gradientBorder: {
-    flex: 1,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: 'transparent',
+  liquidGlowInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    opacity: 0.3,
   },
   tabIcon: {
     fontSize: 24,
