@@ -7,8 +7,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
-  Easing,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { categories, Category } from '@/data/paranormal/categories';
@@ -19,13 +17,12 @@ const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 2;
 
 const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = ({ category, onPress }) => {
+  const { theme, textScale } = useAppTheme();
   const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{ scale: scale.value }],
-      opacity: opacity.value,
     };
   });
 
@@ -54,22 +51,26 @@ const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = 
     >
       <Animated.View style={animatedStyle}>
         <LinearGradient
-          colors={[category.color + '80', category.color + '40', 'rgba(42, 27, 78, 0.8)']}
+          colors={[category.color + '80', category.color + '40', theme.colors.cardBg]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.card}
+          style={[styles.card, { borderColor: theme.colors.border }]}
         >
           <ParticleEffect count={4} color={category.color + '60'} />
           
           <View style={styles.cardContent}>
             <Text style={styles.cardIcon}>{category.icon}</Text>
-            <Text style={styles.cardName}>{category.name}</Text>
-            <Text style={[styles.cardCode, { color: category.color }]}>{category.code}</Text>
-            <Text style={styles.cardDescription} numberOfLines={2}>
+            <Text style={[styles.cardName, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
+              {category.name}
+            </Text>
+            <Text style={[styles.cardCode, { color: category.color, fontSize: 12 * textScale }]}>
+              {category.code}
+            </Text>
+            <Text style={[styles.cardDescription, { color: theme.colors.textSecondary, fontSize: 11 * textScale }]} numberOfLines={2}>
               {category.description}
             </Text>
-            <View style={styles.topicCount}>
-              <Text style={styles.topicCountText}>
+            <View style={[styles.topicCount, { backgroundColor: theme.colors.cardBgTranslucent, borderColor: theme.colors.border }]}>
+              <Text style={[styles.topicCountText, { color: theme.colors.textPrimary, fontSize: 10 * textScale }]}>
                 {category.topics.length} topics
               </Text>
             </View>
@@ -83,7 +84,7 @@ const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = 
 };
 
 export default function ExploreScreen() {
-  const theme = useAppTheme();
+  const { theme, textScale } = useAppTheme();
   const [refreshing, setRefreshing] = useState(false);
 
   const handleCategoryPress = (category: Category) => {
@@ -111,6 +112,8 @@ export default function ExploreScreen() {
     }
   };
 
+  const totalTopics = categories.reduce((sum, cat) => sum + cat.topics.length, 0);
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -121,9 +124,11 @@ export default function ExploreScreen() {
       >
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Explore</Text>
-            <Text style={styles.headerSubtitle}>
-              {categories.length} Categories • {categories.reduce((sum, cat) => sum + cat.topics.length, 0)} Topics
+            <Text style={[styles.headerTitle, { color: theme.colors.textPrimary, fontSize: 36 * textScale }]}>
+              Explore
+            </Text>
+            <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+              {categories.length} Categories • {totalTopics} Topics
             </Text>
           </View>
 
@@ -135,9 +140,9 @@ export default function ExploreScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#8B5CF6"
-                colors={['#8B5CF6', '#6366F1', '#D4AF37']}
-                progressBackgroundColor="rgba(42, 27, 78, 0.8)"
+                tintColor={theme.colors.violet}
+                colors={[theme.colors.violet, theme.colors.indigo, theme.colors.gold]}
+                progressBackgroundColor={theme.colors.cardBg}
               />
             }
           >
@@ -178,7 +183,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 36,
     fontWeight: '900',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
     textShadowColor: 'rgba(139, 92, 246, 0.5)',
     textShadowOffset: { width: 0, height: 0 },
@@ -186,7 +190,6 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#B0B0B0',
     fontFamily: 'SpaceMono',
     marginTop: 6,
   },
@@ -210,7 +213,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
     minHeight: 200,
     boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.4)',
     elevation: 8,
@@ -230,7 +232,6 @@ const styles = StyleSheet.create({
   cardName: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#FFFFFF',
     textAlign: 'center',
     fontFamily: 'SpaceMono',
     marginBottom: 6,
@@ -247,24 +248,20 @@ const styles = StyleSheet.create({
   },
   cardDescription: {
     fontSize: 11,
-    color: '#B0B0B0',
     textAlign: 'center',
     fontFamily: 'SpaceMono',
     lineHeight: 16,
     marginBottom: 12,
   },
   topicCount: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   topicCountText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
   },
   cardBorder: {

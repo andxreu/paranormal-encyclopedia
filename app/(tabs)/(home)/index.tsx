@@ -24,7 +24,7 @@ import { useAppTheme } from "@/contexts/ThemeContext";
 import { HapticFeedback } from "@/utils/haptics";
 
 export default function HomeScreen() {
-  const theme = useAppTheme();
+  const { theme } = useAppTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showFactModal, setShowFactModal] = useState(false);
@@ -157,9 +157,9 @@ export default function HomeScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#8B5CF6"
-                colors={['#8B5CF6', '#6366F1', '#D4AF37']}
-                progressBackgroundColor="rgba(42, 27, 78, 0.8)"
+                tintColor={theme.colors.violet}
+                colors={[theme.colors.violet, theme.colors.indigo, theme.colors.gold]}
+                progressBackgroundColor={theme.colors.cardBg}
               />
             }
           >

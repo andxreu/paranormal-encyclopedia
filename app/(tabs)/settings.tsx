@@ -1,23 +1,32 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Linking, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withSpring,
   Easing,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { storage, AppSettings } from '@/utils/storage';
-import { categories } from '@/data/paranormal/categories';
+import { categories, getAllTopics } from '@/data/paranormal/categories';
 import { paranormalFacts } from '@/data/paranormal/facts';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { HapticFeedback } from '@/utils/haptics';
+import * as MailComposer from 'expo-mail-composer';
+
+const TEXT_SIZE_OPTIONS = [
+  { label: 'Small', value: 0.85, key: 'small' },
+  { label: 'Default', value: 1, key: 'default' },
+  { label: 'Large', value: 1.15, key: 'large' },
+  { label: 'Extra Large', value: 1.3, key: 'extra-large' },
+];
 
 export default function SettingsScreen() {
-  const theme = useAppTheme();
+  const { theme, colorScheme, toggleTheme, textScale, setTextScale } = useAppTheme();
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [cacheSize, setCacheSize] = useState<string>('0 KB');
   const [settings, setSettings] = useState<AppSettings>({
@@ -25,11 +34,14 @@ export default function SettingsScreen() {
     soundsEnabled: true,
     hapticsEnabled: true,
     themeVariant: 'default',
+    ambientSoundEnabled: false,
+    dailyNotificationsEnabled: false,
   });
-  const [showSyncModal, setShowSyncModal] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [totalTopics, setTotalTopics] = useState(0);
 
   const fadeOpacity = useSharedValue(0);
+  const toggleScale = useSharedValue(1);
 
   useEffect(() => {
     loadSettings();
@@ -40,16 +52,22 @@ export default function SettingsScreen() {
   }, [fadeOpacity]);
 
   const loadSettings = async () => {
-    const syncTime = await storage.getLastSync();
-    setLastSync(syncTime);
-    
-    const categoriesSize = JSON.stringify(categories).length;
-    const factsSize = JSON.stringify(paranormalFacts).length;
-    const totalSize = (categoriesSize + factsSize) / 1024;
-    setCacheSize(`${totalSize.toFixed(2)} KB`);
+    try {
+      const syncTime = await storage.getLastSync();
+      setLastSync(syncTime);
+      
+      const size = await storage.getCacheSize();
+      const sizeInKB = (size / 1024).toFixed(2);
+      setCacheSize(`${sizeInKB} KB`);
 
-    const savedSettings = await storage.getSettings();
-    setSettings(savedSettings);
+      const savedSettings = await storage.getSettings();
+      setSettings(savedSettings);
+
+      const topics = getAllTopics();
+      setTotalTopics(topics.length);
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
   };
 
   const handleToggleSetting = async (key: keyof AppSettings) => {
@@ -60,22 +78,31 @@ export default function SettingsScreen() {
     if (settings.hapticsEnabled) {
       HapticFeedback.light();
     }
+
+    toggleScale.value = withSpring(0.95, {
+      damping: 15,
+      stiffness: 300,
+    });
+    setTimeout(() => {
+      toggleScale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 300,
+      });
+    }, 100);
   };
 
-  const handleSyncData = async () => {
+  const handleThemeToggle = async () => {
     if (settings.hapticsEnabled) {
       HapticFeedback.medium();
     }
-    
-    await storage.saveCategories(categories);
-    await storage.saveFacts(paranormalFacts);
-    await storage.saveLastSync();
-    await loadSettings();
-    setShowSyncModal(false);
-    
+    toggleTheme();
+  };
+
+  const handleTextSizeChange = async (size: number) => {
     if (settings.hapticsEnabled) {
-      HapticFeedback.success();
+      HapticFeedback.light();
     }
+    setTextScale(size);
   };
 
   const handleClearCache = async () => {
@@ -83,13 +110,62 @@ export default function SettingsScreen() {
       HapticFeedback.medium();
     }
     
-    await storage.clearAll();
-    setLastSync(null);
-    setCacheSize('0 KB');
-    setShowClearModal(false);
-    
+    try {
+      await storage.clearAll();
+      setLastSync(null);
+      setCacheSize('0 KB');
+      setShowClearModal(false);
+      
+      if (settings.hapticsEnabled) {
+        HapticFeedback.success();
+      }
+
+      Alert.alert('Cache Cleared', 'All cached data has been removed successfully.');
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+      Alert.alert('Error', 'Failed to clear cache. Please try again.');
+    }
+  };
+
+  const handleOpenWebsite = async () => {
     if (settings.hapticsEnabled) {
-      HapticFeedback.success();
+      HapticFeedback.light();
+    }
+    
+    const url = 'https://stormlightfoundry.com';
+    const supported = await Linking.canOpenURL(url);
+    
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert('Error', 'Unable to open website');
+    }
+  };
+
+  const handleFeedback = async () => {
+    if (settings.hapticsEnabled) {
+      HapticFeedback.light();
+    }
+
+    try {
+      const isAvailable = await MailComposer.isAvailableAsync();
+      
+      if (isAvailable) {
+        await MailComposer.composeAsync({
+          recipients: ['feedback@stormlightfoundry.com'],
+          subject: 'Paranormal Encyclopedia Feedback',
+          body: 'Please share your feedback:\n\n',
+        });
+      } else {
+        Alert.alert(
+          'Email Not Available',
+          'Please send your feedback to feedback@stormlightfoundry.com',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error opening email composer:', error);
+      Alert.alert('Error', 'Unable to open email composer');
     }
   };
 
@@ -107,6 +183,12 @@ export default function SettingsScreen() {
     };
   });
 
+  const toggleAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: toggleScale.value }],
+    };
+  });
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -117,8 +199,10 @@ export default function SettingsScreen() {
       >
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Settings</Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={[styles.headerTitle, { color: theme.colors.textPrimary, fontSize: 32 * textScale }]}>
+              Settings
+            </Text>
+            <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
               Manage your paranormal encyclopedia
             </Text>
           </View>
@@ -129,160 +213,255 @@ export default function SettingsScreen() {
               contentContainerStyle={styles.contentContainer}
               showsVerticalScrollIndicator={false}
             >
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Preferences</Text>
-                
-                <View style={styles.settingCard}>
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingInfo}>
-                      <Text style={styles.settingIcon}>🔔</Text>
-                      <View style={styles.settingTextContainer}>
-                        <Text style={styles.settingLabel}>Notifications</Text>
-                        <Text style={styles.settingDescription}>
-                          Receive updates about new content
-                        </Text>
-                      </View>
+              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
+                Preferences
+              </Text>
+              
+              <Animated.View style={[styles.settingCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }, toggleAnimatedStyle]}>
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <Text style={styles.settingIcon}>🌓</Text>
+                    <View style={styles.settingTextContainer}>
+                      <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
+                        Dark Mode
+                      </Text>
+                      <Text style={[styles.settingDescription, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
+                        {colorScheme === 'dark' ? 'Dark theme active' : 'Light theme active'}
+                      </Text>
                     </View>
-                    <Switch
-                      value={settings.notificationsEnabled}
-                      onValueChange={() => handleToggleSetting('notificationsEnabled')}
-                      trackColor={{ false: '#3e3e3e', true: '#8B5CF6' }}
-                      thumbColor={settings.notificationsEnabled ? '#FFFFFF' : '#f4f3f4'}
-                    />
                   </View>
+                  <Switch
+                    value={colorScheme === 'dark'}
+                    onValueChange={handleThemeToggle}
+                    trackColor={{ false: theme.colors.border, true: theme.colors.violet }}
+                    thumbColor={colorScheme === 'dark' ? '#FFFFFF' : '#f4f3f4'}
+                  />
+                </View>
 
-                  <View style={styles.settingDivider} />
+                <View style={[styles.settingDivider, { backgroundColor: theme.colors.border }]} />
 
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingInfo}>
-                      <Text style={styles.settingIcon}>🔊</Text>
-                      <View style={styles.settingTextContainer}>
-                        <Text style={styles.settingLabel}>Sounds</Text>
-                        <Text style={styles.settingDescription}>
-                          Play sound effects
-                        </Text>
-                      </View>
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <Text style={styles.settingIcon}>🔔</Text>
+                    <View style={styles.settingTextContainer}>
+                      <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
+                        Daily Mysteries
+                      </Text>
+                      <Text style={[styles.settingDescription, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
+                        Receive daily paranormal notifications
+                      </Text>
                     </View>
-                    <Switch
-                      value={settings.soundsEnabled}
-                      onValueChange={() => handleToggleSetting('soundsEnabled')}
-                      trackColor={{ false: '#3e3e3e', true: '#8B5CF6' }}
-                      thumbColor={settings.soundsEnabled ? '#FFFFFF' : '#f4f3f4'}
-                    />
                   </View>
+                  <Switch
+                    value={settings.dailyNotificationsEnabled}
+                    onValueChange={() => handleToggleSetting('dailyNotificationsEnabled')}
+                    trackColor={{ false: theme.colors.border, true: theme.colors.violet }}
+                    thumbColor={settings.dailyNotificationsEnabled ? '#FFFFFF' : '#f4f3f4'}
+                  />
+                </View>
 
-                  <View style={styles.settingDivider} />
+                <View style={[styles.settingDivider, { backgroundColor: theme.colors.border }]} />
 
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingInfo}>
-                      <Text style={styles.settingIcon}>📳</Text>
-                      <View style={styles.settingTextContainer}>
-                        <Text style={styles.settingLabel}>Haptic Feedback</Text>
-                        <Text style={styles.settingDescription}>
-                          Feel vibrations on interactions
-                        </Text>
-                      </View>
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <Text style={styles.settingIcon}>🔊</Text>
+                    <View style={styles.settingTextContainer}>
+                      <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
+                        Ambient Sounds
+                      </Text>
+                      <Text style={[styles.settingDescription, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
+                        Eerie audio for fact reveals
+                      </Text>
                     </View>
-                    <Switch
-                      value={settings.hapticsEnabled}
-                      onValueChange={() => handleToggleSetting('hapticsEnabled')}
-                      trackColor={{ false: '#3e3e3e', true: '#8B5CF6' }}
-                      thumbColor={settings.hapticsEnabled ? '#FFFFFF' : '#f4f3f4'}
-                    />
                   </View>
+                  <Switch
+                    value={settings.ambientSoundEnabled}
+                    onValueChange={() => handleToggleSetting('ambientSoundEnabled')}
+                    trackColor={{ false: theme.colors.border, true: theme.colors.violet }}
+                    thumbColor={settings.ambientSoundEnabled ? '#FFFFFF' : '#f4f3f4'}
+                  />
+                </View>
+
+                <View style={[styles.settingDivider, { backgroundColor: theme.colors.border }]} />
+
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <Text style={styles.settingIcon}>📳</Text>
+                    <View style={styles.settingTextContainer}>
+                      <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
+                        Haptic Feedback
+                      </Text>
+                      <Text style={[styles.settingDescription, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
+                        Feel vibrations on interactions
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={settings.hapticsEnabled}
+                    onValueChange={() => handleToggleSetting('hapticsEnabled')}
+                    trackColor={{ false: theme.colors.border, true: theme.colors.violet }}
+                    thumbColor={settings.hapticsEnabled ? '#FFFFFF' : '#f4f3f4'}
+                  />
+                </View>
+              </Animated.View>
+
+              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
+                Accessibility
+              </Text>
+
+              <View style={[styles.settingCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
+                <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale, marginBottom: 16 }]}>
+                  Text Size
+                </Text>
+                <View style={styles.textSizeContainer}>
+                  {TEXT_SIZE_OPTIONS.map((option, index) => (
+                    <React.Fragment key={index}>
+                      <TouchableOpacity
+                        style={[
+                          styles.textSizeButton,
+                          { borderColor: theme.colors.border },
+                          textScale === option.value && { 
+                            backgroundColor: theme.colors.violet,
+                            borderColor: theme.colors.violet,
+                          },
+                        ]}
+                        onPress={() => handleTextSizeChange(option.value)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.textSizeLabel,
+                          { color: theme.colors.textPrimary, fontSize: 12 * option.value },
+                          textScale === option.value && { color: '#FFFFFF', fontWeight: '700' },
+                        ]}>
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    </React.Fragment>
+                  ))}
                 </View>
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Data & Storage</Text>
-                
-                <View style={styles.infoCard}>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Categories</Text>
-                    <Text style={styles.infoValue}>{categories.length}</Text>
-                  </View>
-                  <View style={styles.infoDivider} />
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Facts</Text>
-                    <Text style={styles.infoValue}>{paranormalFacts.length}</Text>
-                  </View>
-                  <View style={styles.infoDivider} />
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Cache Size</Text>
-                    <Text style={styles.infoValue}>{cacheSize}</Text>
-                  </View>
-                  <View style={styles.infoDivider} />
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Last Sync</Text>
-                    <Text style={styles.infoValue}>{formatDate(lastSync)}</Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => {
-                    if (settings.hapticsEnabled) {
-                      HapticFeedback.light();
-                    }
-                    setShowSyncModal(true);
-                  }}
-                >
-                  <Text style={styles.actionButtonEmoji}>🔄</Text>
-                  <View style={styles.actionButtonTextContainer}>
-                    <Text style={styles.actionButtonTitle}>Sync Data</Text>
-                    <Text style={styles.actionButtonSubtitle}>
-                      Refresh cached data for offline use
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.dangerButton]}
-                  onPress={() => {
-                    if (settings.hapticsEnabled) {
-                      HapticFeedback.light();
-                    }
-                    setShowClearModal(true);
-                  }}
-                >
-                  <Text style={styles.actionButtonEmoji}>🗑️</Text>
-                  <View style={styles.actionButtonTextContainer}>
-                    <Text style={styles.actionButtonTitle}>Clear Cache</Text>
-                    <Text style={styles.actionButtonSubtitle}>
-                      Remove all cached data
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>About</Text>
-                
-                <View style={styles.infoCard}>
-                  <Text style={styles.aboutText}>
-                    Paranormal Encyclopedia is your gateway to exploring the mysteries of the unknown. 
-                    Discover cryptids, UFOs, ghosts, ancient mysteries, and more.
+              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
+                Data & Storage
+              </Text>
+              
+              <View style={[styles.infoCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    Categories
                   </Text>
-                  <View style={styles.infoDivider} />
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Version</Text>
-                    <Text style={styles.infoValue}>1.0.0</Text>
-                  </View>
+                  <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+                    {categories.length}
+                  </Text>
+                </View>
+                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    Total Topics
+                  </Text>
+                  <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+                    {totalTopics}
+                  </Text>
+                </View>
+                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    Cache Size
+                  </Text>
+                  <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+                    {cacheSize}
+                  </Text>
+                </View>
+                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    Last Sync
+                  </Text>
+                  <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+                    {formatDate(lastSync)}
+                  </Text>
                 </View>
               </View>
+
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
+                onPress={() => {
+                  if (settings.hapticsEnabled) {
+                    HapticFeedback.light();
+                  }
+                  setShowClearModal(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.actionButtonEmoji}>🗑️</Text>
+                <View style={styles.actionButtonTextContainer}>
+                  <Text style={[styles.actionButtonTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
+                    Clear Cache
+                  </Text>
+                  <Text style={[styles.actionButtonSubtitle, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
+                    Remove all cached data
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
+                onPress={handleFeedback}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.actionButtonEmoji}>💬</Text>
+                <View style={styles.actionButtonTextContainer}>
+                  <Text style={[styles.actionButtonTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
+                    Send Feedback
+                  </Text>
+                  <Text style={[styles.actionButtonSubtitle, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
+                    Share your thoughts with us
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
+                About
+              </Text>
+              
+              <View style={[styles.infoCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
+                <Text style={[styles.aboutText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                  Paranormal Encyclopedia is your gateway to exploring the mysteries of the unknown. 
+                  Discover cryptids, UFOs, ghosts, ancient mysteries, and more.
+                </Text>
+                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    Version
+                  </Text>
+                  <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+                    1.0.0
+                  </Text>
+                </View>
+                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+                <TouchableOpacity onPress={handleOpenWebsite} style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    Developer
+                  </Text>
+                  <Text style={[styles.infoValue, { color: theme.colors.violet, fontSize: 14 * textScale }]}>
+                    StormLight Foundry →
+                  </Text>
+                </TouchableOpacity>
+                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    Copyright
+                  </Text>
+                  <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+                    © 2024
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.bottomSpacer} />
             </ScrollView>
           </Animated.View>
         </SafeAreaView>
-
-        <ConfirmModal
-          visible={showSyncModal}
-          title="Sync Data"
-          message="This will refresh all cached data for offline use."
-          confirmText="Sync"
-          cancelText="Cancel"
-          onConfirm={handleSyncData}
-          onCancel={() => setShowSyncModal(false)}
-        />
 
         <ConfirmModal
           visible={showClearModal}
@@ -317,7 +496,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 32,
     fontWeight: '900',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
     textShadowColor: 'rgba(139, 92, 246, 0.5)',
     textShadowOffset: { width: 0, height: 0 },
@@ -325,7 +503,6 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#B0B0B0',
     fontFamily: 'SpaceMono',
     marginTop: 4,
   },
@@ -337,27 +514,24 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 100,
-  },
-  section: {
-    marginBottom: 32,
+    paddingBottom: 120,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
     marginBottom: 16,
+    marginTop: 8,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   settingCard: {
-    backgroundColor: 'rgba(42, 27, 78, 0.6)',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
-    marginBottom: 12,
+    marginBottom: 24,
+    boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.3)',
+    elevation: 4,
   },
   settingRow: {
     flexDirection: 'row',
@@ -380,27 +554,41 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
     marginBottom: 2,
   },
   settingDescription: {
     fontSize: 12,
-    color: '#B0B0B0',
     fontFamily: 'SpaceMono',
   },
   settingDivider: {
     height: 1,
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
     marginVertical: 12,
   },
+  textSizeContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  textSizeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textSizeLabel: {
+    fontFamily: 'SpaceMono',
+    fontWeight: '600',
+  },
   infoCard: {
-    backgroundColor: 'rgba(42, 27, 78, 0.6)',
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
     marginBottom: 12,
+    boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.3)',
+    elevation: 4,
   },
   infoRow: {
     flexDirection: 'row',
@@ -410,32 +598,26 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
-    color: '#B0B0B0',
     fontFamily: 'SpaceMono',
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
   },
   infoDivider: {
     height: 1,
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
     marginVertical: 8,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(42, 27, 78, 0.6)',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
     marginBottom: 12,
-  },
-  dangerButton: {
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.3)',
+    elevation: 4,
   },
   actionButtonEmoji: {
     fontSize: 32,
@@ -447,20 +629,20 @@ const styles = StyleSheet.create({
   actionButtonTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
     marginBottom: 4,
   },
   actionButtonSubtitle: {
     fontSize: 12,
-    color: '#B0B0B0',
     fontFamily: 'SpaceMono',
   },
   aboutText: {
     fontSize: 14,
-    color: '#B0B0B0',
     lineHeight: 22,
     fontFamily: 'SpaceMono',
     marginBottom: 16,
+  },
+  bottomSpacer: {
+    height: 40,
   },
 });

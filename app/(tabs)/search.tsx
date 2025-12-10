@@ -1,23 +1,40 @@
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Clipboard, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { paranormalFacts } from '@/data/paranormal/facts';
 import { getAllTopics } from '@/data/paranormal/categories';
+import { storage } from '@/utils/storage';
+import { HapticFeedback } from '@/utils/haptics';
 
 export default function SearchScreen() {
-  const theme = useAppTheme();
+  const { theme, textScale } = useAppTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
 
-  const handleSearch = (query: string) => {
+  useEffect(() => {
+    loadSearchHistory();
+  }, []);
+
+  const loadSearchHistory = async () => {
+    const history = await storage.getSearchHistory();
+    setSearchHistory(history);
+  };
+
+  const handleSearch = async (query: string) => {
     setSearchQuery(query);
     
     if (query.trim() === '') {
       setSearchResults([]);
       return;
+    }
+
+    if (query.trim().length >= 2) {
+      await storage.saveSearchHistory(query.trim());
+      await loadSearchHistory();
     }
 
     const lowerQuery = query.toLowerCase();
@@ -33,6 +50,18 @@ export default function SearchScreen() {
     ).map(topic => ({ ...topic, type: 'topic' }));
 
     setSearchResults([...factResults.slice(0, 15), ...topicResults.slice(0, 15)]);
+  };
+
+  const handleCopyToClipboard = (text: string) => {
+    HapticFeedback.success();
+    Clipboard.setString(text);
+    Alert.alert('Copied!', 'Text copied to clipboard');
+  };
+
+  const handleClearHistory = async () => {
+    HapticFeedback.medium();
+    await storage.clearSearchHistory();
+    setSearchHistory([]);
   };
 
   const highlightText = (text: string, query: string) => {
@@ -63,19 +92,21 @@ export default function SearchScreen() {
       >
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Search</Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={[styles.headerTitle, { color: theme.colors.textPrimary, fontSize: 36 * textScale }]}>
+              Search
+            </Text>
+            <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
               Discover paranormal mysteries
             </Text>
           </View>
 
           <View style={styles.searchContainer}>
-            <View style={styles.searchInputContainer}>
+            <View style={[styles.searchInputContainer, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
               <Text style={styles.searchIcon}>🔍</Text>
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}
                 placeholder="Search facts, topics, mysteries..."
-                placeholderTextColor="#808080"
+                placeholderTextColor={theme.colors.textSecondary}
                 value={searchQuery}
                 onChangeText={handleSearch}
                 autoCapitalize="none"
@@ -98,44 +129,98 @@ export default function SearchScreen() {
             showsVerticalScrollIndicator={false}
           >
             {searchQuery.trim() === '' ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyEmoji}>🔮</Text>
-                <Text style={styles.emptyTitle}>Start Searching</Text>
-                <Text style={styles.emptyText}>
-                  Search through {paranormalFacts.length} paranormal facts and mysteries
-                </Text>
-              </View>
+              <>
+                {searchHistory.length > 0 && (
+                  <View style={styles.historySection}>
+                    <View style={styles.historySectionHeader}>
+                      <Text style={[styles.historySectionTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
+                        Recent Searches
+                      </Text>
+                      <TouchableOpacity onPress={handleClearHistory}>
+                        <Text style={[styles.clearHistoryText, { color: theme.colors.violet, fontSize: 13 * textScale }]}>
+                          Clear
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    {searchHistory.map((item, index) => (
+                      <React.Fragment key={index}>
+                        <TouchableOpacity
+                          style={[styles.historyItem, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
+                          onPress={() => handleSearch(item)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.historyIcon}>🕐</Text>
+                          <Text style={[styles.historyText, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+                            {item}
+                          </Text>
+                        </TouchableOpacity>
+                      </React.Fragment>
+                    ))}
+                  </View>
+                )}
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyEmoji}>🔮</Text>
+                  <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary, fontSize: 24 * textScale }]}>
+                    Start Searching
+                  </Text>
+                  <Text style={[styles.emptyText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    Search through {paranormalFacts.length} paranormal facts and mysteries
+                  </Text>
+                </View>
+              </>
             ) : searchResults.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyEmoji}>👻</Text>
-                <Text style={styles.emptyTitle}>No Results Found</Text>
-                <Text style={styles.emptyText}>
+                <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary, fontSize: 24 * textScale }]}>
+                  No Results Found
+                </Text>
+                <Text style={[styles.emptyText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
                   Try searching for something else
                 </Text>
               </View>
             ) : (
               <>
-                <Text style={styles.resultsCount}>
+                <Text style={[styles.resultsCount, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]}>
                   {searchResults.length} results found
                 </Text>
                 {searchResults.map((result, index) => (
                   <React.Fragment key={index}>
                     {result.type === 'fact' ? (
-                      <View style={[styles.resultCard, { borderLeftColor: result.color }]}>
-                        <Text style={[styles.resultType, { color: result.color }]}>
-                          FACT • {result.categoryName}
-                        </Text>
-                        <Text style={styles.resultText}>
+                      <View style={[styles.resultCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border, borderLeftColor: result.color }]}>
+                        <View style={styles.resultHeader}>
+                          <Text style={[styles.resultType, { color: result.color, fontSize: 10 * textScale }]}>
+                            FACT • {result.categoryName}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => handleCopyToClipboard(result.fact)}
+                            style={styles.copyButton}
+                          >
+                            <Text style={styles.copyIcon}>📋</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <Text style={[styles.resultText, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
                           {highlightText(result.fact, searchQuery)}
                         </Text>
                       </View>
                     ) : (
-                      <View style={styles.resultCard}>
-                        <Text style={styles.resultType}>TOPIC</Text>
-                        <Text style={styles.resultTitle}>
+                      <View style={[styles.resultCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
+                        <View style={styles.resultHeader}>
+                          <Text style={[styles.resultType, { color: theme.colors.violet, fontSize: 10 * textScale }]}>
+                            TOPIC
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => handleCopyToClipboard(`${result.name}: ${result.description}`)}
+                            style={styles.copyButton}
+                          >
+                            <Text style={styles.copyIcon}>📋</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <Text style={[styles.resultTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
                           {highlightText(result.name, searchQuery)}
                         </Text>
-                        <Text style={styles.resultDescription}>{result.description}</Text>
+                        <Text style={[styles.resultDescription, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]}>
+                          {result.description}
+                        </Text>
                       </View>
                     )}
                   </React.Fragment>
@@ -167,7 +252,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 36,
     fontWeight: '900',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
     textShadowColor: 'rgba(139, 92, 246, 0.5)',
     textShadowOffset: { width: 0, height: 0 },
@@ -175,7 +259,6 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#B0B0B0',
     fontFamily: 'SpaceMono',
     marginTop: 4,
   },
@@ -186,10 +269,8 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(42, 27, 78, 0.8)',
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: 'rgba(139, 92, 246, 0.4)',
     paddingHorizontal: 16,
     paddingVertical: 14,
     boxShadow: '0px 4px 16px rgba(139, 92, 246, 0.3)',
@@ -202,7 +283,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
   },
   clearButton: {
@@ -219,6 +299,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 100,
   },
+  historySection: {
+    marginBottom: 24,
+  },
+  historySectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  historySectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'SpaceMono',
+  },
+  clearHistoryText: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'SpaceMono',
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+  },
+  historyIcon: {
+    fontSize: 18,
+    marginRight: 12,
+  },
+  historyText: {
+    fontSize: 14,
+    fontFamily: 'SpaceMono',
+  },
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
@@ -232,13 +347,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
     marginBottom: 12,
   },
   emptyText: {
     fontSize: 14,
-    color: '#B0B0B0',
     fontFamily: 'SpaceMono',
     textAlign: 'center',
     lineHeight: 22,
@@ -246,20 +359,23 @@ const styles = StyleSheet.create({
   },
   resultsCount: {
     fontSize: 13,
-    color: '#B0B0B0',
     fontFamily: 'SpaceMono',
     marginBottom: 16,
   },
   resultCard: {
-    backgroundColor: 'rgba(42, 27, 78, 0.6)',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
     borderLeftWidth: 4,
     boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.3)',
     elevation: 4,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   resultType: {
     fontSize: 10,
@@ -267,25 +383,26 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 8,
-    color: '#8B5CF6',
+  },
+  copyButton: {
+    padding: 4,
+  },
+  copyIcon: {
+    fontSize: 18,
   },
   resultTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
     marginBottom: 6,
   },
   resultText: {
     fontSize: 14,
-    color: '#FFFFFF',
     lineHeight: 22,
     fontFamily: 'SpaceMono',
   },
   resultDescription: {
     fontSize: 13,
-    color: '#B0B0B0',
     lineHeight: 20,
     fontFamily: 'SpaceMono',
   },

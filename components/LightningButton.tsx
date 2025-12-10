@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
@@ -18,56 +18,43 @@ interface LightningButtonProps {
 
 export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => {
   const scale = useSharedValue(1);
-  const rotate = useSharedValue(0);
-  const glowOpacity = useSharedValue(0.6);
+  const glowOpacity = useSharedValue(0.5);
 
   useEffect(() => {
     scale.value = withRepeat(
       withSequence(
-        withTiming(1.15, {
-          duration: 1200,
+        withTiming(1.1, {
+          duration: 1500,
           easing: Easing.inOut(Easing.ease),
         }),
         withTiming(1, {
-          duration: 1200,
+          duration: 1500,
           easing: Easing.inOut(Easing.ease),
         })
       ),
-      -1,
-      false
-    );
-
-    rotate.value = withRepeat(
-      withTiming(360, {
-        duration: 20000,
-        easing: Easing.linear,
-      }),
       -1,
       false
     );
 
     glowOpacity.value = withRepeat(
       withSequence(
-        withTiming(1, {
-          duration: 1000,
+        withTiming(0.9, {
+          duration: 1200,
           easing: Easing.inOut(Easing.ease),
         }),
-        withTiming(0.6, {
-          duration: 1000,
+        withTiming(0.5, {
+          duration: 1200,
           easing: Easing.inOut(Easing.ease),
         })
       ),
       -1,
       false
     );
-  }, [scale, rotate, glowOpacity]);
+  }, [scale, glowOpacity]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [
-        { scale: scale.value },
-        { rotate: `${rotate.value}deg` },
-      ],
+      transform: [{ scale: scale.value }],
     };
   });
 
@@ -89,7 +76,12 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
       activeOpacity={0.8}
     >
       <Animated.View style={[styles.glowContainer, glowStyle]}>
-        <View style={styles.glow} />
+        <LinearGradient
+          colors={['rgba(255, 215, 0, 0.4)', 'rgba(255, 165, 0, 0.2)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.glow}
+        />
       </Animated.View>
       
       <Animated.View style={animatedStyle}>
@@ -116,31 +108,30 @@ const styles = StyleSheet.create({
   },
   glowContainer: {
     position: 'absolute',
-    top: -10,
-    left: -10,
-    right: -10,
-    bottom: -10,
+    top: -15,
+    left: -15,
+    right: -15,
+    bottom: -15,
   },
   glow: {
     flex: 1,
-    borderRadius: 50,
-    backgroundColor: '#FFD700',
-    boxShadow: '0px 0px 40px rgba(255, 215, 0, 0.8)',
-    elevation: 20,
+    borderRadius: 35,
+    boxShadow: '0px 0px 30px rgba(255, 215, 0, 0.6)',
+    elevation: 15,
   },
   gradient: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    boxShadow: '0px 8px 32px rgba(255, 165, 0, 0.6)',
-    elevation: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    boxShadow: '0px 6px 24px rgba(255, 165, 0, 0.5)',
+    elevation: 10,
   },
   emoji: {
-    fontSize: 36,
+    fontSize: 28,
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,

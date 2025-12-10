@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Share } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Animated, {
@@ -20,12 +20,32 @@ interface RandomFactModalProps {
   onClose: () => void;
 }
 
+const CLOSE_BUTTON_PHRASES = [
+  'Wow, that\'s wild!',
+  'Spooky!',
+  'Wait, what?',
+  'Mind blown!',
+  'Eerie vibes!',
+  'That\'s uncanny!',
+  'Chilling revelation!',
+  'Mystical insight!',
+  'Freaky fact!',
+  'Unbelievable!',
+];
+
+const getRandomPhrase = () => {
+  const randomIndex = Math.floor(Math.random() * CLOSE_BUTTON_PHRASES.length);
+  return CLOSE_BUTTON_PHRASES[randomIndex];
+};
+
 export const RandomFactModal: React.FC<RandomFactModalProps> = ({ visible, fact, onClose }) => {
   const scale = useSharedValue(0.8);
   const opacity = useSharedValue(0);
+  const [closeButtonText, setCloseButtonText] = useState(getRandomPhrase());
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
+      setCloseButtonText(getRandomPhrase());
       scale.value = withSpring(1, {
         damping: 15,
         stiffness: 200,
@@ -52,22 +72,6 @@ export const RandomFactModal: React.FC<RandomFactModalProps> = ({ visible, fact,
       opacity: opacity.value,
     };
   });
-
-  const handleShare = async () => {
-    if (!fact) {
-      return;
-    }
-
-    try {
-      HapticFeedback.light();
-      await Share.share({
-        message: `🔮 Paranormal Fact:\n\n${fact.fact}\n\nCategory: ${fact.categoryName}`,
-        title: 'Paranormal Encyclopedia Fact',
-      });
-    } catch (error) {
-      console.error('Error sharing fact:', error);
-    }
-  };
 
   const handleClose = () => {
     HapticFeedback.light();
@@ -107,24 +111,20 @@ export const RandomFactModal: React.FC<RandomFactModalProps> = ({ visible, fact,
             <Text style={styles.factTitle}>Random Fact</Text>
             <Text style={styles.factText}>{fact.fact}</Text>
 
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[styles.button, styles.shareButton]}
-                onPress={handleShare}
-                activeOpacity={0.8}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={handleClose}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#8B5CF6', '#6366F1']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.closeButtonGradient}
               >
-                <Text style={styles.buttonIcon}>📤</Text>
-                <Text style={styles.buttonText}>Share</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.button, styles.closeButton]}
-                onPress={handleClose}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.buttonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
+                <Text style={styles.closeButtonText}>{closeButtonText}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
             <View style={[styles.cardBorder, { borderColor: fact.color + '60' }]} />
           </LinearGradient>
@@ -193,35 +193,20 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     zIndex: 2,
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: 12,
+  closeButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    boxShadow: '0px 4px 16px rgba(139, 92, 246, 0.4)',
+    elevation: 6,
     zIndex: 2,
   },
-  button: {
-    flex: 1,
-    flexDirection: 'row',
+  closeButtonGradient: {
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
   },
-  shareButton: {
-    backgroundColor: 'rgba(139, 92, 246, 0.6)',
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.8)',
-  },
-  closeButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  buttonIcon: {
-    fontSize: 18,
-  },
-  buttonText: {
-    fontSize: 14,
+  closeButtonText: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
     fontFamily: 'SpaceMono',

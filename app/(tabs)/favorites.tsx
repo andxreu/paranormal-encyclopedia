@@ -16,7 +16,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { HapticFeedback } from '@/utils/haptics';
 
 export default function FavoritesScreen() {
-  const theme = useAppTheme();
+  const { theme, textScale } = useAppTheme();
   const [favorites, setFavorites] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('date-added');
   const [showSortModal, setShowSortModal] = useState(false);
@@ -84,8 +84,10 @@ export default function FavoritesScreen() {
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <View style={styles.header}>
             <View>
-              <Text style={styles.headerTitle}>Favorites</Text>
-              <Text style={styles.headerSubtitle}>
+              <Text style={[styles.headerTitle, { color: theme.colors.textPrimary, fontSize: 32 * textScale }]}>
+                Favorites
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
                 {favorites.length} saved items
               </Text>
             </View>
@@ -100,8 +102,10 @@ export default function FavoritesScreen() {
               {favorites.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyEmoji}>⭐</Text>
-                  <Text style={styles.emptyTitle}>No Favorites Yet</Text>
-                  <Text style={styles.emptyText}>
+                  <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary, fontSize: 24 * textScale }]}>
+                    No Favorites Yet
+                  </Text>
+                  <Text style={[styles.emptyText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
                     Start exploring and save your favorite paranormal facts and topics!
                   </Text>
                 </View>
@@ -109,14 +113,16 @@ export default function FavoritesScreen() {
                 <>
                   <View style={styles.actionBar}>
                     <TouchableOpacity
-                      style={styles.sortButton}
+                      style={[styles.sortButton, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
                       onPress={() => {
                         HapticFeedback.light();
                         setShowSortModal(true);
                       }}
                     >
                       <Text style={styles.sortButtonIcon}>⇅</Text>
-                      <Text style={styles.sortButtonText}>Sort</Text>
+                      <Text style={[styles.sortButtonText, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+                        Sort
+                      </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -126,7 +132,9 @@ export default function FavoritesScreen() {
                         setShowClearModal(true);
                       }}
                     >
-                      <Text style={styles.clearButtonText}>Clear All</Text>
+                      <Text style={[styles.clearButtonText, { fontSize: 14 * textScale }]}>
+                        Clear All
+                      </Text>
                     </TouchableOpacity>
                   </View>
 
@@ -138,12 +146,14 @@ export default function FavoritesScreen() {
                         activeOpacity={0.8}
                       >
                         <LinearGradient
-                          colors={['rgba(42, 27, 78, 0.8)', 'rgba(26, 11, 46, 0.6)']}
+                          colors={[theme.colors.cardBg, theme.colors.cardBgTranslucent]}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
-                          style={styles.favoriteCardGradient}
+                          style={[styles.favoriteCardGradient, { borderColor: theme.colors.border }]}
                         >
-                          <Text style={styles.favoriteText}>{favorite}</Text>
+                          <Text style={[styles.favoriteText, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+                            {favorite}
+                          </Text>
                         </LinearGradient>
                       </TouchableOpacity>
                     </React.Fragment>
@@ -197,7 +207,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 32,
     fontWeight: '900',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
     textShadowColor: 'rgba(139, 92, 246, 0.5)',
     textShadowOffset: { width: 0, height: 0 },
@@ -205,7 +214,6 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#B0B0B0',
     fontFamily: 'SpaceMono',
     marginTop: 4,
   },
@@ -229,9 +237,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.4)',
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -244,7 +250,6 @@ const styles = StyleSheet.create({
   sortButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
   },
   clearButton: {
@@ -277,13 +282,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
     fontFamily: 'SpaceMono',
     marginBottom: 12,
   },
   emptyText: {
     fontSize: 14,
-    color: '#B0B0B0',
     fontFamily: 'SpaceMono',
     textAlign: 'center',
     lineHeight: 22,
@@ -299,12 +302,10 @@ const styles = StyleSheet.create({
   favoriteCardGradient: {
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
     borderRadius: 16,
   },
   favoriteText: {
     fontSize: 14,
-    color: '#FFFFFF',
     lineHeight: 22,
     fontFamily: 'SpaceMono',
   },

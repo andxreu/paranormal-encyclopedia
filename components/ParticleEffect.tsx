@@ -5,59 +5,91 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
+  withSequence,
   withTiming,
   withDelay,
   Easing,
 } from 'react-native-reanimated';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
-interface Particle {
-  id: number;
-  x: number;
-  y: number;
-  size: number;
-  duration: number;
+interface ParticleProps {
   delay: number;
+  duration: number;
+  color: string;
+  size: number;
+  startX: number;
+  startY: number;
+  opacity: number;
 }
 
-interface ParticleEffectProps {
-  count?: number;
-  color?: string;
-}
-
-const ParticleItem: React.FC<{ particle: Particle; color: string }> = ({ particle, color }) => {
-  const opacity = useSharedValue(0);
+const Particle: React.FC<ParticleProps> = ({ delay, duration, color, size, startX, startY, opacity: baseOpacity }) => {
   const translateY = useSharedValue(0);
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.5);
 
   useEffect(() => {
-    opacity.value = withDelay(
-      particle.delay,
+    translateY.value = withDelay(
+      delay,
       withRepeat(
-        withTiming(1, {
-          duration: particle.duration / 2,
-          easing: Easing.inOut(Easing.ease),
-        }),
+        withSequence(
+          withTiming(-30, {
+            duration: duration,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          withTiming(0, {
+            duration: duration,
+            easing: Easing.inOut(Easing.ease),
+          })
+        ),
         -1,
-        true
+        false
       )
     );
 
-    translateY.value = withDelay(
-      particle.delay,
+    opacity.value = withDelay(
+      delay,
       withRepeat(
-        withTiming(-20, {
-          duration: particle.duration,
-          easing: Easing.inOut(Easing.ease),
-        }),
+        withSequence(
+          withTiming(baseOpacity, {
+            duration: duration / 2,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          withTiming(0, {
+            duration: duration / 2,
+            easing: Easing.inOut(Easing.ease),
+          })
+        ),
         -1,
-        true
+        false
       )
     );
-  }, [opacity, translateY, particle.delay, particle.duration]);
+
+    scale.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withTiming(1, {
+            duration: duration / 2,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          withTiming(0.5, {
+            duration: duration / 2,
+            easing: Easing.inOut(Easing.ease),
+          })
+        ),
+        -1,
+        false
+      )
+    );
+  }, [delay, duration, translateY, opacity, scale, baseOpacity]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
+      transform: [
+        { translateY: translateY.value },
+        { scale: scale.value },
+      ],
       opacity: opacity.value,
-      transform: [{ translateY: translateY.value }],
     };
   });
 
@@ -66,11 +98,12 @@ const ParticleItem: React.FC<{ particle: Particle; color: string }> = ({ particl
       style={[
         styles.particle,
         {
-          left: particle.x,
-          top: particle.y,
-          width: particle.size,
-          height: particle.size,
           backgroundColor: color,
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          left: startX,
+          top: startY,
         },
         animatedStyle,
       ]}
@@ -78,23 +111,35 @@ const ParticleItem: React.FC<{ particle: Particle; color: string }> = ({ particl
   );
 };
 
-export const ParticleEffect: React.FC<ParticleEffectProps> = ({
-  count = 8,
-  color = 'rgba(139, 92, 246, 0.6)',
-}) => {
-  const particles: Particle[] = Array.from({ length: count }, (_, i) => ({
+interface ParticleEffectProps {
+  count?: number;
+  color?: string;
+}
+
+export const ParticleEffect: React.FC<ParticleEffectProps> = ({ count = 8, color = 'rgba(139, 92, 246, 0.6)' }) => {
+  const { theme } = useAppTheme();
+  const particles = Array.from({ length: count }, (_, i) => ({
     id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 4 + 2,
-    duration: Math.random() * 2000 + 2000,
-    delay: Math.random() * 1000,
+    delay: Math.random() * 2000,
+    duration: 2000 + Math.random() * 2000,
+    size: 3 + Math.random() * 4,
+    startX: Math.random() * 100,
+    startY: Math.random() * 100,
   }));
 
   return (
     <View style={styles.container}>
       {particles.map((particle) => (
-        <ParticleItem key={particle.id} particle={particle} color={color} />
+        <Particle
+          key={particle.id}
+          delay={particle.delay}
+          duration={particle.duration}
+          color={color}
+          size={particle.size}
+          startX={particle.startX}
+          startY={particle.startY}
+          opacity={theme.colors.particleOpacity * 0.8}
+        />
       ))}
     </View>
   );
@@ -108,7 +153,7 @@ const styles = StyleSheet.create({
   },
   particle: {
     position: 'absolute',
-    borderRadius: 100,
-    boxShadow: '0px 0px 8px rgba(139, 92, 246, 0.8)',
+    boxShadow: '0px 0px 8px rgba(139, 92, 246, 0.6)',
+    elevation: 4,
   },
 });

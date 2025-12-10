@@ -8,6 +8,9 @@ const STORAGE_KEYS = {
   LAST_SYNC: '@paranormal_last_sync',
   ONBOARDING_COMPLETE: '@paranormal_onboarding_complete',
   SETTINGS: '@paranormal_settings',
+  SEARCH_HISTORY: '@paranormal_search_history',
+  THEME_PREFERENCE: '@theme_preference',
+  TEXT_SCALE: '@text_scale',
 };
 
 export interface AppSettings {
@@ -15,6 +18,8 @@ export interface AppSettings {
   soundsEnabled: boolean;
   hapticsEnabled: boolean;
   themeVariant: 'default' | 'dark' | 'cosmic';
+  ambientSoundEnabled: boolean;
+  dailyNotificationsEnabled: boolean;
 }
 
 const defaultSettings: AppSettings = {
@@ -22,6 +27,8 @@ const defaultSettings: AppSettings = {
   soundsEnabled: true,
   hapticsEnabled: true,
   themeVariant: 'default',
+  ambientSoundEnabled: false,
+  dailyNotificationsEnabled: false,
 };
 
 export const storage = {
@@ -64,6 +71,25 @@ export const storage = {
       console.log('All storage cleared');
     } catch (error) {
       console.error('Error clearing storage', error);
+    }
+  },
+
+  async getCacheSize(): Promise<number> {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      let totalSize = 0;
+      
+      for (const key of keys) {
+        const value = await AsyncStorage.getItem(key);
+        if (value) {
+          totalSize += value.length;
+        }
+      }
+      
+      return totalSize;
+    } catch (error) {
+      console.error('Error calculating cache size:', error);
+      return 0;
     }
   },
 
@@ -143,5 +169,24 @@ export const storage = {
     const settings = await this.getSettings();
     settings[key] = value;
     await this.saveSettings(settings);
+  },
+
+  async saveSearchHistory(query: string): Promise<void> {
+    try {
+      const history = await this.getSearchHistory();
+      const updatedHistory = [query, ...history.filter(q => q !== query)].slice(0, 20);
+      await this.saveData(STORAGE_KEYS.SEARCH_HISTORY, updatedHistory);
+    } catch (error) {
+      console.error('Error saving search history:', error);
+    }
+  },
+
+  async getSearchHistory(): Promise<string[]> {
+    const history = await this.getData<string[]>(STORAGE_KEYS.SEARCH_HISTORY);
+    return history || [];
+  },
+
+  async clearSearchHistory(): Promise<void> {
+    await this.removeData(STORAGE_KEYS.SEARCH_HISTORY);
   },
 };
