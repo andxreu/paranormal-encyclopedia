@@ -167,9 +167,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     fontFamily: 'SpaceMono',
-    textShadowColor: 'rgba(139, 92, 246, 0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
+    textShadow: '0px 0px 8px rgba(139, 92, 246, 0.5)',
   },
   rerollButton: {
     backgroundColor: 'rgba(139, 92, 246, 0.3)',
@@ -218,9 +216,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: 'SpaceMono',
     marginBottom: 6,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadow: '0px 1px 2px rgba(0, 0, 0, 0.3)',
   },
   cardDescription: {
     fontSize: 13,

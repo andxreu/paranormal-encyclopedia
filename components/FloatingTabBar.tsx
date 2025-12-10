@@ -195,7 +195,7 @@ export default function FloatingTabBar({ tabs, containerWidth = 380 }: FloatingT
       <BlurView intensity={80} tint={theme.colors.background === '#F5F3FF' ? 'light' : 'dark'} style={styles.blurContainer}>
         <View style={[styles.tabBar, { backgroundColor: theme.colors.cardBg }]}>
           {tabs.map((item, index) => (
-            <React.Fragment key={index}>
+            <React.Fragment key={`tab-${item.name}-${index}`}>
               <TabButton
                 item={item}
                 isActive={isTabActive(item.name)}

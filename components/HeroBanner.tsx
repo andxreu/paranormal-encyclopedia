@@ -49,8 +49,7 @@ export const HeroBanner: React.FC = () => {
       -1,
       false
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [opacity, scale]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {

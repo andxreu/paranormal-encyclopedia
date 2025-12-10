@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -25,9 +25,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
   const suggestionsHeight = useSharedValue(0);
   const suggestionsOpacity = useSharedValue(0);
 
-  useEffect(() => {
-    if (searchQuery.trim().length > 1) {
-      const lowerQuery = searchQuery.toLowerCase();
+  const updateSuggestions = useCallback((query: string) => {
+    if (query.trim().length > 1) {
+      const lowerQuery = query.toLowerCase();
       
       const factResults = paranormalFacts
         .filter(fact =>
@@ -69,8 +69,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
         easing: Easing.inOut(Easing.ease),
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery]);
+  }, [suggestionsHeight, suggestionsOpacity]);
+
+  useEffect(() => {
+    updateSuggestions(searchQuery);
+  }, [searchQuery, updateSuggestions]);
 
   const animatedSuggestionsStyle = useAnimatedStyle(() => {
     return {
@@ -142,13 +145,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
           >
             {suggestions.map((result, index) => (
               <TouchableOpacity
-                key={index}
+                key={`suggestion-${result.type}-${index}`}
                 style={styles.suggestionItem}
                 onPress={() => handleResultPress(result)}
                 activeOpacity={0.7}
               >
                 {result.type === 'fact' ? (
-                  <>
+                  <React.Fragment>
                     <View style={[styles.suggestionBadge, { backgroundColor: result.color + '40' }]}>
                       <Text style={[styles.suggestionBadgeText, { color: result.color }]}>
                         {result.categoryName}
@@ -157,16 +160,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
                     <Text style={styles.suggestionText} numberOfLines={2}>
                       {highlightText(result.fact, searchQuery)}
                     </Text>
-                  </>
+                  </React.Fragment>
                 ) : (
-                  <>
+                  <React.Fragment>
                     <Text style={styles.suggestionTitle}>
                       {highlightText(result.name, searchQuery)}
                     </Text>
                     <Text style={styles.suggestionDescription} numberOfLines={1}>
                       {result.description}
                     </Text>
-                  </>
+                  </React.Fragment>
                 )}
               </TouchableOpacity>
             ))}

@@ -117,9 +117,7 @@ const styles = StyleSheet.create({
   icon: {
     fontSize: 52,
     marginBottom: 12,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    textShadow: '0px 2px 4px rgba(0, 0, 0, 0.5)',
   },
   name: {
     fontSize: 15,
@@ -127,9 +125,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     fontFamily: 'SpaceMono',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadow: '0px 1px 3px rgba(0, 0, 0, 0.5)',
   },
   glowBorder: {
     position: 'absolute',

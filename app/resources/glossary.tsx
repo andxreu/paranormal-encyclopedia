@@ -89,7 +89,7 @@ export default function GlossaryScreen() {
               
               {sortedGlossary.map((entry, index) => (
                 <Animated.View
-                  key={`glossary-${entry.id}`}
+                  key={`glossary-entry-${entry.id}`}
                   entering={FadeIn.delay(index * 80).duration(400)}
                   style={styles.entryCardWrapper}
                 >
@@ -206,9 +206,7 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     textAlign: 'center',
     marginBottom: 8,
-    textShadowColor: 'rgba(139, 92, 246, 0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+    textShadow: '0px 0px 10px rgba(139, 92, 246, 0.5)',
   },
   headerSubtitle: {
     fontSize: 14,

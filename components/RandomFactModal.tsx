@@ -163,9 +163,7 @@ const styles = StyleSheet.create({
   },
   lightningIcon: {
     fontSize: 36,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    textShadow: '0px 2px 4px rgba(0, 0, 0, 0.5)',
   },
   categoryBadge: {
     fontSize: 12,
@@ -180,9 +178,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: 'SpaceMono',
     marginBottom: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    textShadow: '0px 2px 4px rgba(0, 0, 0, 0.5)',
     zIndex: 2,
   },
   factText: {

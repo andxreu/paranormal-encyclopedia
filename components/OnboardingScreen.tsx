@@ -142,7 +142,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
           <View style={styles.pagination}>
             {features.map((_, index) => (
               <View
-                key={index}
+                key={`pagination-dot-${index}`}
                 style={[
                   styles.paginationDot,
                   index === currentStep && styles.paginationDotActive,
@@ -209,9 +209,7 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 80,
     marginBottom: 20,
-    textShadowColor: 'rgba(139, 92, 246, 0.8)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
+    textShadow: '0px 0px 20px rgba(139, 92, 246, 0.8)',
   },
   title: {
     fontSize: 32,
@@ -219,9 +217,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 4,
     fontFamily: 'SpaceMono',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
+    textShadow: '0px 2px 8px rgba(0, 0, 0, 0.5)',
   },
   subtitle: {
     fontSize: 16,
@@ -240,9 +236,7 @@ const styles = StyleSheet.create({
   featureIcon: {
     fontSize: 100,
     marginBottom: 24,
-    textShadowColor: 'rgba(139, 92, 246, 0.6)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 16,
+    textShadow: '0px 0px 16px rgba(139, 92, 246, 0.6)',
   },
   featureTitle: {
     fontSize: 28,
@@ -251,9 +245,7 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     marginBottom: 16,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    textShadow: '0px 2px 4px rgba(0, 0, 0, 0.5)',
   },
   featureDescription: {
     fontSize: 16,
