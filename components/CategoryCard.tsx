@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -21,41 +21,39 @@ interface CategoryCardProps {
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 60) / 2;
 
-export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress }) => {
+export const CategoryCard = memo<CategoryCardProps>(({ category, onPress }) => {
   const { theme } = useAppTheme();
   const router = useRouter();
   const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{ scale: scale.value }],
-      opacity: opacity.value,
     };
   });
 
-  const handlePressIn = () => {
+  const handlePressIn = useCallback(() => {
     HapticFeedback.soft();
     scale.value = withSpring(0.95, {
       damping: 15,
       stiffness: 300,
     });
-  };
+  }, [scale]);
 
-  const handlePressOut = () => {
+  const handlePressOut = useCallback(() => {
     scale.value = withSpring(1, {
       damping: 15,
       stiffness: 300,
     });
-  };
+  }, [scale]);
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     HapticFeedback.light();
     if (onPress) {
       onPress();
     }
-    router.push(`/explore/${category.id}`);
-  };
+    router.push(`/explore/${category.id}` as never);
+  }, [onPress, router, category.id]);
 
   return (
     <TouchableOpacity
@@ -70,25 +68,27 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
     >
       <Animated.View style={animatedStyle}>
         <LinearGradient
-          colors={[category.color + '60', category.color + '20', 'rgba(42, 27, 78, 0.4)']}
+          colors={[category.color + '60', category.color + '20', theme.colors.glassBg]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.gradient, { 
-            boxShadow: `0px 0px 20px ${category.color}40`,
+            boxShadow: `0 0 20px ${category.color}40`,
           }]}
         >
           <ParticleEffect count={3} color={category.color + '50'} />
           
           <View style={styles.content}>
             <Text style={styles.icon}>{category.icon}</Text>
-            <Text style={styles.name}>{category.name}</Text>
+            <Text style={[styles.name, { color: theme.colors.textPrimary }]}>{category.name}</Text>
           </View>
-          <View style={[styles.glowBorder, { borderColor: category.color + '60' }]} />
+          <View style={[styles.glowBorder, { borderColor: category.color + '80' }]} />
         </LinearGradient>
       </Animated.View>
     </TouchableOpacity>
   );
-};
+});
+
+CategoryCard.displayName = 'CategoryCard';
 
 const styles = StyleSheet.create({
   container: {
@@ -117,15 +117,18 @@ const styles = StyleSheet.create({
   icon: {
     fontSize: 52,
     marginBottom: 12,
-    textShadow: '0px 2px 4px rgba(0, 0, 0, 0.5)',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   name: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
     textAlign: 'center',
     fontFamily: 'SpaceMono',
-    textShadow: '0px 1px 3px rgba(0, 0, 0, 0.5)',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   glowBorder: {
     position: 'absolute',
@@ -135,6 +138,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 20,
     borderWidth: 2,
-    opacity: 0.3,
+    opacity: 0.4,
   },
 });

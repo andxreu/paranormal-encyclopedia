@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { Appearance, ColorSchemeName } from 'react-native';
 import { cosmicColors } from '@/constants/Colors';
 import { storage } from '@/utils/storage';
@@ -20,6 +20,8 @@ interface ThemeColors {
   glow: string;
   shadow: string;
   particleOpacity: number;
+  glassBg: string;
+  glassBlur: number;
 }
 
 interface Theme {
@@ -51,7 +53,12 @@ const darkTheme: Theme = {
   colors: {
     background: cosmicColors.purpleBlack,
     backgroundAlt: cosmicColors.darkPurple,
-    backgroundGradient: [cosmicColors.purpleBlack, cosmicColors.darkPurple, cosmicColors.deepViolet],
+    backgroundGradient: [
+      cosmicColors.purpleBlack,
+      cosmicColors.darkPurple,
+      cosmicColors.deepViolet,
+      cosmicColors.cosmicPurple,
+    ],
     gold: cosmicColors.starGold,
     indigo: '#6366F1',
     violet: '#8B5CF6',
@@ -63,7 +70,9 @@ const darkTheme: Theme = {
     border: 'rgba(139, 92, 246, 0.3)',
     glow: 'rgba(139, 92, 246, 0.5)',
     shadow: 'rgba(0, 0, 0, 0.5)',
-    particleOpacity: 1,
+    particleOpacity: 0.8,
+    glassBg: 'rgba(42, 27, 78, 0.3)',
+    glassBlur: 20,
   },
   fontFamily: 'SpaceMono',
   borderRadius: {
@@ -82,21 +91,28 @@ const darkTheme: Theme = {
 
 const lightTheme: Theme = {
   colors: {
-    background: '#E8E4F3',
-    backgroundAlt: '#D6CFEB',
-    backgroundGradient: ['#E8E4F3', '#D6CFEB', '#C4BAE3'],
-    gold: '#9A7B0A',
+    background: '#F3EFFF',
+    backgroundAlt: '#E8E0FF',
+    backgroundGradient: [
+      '#F3EFFF',
+      '#E8E0FF',
+      '#DDD1FF',
+      '#D2C2FF',
+    ],
+    gold: '#B8860B',
     indigo: '#4338CA',
-    violet: '#6D28D9',
+    violet: '#7C3AED',
     white: '#1F1F1F',
     textPrimary: '#1F1F1F',
     textSecondary: '#4B5563',
-    cardBg: 'rgba(255, 255, 255, 0.9)',
-    cardBgTranslucent: 'rgba(255, 255, 255, 0.7)',
-    border: 'rgba(109, 40, 217, 0.4)',
-    glow: 'rgba(109, 40, 217, 0.4)',
+    cardBg: 'rgba(255, 255, 255, 0.85)',
+    cardBgTranslucent: 'rgba(255, 255, 255, 0.65)',
+    border: 'rgba(124, 58, 237, 0.4)',
+    glow: 'rgba(124, 58, 237, 0.4)',
     shadow: 'rgba(0, 0, 0, 0.15)',
-    particleOpacity: 0.5,
+    particleOpacity: 0.4,
+    glassBg: 'rgba(255, 255, 255, 0.5)',
+    glassBlur: 15,
   },
   fontFamily: 'SpaceMono',
   borderRadius: {
@@ -113,15 +129,9 @@ const lightTheme: Theme = {
   },
 };
 
-const ThemeContext = createContext<ThemeContextType>({
-  theme: darkTheme,
-  colorScheme: 'dark',
-  toggleTheme: () => console.warn('No theme provider'),
-  textScale: 1,
-  setTextScale: () => console.warn('No theme provider'),
-});
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export const useAppTheme = () => {
+export const useAppTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
   if (!context) {
     throw new Error('useAppTheme must be used within a ThemeProvider');
@@ -137,18 +147,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [colorScheme, setColorScheme] = useState<'light' | 'dark'>('dark');
   const [textScale, setTextScaleState] = useState<number>(1);
 
-  useEffect(() => {
-    loadThemePreferences();
-    
-    const subscription = Appearance.addChangeListener(({ colorScheme: newColorScheme }) => {
-      console.log('System color scheme changed:', newColorScheme);
-      loadThemePreferences();
-    });
-
-    return () => subscription.remove();
-  }, []);
-
-  const loadThemePreferences = async () => {
+  const loadThemePreferences = useCallback(async () => {
     try {
       const savedTheme = await storage.getData<'light' | 'dark'>('@theme_preference');
       const savedTextScale = await storage.getData<number>('@text_scale');
@@ -166,18 +165,29 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Error loading theme preferences:', error);
     }
-  };
+  }, []);
 
-  const toggleTheme = async () => {
+  useEffect(() => {
+    loadThemePreferences();
+    
+    const subscription = Appearance.addChangeListener(({ colorScheme: newColorScheme }) => {
+      console.log('System color scheme changed:', newColorScheme);
+      loadThemePreferences();
+    });
+
+    return () => subscription.remove();
+  }, [loadThemePreferences]);
+
+  const toggleTheme = useCallback(async () => {
     const newScheme = colorScheme === 'dark' ? 'light' : 'dark';
     setColorScheme(newScheme);
     await storage.saveData('@theme_preference', newScheme);
-  };
+  }, [colorScheme]);
 
-  const setTextScale = async (scale: number) => {
+  const setTextScale = useCallback(async (scale: number) => {
     setTextScaleState(scale);
     await storage.saveData('@text_scale', scale);
-  };
+  }, []);
 
   const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
 
