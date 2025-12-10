@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { ScrollView, StyleSheet, View, RefreshControl } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -33,29 +33,7 @@ export default function HomeScreen() {
 
   const fadeOpacity = useSharedValue(0);
 
-  useEffect(() => {
-    initializeApp();
-  }, []);
-
-  const initializeApp = async () => {
-    try {
-      console.log('Initializing app...');
-      
-      const onboardingComplete = await storage.isOnboardingComplete();
-      if (!onboardingComplete) {
-        setShowOnboarding(true);
-        setIsLoading(false);
-        return;
-      }
-
-      await loadData();
-    } catch (error) {
-      console.error('Error initializing app:', error);
-      setIsLoading(false);
-    }
-  };
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       await storage.saveCategories(categories);
       await storage.saveLastSync();
@@ -71,7 +49,29 @@ export default function HomeScreen() {
       console.error('Error loading data:', error);
       setIsLoading(false);
     }
-  };
+  }, [fadeOpacity]);
+
+  const initializeApp = useCallback(async () => {
+    try {
+      console.log('Initializing app...');
+      
+      const onboardingComplete = await storage.isOnboardingComplete();
+      if (!onboardingComplete) {
+        setShowOnboarding(true);
+        setIsLoading(false);
+        return;
+      }
+
+      await loadData();
+    } catch (error) {
+      console.error('Error initializing app:', error);
+      setIsLoading(false);
+    }
+  }, [loadData]);
+
+  useEffect(() => {
+    initializeApp();
+  }, [initializeApp]);
 
   const handleOnboardingComplete = async () => {
     await storage.setOnboardingComplete(true);

@@ -1,10 +1,6 @@
 
 import { categoryColors } from '@/constants/Colors';
-
-export interface TopicSection {
-  title: string;
-  content: string;
-}
+import { TopicSection } from './types';
 
 export interface PsychicTopic {
   id: string;

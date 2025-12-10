@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -105,11 +105,7 @@ export default function CategoryScreen() {
 
   const fadeOpacity = useSharedValue(0);
 
-  useEffect(() => {
-    loadCategoryData();
-  }, [categoryId]);
-
-  const loadCategoryData = () => {
+  const loadCategoryData = useCallback(() => {
     if (!categoryId) return;
 
     const categoryData = getCategoryById(categoryId as string);
@@ -122,7 +118,11 @@ export default function CategoryScreen() {
       duration: 600,
       easing: Easing.inOut(Easing.ease),
     });
-  };
+  }, [categoryId, fadeOpacity]);
+
+  useEffect(() => {
+    loadCategoryData();
+  }, [loadCategoryData]);
 
   const handleTopicPress = (topic: any) => {
     HapticFeedback.light();

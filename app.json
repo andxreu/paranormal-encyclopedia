@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Darklore Insights",
-    "slug": "Darklore Insights",
+    "name": "Paranormal Encyclopedia",
+    "slug": "Paranormal Encyclopedia",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
@@ -44,5 +44,5 @@
       "router": {}
     }
   },
-  "scheme": "Darklore Insights"
+  "scheme": "Paranormal Encyclopedia"
 }
