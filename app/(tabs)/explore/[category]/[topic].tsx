@@ -18,7 +18,7 @@ import { getCategoryTopics } from '@/data/paranormal';
 import { getRandomFact } from '@/data/paranormal/facts';
 import { ParticleEffect } from '@/components/ParticleEffect';
 import { RandomFactModal } from '@/components/RandomFactModal';
-import { LightningButton } from '@/components/LightningButton';
+import { FloatingOracleButton } from '@/components/FloatingOracleButton';
 import { FloatingRankOrb } from '@/components/FloatingRankOrb';
 import { GothicConfetti } from '@/components/GothicConfetti';
 import { RankUpModal } from '@/components/RankUpModal';
@@ -267,14 +267,18 @@ export default function TopicDetailScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  onPress={handleToggleFavorite} 
-                  style={styles.iconButton}
-                  accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
-                </TouchableOpacity>
+                <View style={styles.headerButtons}>
+                  <FloatingOracleButton onPress={handleOraclePress} />
+                  <View style={styles.buttonSpacer} />
+                  <TouchableOpacity 
+                    onPress={handleToggleFavorite} 
+                    style={styles.iconButton}
+                    accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
               
               <View style={styles.headerContent}>
@@ -318,7 +322,6 @@ export default function TopicDetailScreen() {
             </ScrollView>
 
             <FloatingRankOrb />
-            <LightningButton onPress={handleOraclePress} />
 
             <RandomFactModal
               visible={showOracleModal}
@@ -376,6 +379,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'SpaceMono',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  buttonSpacer: {
+    width: 12,
   },
   iconButton: {
     width: 36,

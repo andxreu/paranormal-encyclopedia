@@ -12,9 +12,6 @@ import Animated, {
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { categories, Category } from '@/data/paranormal/categories';
 import { ParticleEffect } from '@/components/ParticleEffect';
-import { LightningButton } from '@/components/LightningButton';
-import { RandomFactModal } from '@/components/RandomFactModal';
-import { getRandomFact, ParanormalFact } from '@/data/paranormal/facts';
 import { HapticFeedback } from '@/utils/haptics';
 
 const { width } = Dimensions.get('window');
@@ -91,20 +88,11 @@ export default function ExploreScreen() {
   const { theme, textScale } = useAppTheme();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  const [showFactModal, setShowFactModal] = useState(false);
-  const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
 
   const handleCategoryPress = (category: Category) => {
     HapticFeedback.light();
     console.log('Category pressed:', category.name);
     router.push(`/explore/${category.id}` as any);
-  };
-
-  const handleLightningPress = () => {
-    HapticFeedback.medium();
-    const randomFact = getRandomFact();
-    setCurrentFact(randomFact);
-    setShowFactModal(true);
   };
 
   const onRefresh = async () => {
@@ -169,14 +157,6 @@ export default function ExploreScreen() {
 
             <View style={styles.bottomSpacer} />
           </ScrollView>
-
-          <LightningButton onPress={handleLightningPress} />
-
-          <RandomFactModal
-            visible={showFactModal}
-            fact={currentFact}
-            onClose={() => setShowFactModal(false)}
-          />
         </SafeAreaView>
       </LinearGradient>
     </View>

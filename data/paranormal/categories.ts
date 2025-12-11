@@ -114,7 +114,7 @@ export const categories: Category[] = [
     code: 'FL',
     name: 'Folklore',
     color: categoryColors.folklore,
-    icon: '🦅',
+    icon: '🎃',
     description: 'Myths, legends, and traditional tales from around the world',
     topics: [
       { id: 'fl-1', name: 'Vampires', description: 'The immortal blood-drinking creatures of the night', categoryId: 'folklore' },
@@ -144,7 +144,7 @@ export const categories: Category[] = [
     code: 'PE',
     name: 'People',
     color: categoryColors.people,
-    icon: '🥷',
+    icon: '💀',
     description: 'Mysterious figures and enigmatic individuals',
     topics: [
       { id: 'pe-1', name: 'Nostradamus', description: 'The prophet who predicted the future', categoryId: 'people' },
@@ -159,7 +159,7 @@ export const categories: Category[] = [
     code: 'TS',
     name: 'Truly Strange',
     color: categoryColors.trulyStrange,
-    icon: '❓',
+    icon: '⁉️',
     description: 'The most bizarre and unexplainable mysteries',
     topics: [
       { id: 'ts-1', name: 'The Voynich Manuscript', description: 'The undecipherable medieval book', categoryId: 'truly-strange' },

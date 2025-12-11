@@ -24,7 +24,7 @@ export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPr
   useEffect(() => {
     scale.value = withRepeat(
       withSequence(
-        withTiming(1.1, {
+        withTiming(1.05, {
           duration: 1000,
           easing: Easing.inOut(Easing.ease),
         }),
@@ -45,8 +45,7 @@ export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPr
       -1,
       false
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [scale, rotate]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -61,9 +60,11 @@ export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPr
 
   return (
     <TouchableOpacity
-      style={styles.container}
       onPress={onPress}
       activeOpacity={0.8}
+      accessibilityLabel="Oracle button"
+      accessibilityHint="Get a random paranormal fact"
+      accessibilityRole="button"
     >
       <Animated.View style={animatedStyle}>
         <LinearGradient
@@ -75,38 +76,23 @@ export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPr
           <Text style={styles.emoji}>🔮</Text>
         </LinearGradient>
       </Animated.View>
-      <Text style={styles.label}>Oracle</Text>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    bottom: 100,
-    right: 20,
-    alignItems: 'center',
-    zIndex: 1000,
-  },
   gradient: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
-    boxShadow: '0px 8px 32px rgba(139, 92, 246, 0.6)',
-    elevation: 12,
+    boxShadow: '0px 4px 16px rgba(139, 92, 246, 0.6)',
+    elevation: 8,
   },
   emoji: {
-    fontSize: 36,
-  },
-  label: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    fontFamily: 'SpaceMono',
+    fontSize: 18,
   },
 });
