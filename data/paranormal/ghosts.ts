@@ -124,7 +124,7 @@ export const ghostsData: readonly GhostTopic[] = [
       },
     ],
   },
-	  {
+  {
     id: 'gh-6',
     name: '30 East Drive Poltergeist',
     description: 'A violent poltergeist case in a council house in Pontefract, England',

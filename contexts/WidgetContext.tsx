@@ -1,8 +1,9 @@
+
 // contexts/WidgetContext.tsx
 import React, { 
   createContext, 
-  useCallback, 
   useContext, 
+  useCallback, 
   useEffect,
   useState,
   useMemo,
@@ -84,22 +85,6 @@ export const WidgetProvider: React.FC<WidgetProviderProps> = ({
   const [isWidgetSupported] = useState<boolean>(Platform.OS === 'ios');
 
   /**
-   * Initialize storage on mount
-   */
-  useEffect(() => {
-    if (isWidgetSupported) {
-      storage = initializeStorage(groupId);
-      
-      if (autoRefreshOnMount && storage) {
-        console.log('[Widget] Auto-refreshing on mount');
-        refreshWidget();
-      }
-    } else {
-      console.log('[Widget] Platform not supported (iOS only)');
-    }
-  }, [groupId, autoRefreshOnMount, isWidgetSupported]);
-
-  /**
    * Refreshes the widget to display updated data
    * Triggers widget reload on iOS home screen
    */
@@ -117,6 +102,22 @@ export const WidgetProvider: React.FC<WidgetProviderProps> = ({
       console.error('[Widget] Failed to refresh:', error);
     }
   }, [isWidgetSupported]);
+
+  /**
+   * Initialize storage on mount
+   */
+  useEffect(() => {
+    if (isWidgetSupported) {
+      storage = initializeStorage(groupId);
+      
+      if (autoRefreshOnMount && storage) {
+        console.log('[Widget] Auto-refreshing on mount');
+        refreshWidget();
+      }
+    } else {
+      console.log('[Widget] Platform not supported (iOS only)');
+    }
+  }, [groupId, autoRefreshOnMount, isWidgetSupported, refreshWidget]);
 
   /**
    * Updates data in the widget's shared storage

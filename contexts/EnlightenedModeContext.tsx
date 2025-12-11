@@ -1,3 +1,4 @@
+
 // contexts/EnlightenedModeContext.tsx
 import React, { 
   createContext, 
@@ -157,9 +158,9 @@ export const EnlightenedModeProvider: React.FC<EnlightenedModeProviderProps> = (
   const resetTapCount = useCallback(() => {
     if (tapCount > 0) {
       console.log('[EnlightenedMode] Tap sequence reset');
+      setTapCount(0);
+      setLastTapTime(0);
     }
-    setTapCount(0);
-    setLastTapTime(0);
   }, [tapCount]);
 
   /**
@@ -179,7 +180,11 @@ export const EnlightenedModeProvider: React.FC<EnlightenedModeProviderProps> = (
       
       // Haptic feedback
       if (enableHaptics) {
-        enabled ? HapticFeedback.success() : HapticFeedback.soft();
+        if (enabled) {
+          HapticFeedback.success();
+        } else {
+          HapticFeedback.soft();
+        }
       }
       
       console.log(`✨ [EnlightenedMode] Set to: ${enabled}`);
@@ -210,6 +215,7 @@ export const EnlightenedModeProvider: React.FC<EnlightenedModeProviderProps> = (
 
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [tapCount, lastTapTime, tapTimeout]);
 
   /**

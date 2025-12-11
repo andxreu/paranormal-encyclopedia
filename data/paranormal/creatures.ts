@@ -132,7 +132,7 @@ export const creaturesData: readonly CreatureTopic[] = [
       },
     ],
   },
-	  {
+  {
     id: 'cr-6',
     name: 'Abura-sumashi Oil Dwarf',
     description: 'A squat yokai said to haunt mountain roads in Japan',
@@ -721,8 +721,8 @@ export const creaturesData: readonly CreatureTopic[] = [
     ],
   },
   {
-  id: 'cr-34',
-  name: 'Bukit Timah Monkey',
+    id: 'cr-34',
+    name: 'Bukit Timah Monkey',
   description: 'A small ape-like creature reported in Singapore’s Bukit Timah forests',
   categoryId: 'creatures',
   icon: '🐾',
@@ -1812,7 +1812,7 @@ export const creaturesData: readonly CreatureTopic[] = [
       },
     ],
   },
-	  {
+  {
     id: 'cr-86',
     name: 'Lake Champlain Champ',
     description: 'A plesiosaur-like lake monster said to inhabit Lake Champlain',

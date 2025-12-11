@@ -124,7 +124,7 @@ export const phenomenaData: readonly PhenomenaTopic[] = [
       },
     ],
   },
-	  {
+  {
     id: 'ev-6',
     name: '1897 Great Airship Mystery',
     description: 'A wave of strange airship sightings across the United States in 1896–1897',

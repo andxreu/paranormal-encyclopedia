@@ -124,7 +124,7 @@ export const trulyStrangeData: readonly TrulyStrangeTopic[] = [
       },
     ],
   },
-	  {
+  {
     id: 'ts-6',
     name: 'Animals Notice the Invisible',
     description: 'Animals reacting to things humans cannot see',

@@ -124,7 +124,7 @@ export const ancientsData: readonly AncientTopic[] = [
       },
     ],
   },
-	  {
+  {
     id: 'am-6',
     name: 'Aaru Afterlife Realm',
     description: 'The ancient Egyptian field of reeds where worthy souls dwell after death',

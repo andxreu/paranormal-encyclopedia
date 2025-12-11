@@ -124,7 +124,7 @@ export const ufosData: readonly UFOTopic[] = [
       },
     ],
   },
-	  {
+  {
     id: 'uf-6',
     name: '1942 Battle of Los Angeles',
     description: 'Mystery air raid over Los Angeles during WWII',

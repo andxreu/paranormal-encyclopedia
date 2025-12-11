@@ -124,7 +124,7 @@ export const folkloreData: readonly FolkloreTopic[] = [
       },
     ],
   },
-	  {
+  {
     id: 'fl-6',
     name: 'Aatxe Red Bull',
     description: 'A fiery Basque spirit that appears as a red bull to punish evildoers',

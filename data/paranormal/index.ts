@@ -13,14 +13,54 @@ import { peopleData, getPeopleById, getPeopleByName, PeopleTopic } from './peopl
 import { trulyStrangeData, getTrulyStrangeById, getTrulyStrangeByName, TrulyStrangeTopic } from './trulyStrange';
 import type { CategoryId, TopicIdPrefix, BaseTopic } from './types';
 
-// Re-export all types and data
+// Re-export types
 export * from './types';
 export * from './categories';
 export * from './facts';
-export * from './hauntedLocations';
-export * from './codex';
-export * from './glossary';
-export * from './documentedAccounts';
+
+// Re-export haunted locations
+export { 
+  hauntedLocationsData, 
+  getHauntedLocationById, 
+  getHauntedLocationByName,
+  getAllHauntedLocations,
+  getHauntedLocationsCount,
+  getHauntedLocationsByRegion,
+  type HauntedLocation,
+  type HauntingType,
+  type VisitorAccess,
+} from './hauntedLocations';
+
+// Re-export codex
+export { 
+  codexData, 
+  getCodexEntryById, 
+  getCodexEntryByName,
+  getAllCodexEntries,
+  getCodexCount,
+  getCodexByCategory,
+  type CodexEntry,
+} from './codex';
+
+// Re-export glossary
+export { 
+  glossaryData, 
+  getGlossaryTermById, 
+  getGlossaryTermByName,
+  getAllGlossaryTerms,
+  getGlossaryCount,
+  type GlossaryTerm,
+} from './glossary';
+
+// Re-export documented accounts
+export { 
+  documentedAccountsData, 
+  getDocumentedAccountById, 
+  getDocumentedAccountByName,
+  getAllDocumentedAccounts,
+  getDocumentedAccountsCount,
+  type DocumentedAccount,
+} from './documentedAccounts';
 
 // Re-export category data and helper functions
 export {
@@ -246,17 +286,6 @@ export const getTopicByNameInCategory = (categoryId: string, topicName: string):
 };
 
 /**
- * Gets total count of topics across all categories
- * @returns Total number of topics
- */
-export const getTotalTopicsCount = (): number => {
-  return Object.values(CATEGORY_DATA_MAP).reduce(
-    (total, data) => total + (Array.isArray(data) ? data.length : 0),
-    0
-  );
-};
-
-/**
  * Gets topic count for a specific category
  * @param categoryId - The category identifier
  * @returns Number of topics in the category
@@ -272,6 +301,17 @@ export const getCategoryTopicsCount = (categoryId: string): number => {
  */
 export const getAllTopics = (): BaseTopic[] => {
   return Object.values(CATEGORY_DATA_MAP).flat();
+};
+
+/**
+ * Gets total count of topics across all categories
+ * @returns Total number of topics
+ */
+export const getTotalTopicsCount = (): number => {
+  return Object.values(CATEGORY_DATA_MAP).reduce(
+    (total, data) => total + (Array.isArray(data) ? data.length : 0),
+    0
+  );
 };
 
 /**

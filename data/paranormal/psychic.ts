@@ -124,7 +124,7 @@ export const psychicData: readonly PsychicTopic[] = [
       },
     ],
   },
-	  {
+  {
     id: 'ps-6',
     name: '11:11 Phenomenon',
     description: 'Recurring 11:11 time prompts linked to synchronicity and awakening',

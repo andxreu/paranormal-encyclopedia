@@ -17,7 +17,7 @@ export interface CodexEntry {
 }
 
 export const codexData: CodexEntry[] = [
-    {
+  {
     id: 'cd-1',
     name: 'Ley Line Theory',
     description: 'Energy pathways said to connect sacred and haunted sites across the world',
@@ -417,7 +417,7 @@ export const codexData: CodexEntry[] = [
       }
     ]
   },
-	  {
+  {
     id: 'cd-21',
     name: 'Energetic Imprinting',
     description: 'The idea that human emotion and trauma leave lasting energetic signatures on places',

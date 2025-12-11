@@ -50,7 +50,7 @@ export interface HauntedLocation {
 
 
 export const hauntedLocationsData: HauntedLocation[] = [
-    {
+  {
     id: 'hl-1',
     name: 'The Tower of London',
     description: 'One of the most haunted places in England, with centuries of dark history',
@@ -360,7 +360,7 @@ export const hauntedLocationsData: HauntedLocation[] = [
       },
     ],
   },
-	  {
+  {
     id: 'hl-11',
     name: 'Myrtles Plantation',
     description: "One of America's most haunted homes, built on an Indian burial ground",

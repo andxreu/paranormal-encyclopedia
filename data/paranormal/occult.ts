@@ -124,7 +124,7 @@ export const occultData: readonly OccultTopic[] = [
       },
     ],
   },
-	  {
+  {
     id: 'oc-6',
     name: '99942 Apophis',
     description: 'A real near-Earth asteroid woven into modern apocalyptic and occult narratives',

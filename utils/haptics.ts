@@ -1,3 +1,4 @@
+
 // utils/haptics.ts
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
@@ -159,7 +160,7 @@ export class HapticFeedback {
    * await HapticFeedback.pattern(['light', 'light', 'light'], 50);
    */
   static async pattern(
-    pattern: Array<'light' | 'medium' | 'heavy' | 'soft'>,
+    pattern: ('light' | 'medium' | 'heavy' | 'soft')[],
     delay: number = 100
   ): Promise<void> {
     if (!this.isEnabled || !this.isHapticsSupported || !pattern || pattern.length === 0) {

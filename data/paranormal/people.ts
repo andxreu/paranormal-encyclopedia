@@ -124,7 +124,7 @@ export const peopleData: readonly PeopleTopic[] = [
       },
     ],
   },
-	  {
+  {
     id: 'pe-6',
     name: 'Baba Vanga Predictions',
     description: 'The blind Bulgarian mystic famed for her prophecies',
