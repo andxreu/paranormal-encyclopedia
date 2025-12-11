@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,12 +9,17 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   Easing,
+  FadeIn,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { storage } from '@/utils/storage';
-import { getCategoryTopics, getCategoryById } from '@/data/paranormal/categories';
+import { getCategoryById } from '@/data/paranormal/categories';
+import { getCategoryTopics } from '@/data/paranormal';
 import { SortModal, SortOption } from '@/components/SortModal';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { LightningButton } from '@/components/LightningButton';
+import { RandomFactModal } from '@/components/RandomFactModal';
+import { getRandomFact, ParanormalFact } from '@/data/paranormal/facts';
 import { HapticFeedback } from '@/utils/haptics';
 
 interface FavoriteItem {
@@ -34,45 +39,75 @@ export default function FavoritesScreen() {
   const [sortBy, setSortBy] = useState<SortOption>('date-added');
   const [showSortModal, setShowSortModal] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showFactModal, setShowFactModal] = useState(false);
+  const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
 
   const fadeOpacity = useSharedValue(0);
 
-  useEffect(() => {
-    loadFavorites();
-  }, []);
+  const loadFavorites = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const savedFavorites = await storage.getFavorites();
+      const favoriteItems: FavoriteItem[] = [];
 
-  useEffect(() => {
-    fadeOpacity.value = withTiming(1, {
-      duration: 600,
-      easing: Easing.inOut(Easing.ease),
-    });
+      for (const favoriteId of savedFavorites) {
+        try {
+          const [categoryId, topicId] = favoriteId.split('-');
+          
+          if (!categoryId || !topicId) {
+            console.warn('Invalid favorite ID format:', favoriteId);
+            continue;
+          }
+
+          const category = getCategoryById(categoryId);
+          if (!category) {
+            console.warn('Category not found:', categoryId);
+            continue;
+          }
+
+          const topics = getCategoryTopics(categoryId);
+          if (!topics || !Array.isArray(topics)) {
+            console.warn('Topics not found for category:', categoryId);
+            continue;
+          }
+
+          const topic = topics.find((t: any) => t.id === topicId);
+          if (!topic) {
+            console.warn('Topic not found:', topicId);
+            continue;
+          }
+
+          favoriteItems.push({
+            id: favoriteId,
+            categoryId,
+            topicId,
+            name: topic.name || 'Unknown',
+            description: topic.description || '',
+            categoryName: category.name || 'Unknown',
+            categoryColor: category.color || '#8B5CF6',
+          });
+        } catch (error) {
+          console.error('Error processing favorite:', favoriteId, error);
+        }
+      }
+
+      setFavorites(favoriteItems);
+    } catch (error) {
+      console.error('Error loading favorites:', error);
+      setFavorites([]);
+    } finally {
+      setIsLoading(false);
+      fadeOpacity.value = withTiming(1, {
+        duration: 600,
+        easing: Easing.inOut(Easing.ease),
+      });
+    }
   }, [fadeOpacity]);
 
-  const loadFavorites = async () => {
-    const savedFavorites = await storage.getFavorites();
-    const favoriteItems: FavoriteItem[] = [];
-
-    for (const favoriteId of savedFavorites) {
-      const [categoryId, topicId] = favoriteId.split('-');
-      const category = getCategoryById(categoryId);
-      const topics = getCategoryTopics(categoryId);
-      const topic = topics.find((t: any) => t.id === topicId);
-
-      if (category && topic) {
-        favoriteItems.push({
-          id: favoriteId,
-          categoryId,
-          topicId,
-          name: topic.name,
-          description: topic.description,
-          categoryName: category.name,
-          categoryColor: category.color,
-        });
-      }
-    }
-
-    setFavorites(favoriteItems);
-  };
+  useEffect(() => {
+    loadFavorites();
+  }, [loadFavorites]);
 
   const handleSort = (option: SortOption) => {
     setSortBy(option);
@@ -83,6 +118,7 @@ export default function FavoritesScreen() {
         sorted.sort((a, b) => a.name.localeCompare(b.name));
         break;
       case 'date-added':
+        // Keep original order (most recent first)
         break;
       case 'category':
         sorted.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
@@ -102,7 +138,14 @@ export default function FavoritesScreen() {
 
   const handleFavoritePress = (favorite: FavoriteItem) => {
     HapticFeedback.light();
-    router.push(`/explore/${favorite.categoryId}/${favorite.topicId}`);
+    router.push(`/explore/${favorite.categoryId}/${favorite.topicId}` as any);
+  };
+
+  const handleLightningPress = () => {
+    HapticFeedback.medium();
+    const randomFact = getRandomFact();
+    setCurrentFact(randomFact);
+    setShowFactModal(true);
   };
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -137,7 +180,13 @@ export default function FavoritesScreen() {
               contentContainerStyle={styles.contentContainer}
               showsVerticalScrollIndicator={false}
             >
-              {favorites.length === 0 ? (
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={[styles.loadingText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    Loading favorites...
+                  </Text>
+                </View>
+              ) : favorites.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyEmoji}>⭐</Text>
                   <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary, fontSize: 24 * textScale }]}>
@@ -181,7 +230,10 @@ export default function FavoritesScreen() {
                   </View>
 
                   {favorites.map((favorite, index) => (
-                    <React.Fragment key={index}>
+                    <Animated.View
+                      key={index}
+                      entering={FadeIn.delay(index * 50).duration(300)}
+                    >
                       <TouchableOpacity
                         style={styles.favoriteCard}
                         onPress={() => handleFavoritePress(favorite)}
@@ -211,12 +263,20 @@ export default function FavoritesScreen() {
                           </View>
                         </LinearGradient>
                       </TouchableOpacity>
-                    </React.Fragment>
+                    </Animated.View>
                   ))}
                 </>
               )}
             </ScrollView>
           </Animated.View>
+
+          <LightningButton onPress={handleLightningPress} />
+
+          <RandomFactModal
+            visible={showFactModal}
+            fact={currentFact}
+            onClose={() => setShowFactModal(false)}
+          />
         </SafeAreaView>
 
         <SortModal
@@ -280,7 +340,17 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 100,
+    paddingBottom: 120,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 100,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: 'SpaceMono',
   },
   actionBar: {
     flexDirection: 'row',

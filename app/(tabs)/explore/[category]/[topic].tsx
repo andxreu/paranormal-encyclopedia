@@ -18,8 +18,10 @@ import { getCategoryTopics } from '@/data/paranormal';
 import { getRandomFact } from '@/data/paranormal/facts';
 import { ParticleEffect } from '@/components/ParticleEffect';
 import { RandomFactModal } from '@/components/RandomFactModal';
+import { LightningButton } from '@/components/LightningButton';
 import { HapticFeedback } from '@/utils/haptics';
 import { storage } from '@/utils/storage';
+import { recentTopicsService } from '@/utils/recentTopics';
 
 const { width } = Dimensions.get('window');
 
@@ -31,7 +33,7 @@ interface SectionCardProps {
 
 const SectionCard: React.FC<SectionCardProps> = ({ section, categoryColor, index }) => {
   const { theme, textScale } = useAppTheme();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true); // Auto-expanded by default
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -121,25 +123,42 @@ export default function TopicDetailScreen() {
   const loadTopicData = useCallback(async () => {
     if (!categoryId || !topicId) return;
 
-    const categoryData = getCategoryById(categoryId as string);
-    const categoryTopics = getCategoryTopics(categoryId as string);
-    const topicData = categoryTopics.find((t: any) => t.id === topicId);
+    try {
+      const categoryData = getCategoryById(categoryId as string);
+      const categoryTopics = getCategoryTopics(categoryId as string);
+      const topicData = categoryTopics.find((t: any) => t.id === topicId);
 
-    setCategory(categoryData);
-    setTopic(topicData);
+      setCategory(categoryData);
+      setTopic(topicData);
 
-    const favoriteStatus = await storage.isFavorite(`${categoryId}-${topicId}`);
-    setIsFavorite(favoriteStatus);
+      const favoriteStatus = await storage.isFavorite(`${categoryId}-${topicId}`);
+      setIsFavorite(favoriteStatus);
 
-    fadeOpacity.value = withTiming(1, {
-      duration: 600,
-      easing: Easing.inOut(Easing.ease),
-    });
+      // Add to recent topics
+      if (categoryData && topicData) {
+        await recentTopicsService.addRecentTopic({
+          categoryId: categoryId as string,
+          topicId: topicId as string,
+          title: topicData.name,
+          categoryName: categoryData.name,
+          categoryIcon: categoryData.icon,
+          categoryColor: categoryData.color,
+          progress: 0,
+        });
+      }
 
-    scale.value = withTiming(1, {
-      duration: 600,
-      easing: Easing.out(Easing.ease),
-    });
+      fadeOpacity.value = withTiming(1, {
+        duration: 600,
+        easing: Easing.inOut(Easing.ease),
+      });
+
+      scale.value = withTiming(1, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      });
+    } catch (error) {
+      console.error('Error loading topic data:', error);
+    }
   }, [categoryId, topicId, fadeOpacity, scale]);
 
   useEffect(() => {
@@ -302,23 +321,7 @@ export default function TopicDetailScreen() {
               <View style={styles.bottomSpacer} />
             </ScrollView>
 
-            <TouchableOpacity
-              style={styles.oracleButton}
-              onPress={handleOraclePress}
-              activeOpacity={0.8}
-              accessibilityLabel="Ask the Oracle"
-              accessibilityHint="Get a random paranormal fact"
-              accessibilityRole="button"
-            >
-              <LinearGradient
-                colors={[category.color + '80', category.color + '60']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.oracleButtonGradient}
-              >
-                <Text style={styles.oracleButtonIcon}>🔮</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            <LightningButton onPress={handleOraclePress} />
 
             <RandomFactModal
               visible={showOracleModal}
@@ -474,27 +477,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1.5,
     opacity: 0.3,
-  },
-  oracleButton: {
-    position: 'absolute',
-    bottom: 100,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    overflow: 'hidden',
-    boxShadow: '0px 8px 24px rgba(139, 92, 246, 0.6)',
-    elevation: 12,
-    zIndex: 100,
-  },
-  oracleButtonGradient: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  oracleButtonIcon: {
-    fontSize: 28,
   },
   bottomSpacer: {
     height: 20,

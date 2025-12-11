@@ -13,6 +13,7 @@ import Animated, {
 import { SpaceHeader } from "@/components/SpaceHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { TodaysMysteries } from "@/components/TodaysMysteries";
+import { ContinueReading } from "@/components/ContinueReading";
 import { SectionHeader } from "@/components/SectionHeader";
 import { CategoryCard } from "@/components/CategoryCard";
 import { LightningButton } from "@/components/LightningButton";
@@ -22,6 +23,7 @@ import { HomeLoadingSkeleton } from "@/components/LoadingSkeleton";
 import { categories } from "@/data/paranormal/categories";
 import { getRandomFact, ParanormalFact } from "@/data/paranormal/facts";
 import { storage } from "@/utils/storage";
+import { fuzzySearch } from "@/utils/fuzzySearch";
 import { useAppTheme } from "@/contexts/ThemeContext";
 import { HapticFeedback } from "@/utils/haptics";
 
@@ -73,6 +75,9 @@ export default function HomeScreen() {
     try {
       await storage.saveCategories(categories);
       await storage.saveLastSync();
+      
+      // Initialize fuzzy search
+      fuzzySearch.initialize();
       
       console.log('Data cached successfully');
       setIsLoading(false);
@@ -135,6 +140,9 @@ export default function HomeScreen() {
   const handleSearchResultPress = (result: any) => {
     HapticFeedback.light();
     console.log('Search result pressed:', result);
+    if (result.route && result.route !== '/') {
+      router.push(result.route as any);
+    }
   };
 
   const handleResourcePress = (resource: ResourceCard) => {
@@ -151,6 +159,7 @@ export default function HomeScreen() {
       await new Promise(resolve => setTimeout(resolve, 1500));
       await storage.saveCategories(categories);
       await storage.saveLastSync();
+      fuzzySearch.initialize();
       HapticFeedback.success();
     } catch (error) {
       console.error('Error refreshing:', error);
@@ -215,6 +224,8 @@ export default function HomeScreen() {
             </View>
 
             <TodaysMysteries />
+
+            <ContinueReading />
 
             <SectionHeader
               title="Explore Categories"

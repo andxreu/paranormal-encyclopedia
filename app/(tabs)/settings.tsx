@@ -14,6 +14,9 @@ import { useAppTheme } from '@/contexts/ThemeContext';
 import { storage, AppSettings } from '@/utils/storage';
 import { categories, getAllTopics } from '@/data/paranormal/categories';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { LightningButton } from '@/components/LightningButton';
+import { RandomFactModal } from '@/components/RandomFactModal';
+import { getRandomFact, ParanormalFact } from '@/data/paranormal/facts';
 import { HapticFeedback } from '@/utils/haptics';
 
 const TEXT_SIZE_OPTIONS = [
@@ -37,6 +40,8 @@ export default function SettingsScreen() {
   });
   const [showClearModal, setShowClearModal] = useState(false);
   const [totalTopics, setTotalTopics] = useState(0);
+  const [showFactModal, setShowFactModal] = useState(false);
+  const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
 
   const fadeOpacity = useSharedValue(0);
   const toggleScale = useSharedValue(1);
@@ -138,6 +143,13 @@ export default function SettingsScreen() {
     } else {
       Alert.alert('Error', 'Unable to open website');
     }
+  };
+
+  const handleLightningPress = () => {
+    HapticFeedback.medium();
+    const randomFact = getRandomFact();
+    setCurrentFact(randomFact);
+    setShowFactModal(true);
   };
 
   const formatDate = (dateString: string | null) => {
@@ -416,6 +428,14 @@ export default function SettingsScreen() {
               <View style={styles.bottomSpacer} />
             </ScrollView>
           </Animated.View>
+
+          <LightningButton onPress={handleLightningPress} />
+
+          <RandomFactModal
+            visible={showFactModal}
+            fact={currentFact}
+            onClose={() => setShowFactModal(false)}
+          />
         </SafeAreaView>
 
         <ConfirmModal

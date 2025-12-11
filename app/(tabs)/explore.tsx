@@ -12,6 +12,9 @@ import Animated, {
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { categories, Category } from '@/data/paranormal/categories';
 import { ParticleEffect } from '@/components/ParticleEffect';
+import { LightningButton } from '@/components/LightningButton';
+import { RandomFactModal } from '@/components/RandomFactModal';
+import { getRandomFact, ParanormalFact } from '@/data/paranormal/facts';
 import { HapticFeedback } from '@/utils/haptics';
 
 const { width } = Dimensions.get('window');
@@ -64,7 +67,7 @@ const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = 
           
           <View style={styles.cardContent}>
             <Text style={styles.cardIcon}>{category.icon}</Text>
-            <Text style={[styles.cardName, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
+            <Text style={[styles.cardName, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
               {category.name}
             </Text>
             <Text style={[styles.cardDescription, { color: theme.colors.textSecondary, fontSize: 11 * textScale }]} numberOfLines={2}>
@@ -88,11 +91,20 @@ export default function ExploreScreen() {
   const { theme, textScale } = useAppTheme();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const [showFactModal, setShowFactModal] = useState(false);
+  const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
 
   const handleCategoryPress = (category: Category) => {
     HapticFeedback.light();
     console.log('Category pressed:', category.name);
-    router.push(`/explore/${category.id}`);
+    router.push(`/explore/${category.id}` as any);
+  };
+
+  const handleLightningPress = () => {
+    HapticFeedback.medium();
+    const randomFact = getRandomFact();
+    setCurrentFact(randomFact);
+    setShowFactModal(true);
   };
 
   const onRefresh = async () => {
@@ -157,6 +169,14 @@ export default function ExploreScreen() {
 
             <View style={styles.bottomSpacer} />
           </ScrollView>
+
+          <LightningButton onPress={handleLightningPress} />
+
+          <RandomFactModal
+            visible={showFactModal}
+            fact={currentFact}
+            onClose={() => setShowFactModal(false)}
+          />
         </SafeAreaView>
       </LinearGradient>
     </View>
@@ -196,7 +216,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   grid: {
     flexDirection: 'row',
@@ -205,13 +225,13 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     width: cardWidth,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   card: {
-    borderRadius: 20,
-    padding: 18,
+    borderRadius: 18,
+    padding: 16,
     borderWidth: 1,
-    minHeight: 200,
+    minHeight: 185,
     boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.4)',
     elevation: 8,
     overflow: 'hidden',
@@ -221,18 +241,18 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   cardIcon: {
-    fontSize: 56,
-    marginBottom: 12,
+    fontSize: 52,
+    marginBottom: 10,
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
   cardName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     textAlign: 'center',
     fontFamily: 'SpaceMono',
-    marginBottom: 10,
+    marginBottom: 8,
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -241,13 +261,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     fontFamily: 'SpaceMono',
-    lineHeight: 16,
-    marginBottom: 12,
+    lineHeight: 15,
+    marginBottom: 10,
   },
   topicCount: {
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingVertical: 5,
+    borderRadius: 10,
     borderWidth: 1,
   },
   topicCountText: {
@@ -261,7 +281,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 2,
     opacity: 0.4,
   },

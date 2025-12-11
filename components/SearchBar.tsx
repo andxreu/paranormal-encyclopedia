@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -9,17 +10,17 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useAppTheme } from '@/contexts/ThemeContext';
-import { paranormalFacts } from '@/data/paranormal/facts';
-import { getAllTopics } from '@/data/paranormal/categories';
+import { fuzzySearch, SearchResult } from '@/utils/fuzzySearch';
 
 interface SearchBarProps {
-  onResultPress?: (result: any) => void;
+  onResultPress?: (result: SearchResult) => void;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
   const { theme } = useAppTheme();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   
   const suggestionsHeight = useSharedValue(0);
@@ -27,25 +28,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
 
   const updateSuggestions = useCallback((query: string) => {
     if (query.trim().length > 1) {
-      const lowerQuery = query.toLowerCase();
-      
-      const factResults = paranormalFacts
-        .filter(fact =>
-          fact.fact.toLowerCase().includes(lowerQuery) ||
-          fact.categoryName.toLowerCase().includes(lowerQuery)
-        )
-        .slice(0, 3)
-        .map(fact => ({ ...fact, type: 'fact' }));
-
-      const topicResults = getAllTopics()
-        .filter(topic =>
-          topic.name.toLowerCase().includes(lowerQuery) ||
-          topic.description.toLowerCase().includes(lowerQuery)
-        )
-        .slice(0, 3)
-        .map(topic => ({ ...topic, type: 'topic' }));
-
-      const results = [...factResults, ...topicResults].slice(0, 5);
+      const results = fuzzySearch.search(query, 5);
       setSuggestions(results);
       setShowSuggestions(results.length > 0);
       
@@ -100,11 +83,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
     });
   };
 
-  const handleResultPress = (result: any) => {
+  const handleResultPress = (result: SearchResult) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowSuggestions(false);
     setSearchQuery('');
-    onResultPress?.(result);
+    
+    if (onResultPress) {
+      onResultPress(result);
+    } else if (result.route && result.route !== '/') {
+      router.push(result.route as any);
+    }
   };
 
   const handleClear = () => {
@@ -150,26 +138,19 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
                 onPress={() => handleResultPress(result)}
                 activeOpacity={0.7}
               >
-                {result.type === 'fact' ? (
-                  <React.Fragment>
-                    <View style={[styles.suggestionBadge, { backgroundColor: result.color + '40' }]}>
-                      <Text style={[styles.suggestionBadgeText, { color: result.color }]}>
-                        {result.categoryName}
-                      </Text>
-                    </View>
-                    <Text style={styles.suggestionText} numberOfLines={2}>
-                      {highlightText(result.fact, searchQuery)}
-                    </Text>
-                  </React.Fragment>
-                ) : (
-                  <React.Fragment>
+                <View style={styles.suggestionHeader}>
+                  <Text style={styles.suggestionIcon}>{result.icon || '📄'}</Text>
+                  <View style={styles.suggestionContent}>
                     <Text style={styles.suggestionTitle}>
-                      {highlightText(result.name, searchQuery)}
+                      {highlightText(result.title, searchQuery)}
                     </Text>
                     <Text style={styles.suggestionDescription} numberOfLines={1}>
                       {result.description}
                     </Text>
-                  </React.Fragment>
+                  </View>
+                </View>
+                {result.color && (
+                  <View style={[styles.suggestionAccent, { backgroundColor: result.color }]} />
                 )}
               </TouchableOpacity>
             ))}
@@ -231,19 +212,18 @@ const styles = StyleSheet.create({
     padding: 14,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(139, 92, 246, 0.2)',
+    overflow: 'hidden',
   },
-  suggestionBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginBottom: 6,
+  suggestionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
-  suggestionBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    fontFamily: 'SpaceMono',
-    textTransform: 'uppercase',
+  suggestionIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  suggestionContent: {
+    flex: 1,
   },
   suggestionTitle: {
     fontSize: 14,
@@ -252,16 +232,18 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     marginBottom: 4,
   },
-  suggestionText: {
-    fontSize: 13,
-    color: '#E0E0E0',
-    lineHeight: 20,
-    fontFamily: 'SpaceMono',
-  },
   suggestionDescription: {
     fontSize: 12,
     color: '#B0B0B0',
     fontFamily: 'SpaceMono',
+  },
+  suggestionAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    opacity: 0.8,
   },
   highlightedText: {
     color: '#FFD700',
