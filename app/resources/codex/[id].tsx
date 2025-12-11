@@ -16,8 +16,6 @@ import { useAppTheme } from '@/contexts/ThemeContext';
 import { getCodexEntryById } from '@/data/paranormal/codex';
 import { ParticleEffect } from '@/components/ParticleEffect';
 import { FloatingOracleButton } from '@/components/FloatingOracleButton';
-import { RandomFactModal } from '@/components/RandomFactModal';
-import { getRandomFact } from '@/data/paranormal/facts';
 import { FloatingRankOrb } from '@/components/FloatingRankOrb';
 import { GothicConfetti } from '@/components/GothicConfetti';
 import { RankUpModal } from '@/components/RankUpModal';
@@ -112,8 +110,6 @@ export default function CodexDetailScreen() {
   const { theme, textScale } = useAppTheme();
   const [entry, setEntry] = useState<any>(null);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [showOracleModal, setShowOracleModal] = useState(false);
-  const [oracleFact, setOracleFact] = useState<any>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showRankUpModal, setShowRankUpModal] = useState(false);
   const [newRank, setNewRank] = useState<VeilRank | null>(null);
@@ -170,13 +166,6 @@ export default function CodexDetailScreen() {
   const handleBackPress = () => {
     HapticFeedback.light();
     router.back();
-  };
-
-  const handleOraclePress = () => {
-    HapticFeedback.medium();
-    const randomFact = getRandomFact();
-    setOracleFact(randomFact);
-    setShowOracleModal(true);
   };
 
   const handleToggleFavorite = async () => {
@@ -241,7 +230,7 @@ export default function CodexDetailScreen() {
                 </TouchableOpacity>
 
                 <View style={styles.headerButtons}>
-                  <FloatingOracleButton onPress={handleOraclePress} />
+                  <FloatingOracleButton />
                   <View style={styles.buttonSpacer} />
                   <TouchableOpacity 
                     onPress={handleToggleFavorite} 
@@ -289,12 +278,6 @@ export default function CodexDetailScreen() {
             </ScrollView>
 
             <FloatingRankOrb />
-
-            <RandomFactModal
-              visible={showOracleModal}
-              fact={oracleFact}
-              onClose={() => setShowOracleModal(false)}
-            />
 
             <GothicConfetti
               visible={showConfetti}

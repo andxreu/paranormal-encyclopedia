@@ -13,9 +13,7 @@ import Animated, {
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { getDocumentedAccountById, DocumentedAccount } from '@/data/paranormal/documentedAccounts';
 import { ParticleEffect } from '@/components/ParticleEffect';
-import { LightningButton } from '@/components/LightningButton';
-import { RandomFactModal } from '@/components/RandomFactModal';
-import { getRandomFact, ParanormalFact } from '@/data/paranormal/facts';
+import { FloatingOracleButton } from '@/components/FloatingOracleButton';
 import { HapticFeedback } from '@/utils/haptics';
 import { storage } from '@/utils/storage';
 
@@ -24,8 +22,6 @@ export default function DocumentedAccountDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [account, setAccount] = useState<DocumentedAccount | null>(null);
-  const [showFactModal, setShowFactModal] = useState(false);
-  const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
 
   const fadeOpacity = useSharedValue(0);
@@ -56,13 +52,6 @@ export default function DocumentedAccountDetailScreen() {
       opacity: fadeOpacity.value,
     };
   });
-
-  const handleLightningPress = () => {
-    HapticFeedback.medium();
-    const randomFact = getRandomFact();
-    setCurrentFact(randomFact);
-    setShowFactModal(true);
-  };
 
   const handleBack = () => {
     HapticFeedback.light();
@@ -135,14 +124,18 @@ export default function DocumentedAccountDetailScreen() {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                onPress={handleToggleFavorite} 
-                style={styles.iconButton}
-                accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                accessibilityRole="button"
-              >
-                <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
-              </TouchableOpacity>
+              <View style={styles.headerButtons}>
+                <FloatingOracleButton />
+                <View style={styles.buttonSpacer} />
+                <TouchableOpacity 
+                  onPress={handleToggleFavorite} 
+                  style={styles.iconButton}
+                  accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
@@ -203,14 +196,6 @@ export default function DocumentedAccountDetailScreen() {
               <View style={styles.bottomSpacer} />
             </ScrollView>
           </Animated.View>
-
-          <LightningButton onPress={handleLightningPress} />
-
-          <RandomFactModal
-            visible={showFactModal}
-            fact={currentFact}
-            onClose={() => setShowFactModal(false)}
-          />
         </SafeAreaView>
       </LinearGradient>
     </View>
@@ -246,6 +231,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'SpaceMono',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  buttonSpacer: {
+    width: 12,
   },
   iconButton: {
     width: 36,

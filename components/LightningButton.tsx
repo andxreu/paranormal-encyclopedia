@@ -11,12 +11,14 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { usePathname } from 'expo-router';
 
 interface LightningButtonProps {
   onPress?: () => void;
 }
 
 export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => {
+  const pathname = usePathname();
   const scale = useSharedValue(1);
   const rotate = useSharedValue(0);
   const glowOpacity = useSharedValue(0.5);
@@ -78,6 +80,13 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onPress?.();
   };
+
+  // Only show on home screen
+  const isHomeScreen = pathname === '/' || pathname === '/(tabs)/(home)' || pathname === '/(tabs)/(home)/';
+  
+  if (!isHomeScreen) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>

@@ -15,16 +15,13 @@ import { useAppTheme } from '@/contexts/ThemeContext';
 import { fuzzySearch, SearchResult } from '@/utils/fuzzySearch';
 import { storage } from '@/utils/storage';
 import { HapticFeedback } from '@/utils/haptics';
-import { LightningButton } from '@/components/LightningButton';
-import { RandomFactModal } from '@/components/RandomFactModal';
-import { getRandomFact, ParanormalFact } from '@/data/paranormal/facts';
 
 const CATEGORY_LABELS: Record<string, string> = {
   topics: 'Topics',
   locations: 'Haunted Locations',
   codex: 'Codex Articles',
   glossary: 'Glossary Terms',
-  facts: 'Facts',
+  documented: 'Documented Accounts',
   categories: 'Categories',
 };
 
@@ -34,8 +31,6 @@ export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categorizedResults, setCategorizedResults] = useState<Record<string, SearchResult[]>>({});
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
-  const [showFactModal, setShowFactModal] = useState(false);
-  const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
 
   const fadeOpacity = useSharedValue(0);
 
@@ -81,13 +76,6 @@ export default function SearchScreen() {
     HapticFeedback.medium();
     await storage.clearSearchHistory();
     setSearchHistory([]);
-  };
-
-  const handleLightningPress = () => {
-    HapticFeedback.medium();
-    const randomFact = getRandomFact();
-    setCurrentFact(randomFact);
-    setShowFactModal(true);
   };
 
   const highlightText = (text: string, query: string) => {
@@ -199,7 +187,7 @@ export default function SearchScreen() {
                       Start Searching
                     </Text>
                     <Text style={[styles.emptyText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                      Search through topics, facts, locations, and more
+                      Search through topics, locations, codex, glossary, and more
                     </Text>
                   </View>
                 </>
@@ -269,14 +257,6 @@ export default function SearchScreen() {
                 </>
               )}
             </ScrollView>
-
-            <LightningButton onPress={handleLightningPress} />
-
-            <RandomFactModal
-              visible={showFactModal}
-              fact={currentFact}
-              onClose={() => setShowFactModal(false)}
-            />
           </Animated.View>
         </SafeAreaView>
       </LinearGradient>

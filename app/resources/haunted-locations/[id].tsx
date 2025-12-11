@@ -15,6 +15,7 @@ import Animated, {
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { getHauntedLocationById } from '@/data/paranormal/hauntedLocations';
 import { ParticleEffect } from '@/components/ParticleEffect';
+import { FloatingOracleButton } from '@/components/FloatingOracleButton';
 import { HapticFeedback } from '@/utils/haptics';
 import { storage } from '@/utils/storage';
 
@@ -199,14 +200,18 @@ export default function HauntedLocationDetailScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  onPress={handleToggleFavorite} 
-                  style={styles.iconButton}
-                  accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
-                </TouchableOpacity>
+                <View style={styles.headerButtons}>
+                  <FloatingOracleButton />
+                  <View style={styles.buttonSpacer} />
+                  <TouchableOpacity 
+                    onPress={handleToggleFavorite} 
+                    style={styles.iconButton}
+                    accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
               
               <View style={styles.headerContent}>
@@ -279,6 +284,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'SpaceMono',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  buttonSpacer: {
+    width: 12,
   },
   iconButton: {
     width: 36,

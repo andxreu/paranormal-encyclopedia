@@ -4,7 +4,7 @@ import { categories } from '@/data/paranormal/categories';
 import { glossaryData } from '@/data/paranormal/glossary';
 import { codexData } from '@/data/paranormal/codex';
 import { hauntedLocations } from '@/data/paranormal/hauntedLocations';
-import { paranormalFacts } from '@/data/paranormal/facts';
+import { documentedAccountsData } from '@/data/paranormal/documentedAccounts';
 import { creaturesData } from '@/data/paranormal/creatures';
 import { ufosData } from '@/data/paranormal/ufos';
 import { ghostsData } from '@/data/paranormal/ghosts';
@@ -17,7 +17,7 @@ import { peopleData } from '@/data/paranormal/people';
 import { trulyStrangeData } from '@/data/paranormal/trulyStrange';
 
 export interface SearchResult {
-  type: 'category' | 'topic' | 'glossary' | 'codex' | 'location' | 'fact' | 'person' | 'phenomenon';
+  type: 'category' | 'topic' | 'glossary' | 'codex' | 'location' | 'documented' | 'person' | 'phenomenon';
   id: string;
   title: string;
   description: string;
@@ -152,20 +152,23 @@ class FuzzySearchService {
         });
       }
 
-      // Index facts
-      if (paranormalFacts && Array.isArray(paranormalFacts)) {
-        paranormalFacts.forEach((fact, index) => {
+      // Index documented accounts
+      if (documentedAccountsData && Array.isArray(documentedAccountsData)) {
+        documentedAccountsData.forEach(account => {
           results.push({
-            type: 'fact',
-            id: `fact-${index}`,
-            title: fact.categoryName,
-            description: fact.fact,
-            route: '/',
-            icon: '💡',
-            color: fact.color,
+            type: 'documented',
+            id: account.id,
+            title: account.name,
+            description: account.description,
+            route: `/resources/documented-accounts/${account.id}`,
+            icon: '🖋️',
+            color: '#D4AF37',
           });
         });
       }
+
+      // NOTE: Facts are intentionally excluded from search results
+      // They remain accessible only through the Random Fact button
     } catch (error) {
       console.error('Error building search index:', error);
     }
@@ -213,7 +216,7 @@ class FuzzySearchService {
       locations: [],
       codex: [],
       glossary: [],
-      facts: [],
+      documented: [],
       categories: [],
     };
 
@@ -231,8 +234,8 @@ class FuzzySearchService {
         case 'glossary':
           categorized.glossary.push(result);
           break;
-        case 'fact':
-          categorized.facts.push(result);
+        case 'documented':
+          categorized.documented.push(result);
           break;
         case 'category':
           categorized.categories.push(result);

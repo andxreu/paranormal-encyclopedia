@@ -11,6 +11,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
+import { useRouter } from 'expo-router';
 
 interface FloatingOracleButtonProps {
   onPress?: () => void;
@@ -18,6 +19,7 @@ interface FloatingOracleButtonProps {
 
 export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPress }) => {
   const { theme } = useAppTheme();
+  const router = useRouter();
   const scale = useSharedValue(1);
   const rotate = useSharedValue(0);
 
@@ -58,12 +60,21 @@ export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPr
 
   const goldColor = theme?.colors?.gold || '#d4af37';
 
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    } else {
+      // Default behavior: navigate to Arcana screen
+      router.push('/(tabs)/arcana');
+    }
+  };
+
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={0.8}
-      accessibilityLabel="Oracle button"
-      accessibilityHint="Get a random paranormal fact"
+      accessibilityLabel="Navigate to Order of the Veil"
+      accessibilityHint="View your progress and achievements"
       accessibilityRole="button"
     >
       <Animated.View style={animatedStyle}>

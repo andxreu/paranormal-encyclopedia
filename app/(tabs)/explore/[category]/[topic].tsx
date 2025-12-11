@@ -15,9 +15,7 @@ import Animated, {
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { getCategoryById } from '@/data/paranormal/categories';
 import { getCategoryTopics } from '@/data/paranormal';
-import { getRandomFact } from '@/data/paranormal/facts';
 import { ParticleEffect } from '@/components/ParticleEffect';
-import { RandomFactModal } from '@/components/RandomFactModal';
 import { FloatingOracleButton } from '@/components/FloatingOracleButton';
 import { FloatingRankOrb } from '@/components/FloatingRankOrb';
 import { GothicConfetti } from '@/components/GothicConfetti';
@@ -25,7 +23,7 @@ import { RankUpModal } from '@/components/RankUpModal';
 import { HapticFeedback } from '@/utils/haptics';
 import { storage } from '@/utils/storage';
 import { recentTopicsService } from '@/utils/recentTopics';
-import { gamificationService, VeilRank, Achievement } from '@/utils/gamification';
+import { gamificationService, VeilRank } from '@/utils/gamification';
 
 const { width } = Dimensions.get('window');
 
@@ -117,8 +115,6 @@ export default function TopicDetailScreen() {
   const { theme, textScale } = useAppTheme();
   const [category, setCategory] = useState<any>(null);
   const [topic, setTopic] = useState<any>(null);
-  const [showOracleModal, setShowOracleModal] = useState(false);
-  const [oracleFact, setOracleFact] = useState<any>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showRankUpModal, setShowRankUpModal] = useState(false);
@@ -199,13 +195,6 @@ export default function TopicDetailScreen() {
     router.back();
   };
 
-  const handleOraclePress = () => {
-    HapticFeedback.medium();
-    const randomFact = getRandomFact();
-    setOracleFact(randomFact);
-    setShowOracleModal(true);
-  };
-
   const handleToggleFavorite = async () => {
     HapticFeedback.medium();
     const favoriteId = `${categoryId}-${topicId}`;
@@ -268,7 +257,7 @@ export default function TopicDetailScreen() {
                 </TouchableOpacity>
 
                 <View style={styles.headerButtons}>
-                  <FloatingOracleButton onPress={handleOraclePress} />
+                  <FloatingOracleButton />
                   <View style={styles.buttonSpacer} />
                   <TouchableOpacity 
                     onPress={handleToggleFavorite} 
@@ -322,12 +311,6 @@ export default function TopicDetailScreen() {
             </ScrollView>
 
             <FloatingRankOrb />
-
-            <RandomFactModal
-              visible={showOracleModal}
-              fact={oracleFact}
-              onClose={() => setShowOracleModal(false)}
-            />
 
             <GothicConfetti
               visible={showConfetti}
