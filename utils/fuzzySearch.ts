@@ -1,11 +1,20 @@
 
 import Fuse from 'fuse.js';
-import { categories, getAllTopics } from '@/data/paranormal/categories';
-import { getCategoryTopics } from '@/data/paranormal';
+import { categories } from '@/data/paranormal/categories';
 import { glossaryData } from '@/data/paranormal/glossary';
 import { codexData } from '@/data/paranormal/codex';
 import { hauntedLocations } from '@/data/paranormal/hauntedLocations';
 import { paranormalFacts } from '@/data/paranormal/facts';
+import { creaturesData } from '@/data/paranormal/creatures';
+import { ufosData } from '@/data/paranormal/ufos';
+import { ghostsData } from '@/data/paranormal/ghosts';
+import { occultData } from '@/data/paranormal/occult';
+import { psychicData } from '@/data/paranormal/psychic';
+import { ancientsData } from '@/data/paranormal/ancients';
+import { folkloreData } from '@/data/paranormal/folklore';
+import { phenomenaData } from '@/data/paranormal/phenomena';
+import { peopleData } from '@/data/paranormal/people';
+import { trulyStrangeData } from '@/data/paranormal/trulyStrange';
 
 export interface SearchResult {
   type: 'category' | 'topic' | 'glossary' | 'codex' | 'location' | 'fact' | 'person' | 'phenomenon';
@@ -24,107 +33,142 @@ class FuzzySearchService {
   private searchIndex: SearchResult[] = [];
 
   initialize(): void {
-    console.log('Initializing fuzzy search index...');
-    this.searchIndex = this.buildSearchIndex();
-    
-    this.fuse = new Fuse(this.searchIndex, {
-      keys: [
-        { name: 'title', weight: 2 },
-        { name: 'description', weight: 1 },
-        { name: 'type', weight: 0.5 },
-      ],
-      threshold: 0.4,
-      includeScore: true,
-      minMatchCharLength: 2,
-      ignoreLocation: true,
-      useExtendedSearch: true,
-    });
+    try {
+      console.log('Initializing fuzzy search index...');
+      this.searchIndex = this.buildSearchIndex();
+      
+      this.fuse = new Fuse(this.searchIndex, {
+        keys: [
+          { name: 'title', weight: 2 },
+          { name: 'description', weight: 1 },
+          { name: 'type', weight: 0.5 },
+        ],
+        threshold: 0.4,
+        includeScore: true,
+        minMatchCharLength: 2,
+        ignoreLocation: true,
+        useExtendedSearch: true,
+      });
 
-    console.log(`Search index built with ${this.searchIndex.length} items`);
+      console.log(`Search index built with ${this.searchIndex.length} items`);
+    } catch (error) {
+      console.error('Error initializing fuzzy search:', error);
+      this.searchIndex = [];
+      this.fuse = null;
+    }
   }
 
   private buildSearchIndex(): SearchResult[] {
     const results: SearchResult[] = [];
 
-    // Index categories
-    categories.forEach(category => {
-      results.push({
-        type: 'category',
-        id: category.id,
-        title: category.name,
-        description: category.description,
-        route: `/explore/${category.id}`,
-        icon: category.icon,
-        color: category.color,
-      });
-
-      // Index topics
-      const topics = getCategoryTopics(category.id);
-      topics.forEach((topic: any) => {
+    try {
+      // Index categories
+      categories.forEach(category => {
         results.push({
-          type: 'topic',
-          id: topic.id,
-          title: topic.name,
-          description: topic.description,
-          route: `/explore/${category.id}/${topic.id}`,
-          categoryId: category.id,
+          type: 'category',
+          id: category.id,
+          title: category.name,
+          description: category.description,
+          route: `/explore/${category.id}`,
           icon: category.icon,
           color: category.color,
         });
       });
-    });
 
-    // Index glossary
-    glossaryData.forEach(item => {
-      results.push({
-        type: 'glossary',
-        id: item.id,
-        title: item.term,
-        description: item.definition,
-        route: `/resources/glossary/${item.id}`,
-        icon: '📖',
-        color: '#8B5CF6',
-      });
-    });
+      // Index topics from all data sources
+      const allTopicsData = [
+        { data: creaturesData, categoryId: 'creatures' },
+        { data: ufosData, categoryId: 'ufos' },
+        { data: ghostsData, categoryId: 'ghosts' },
+        { data: occultData, categoryId: 'occult' },
+        { data: psychicData, categoryId: 'psychic' },
+        { data: ancientsData, categoryId: 'ancients' },
+        { data: folkloreData, categoryId: 'folklore' },
+        { data: phenomenaData, categoryId: 'phenomena' },
+        { data: peopleData, categoryId: 'people' },
+        { data: trulyStrangeData, categoryId: 'truly-strange' },
+      ];
 
-    // Index codex
-    codexData.forEach(item => {
-      results.push({
-        type: 'codex',
-        id: item.id,
-        title: item.title,
-        description: item.summary,
-        route: `/resources/codex/${item.id}`,
-        icon: '📕',
-        color: '#6366F1',
+      allTopicsData.forEach(({ data, categoryId }) => {
+        const category = categories.find(c => c.id === categoryId);
+        if (data && Array.isArray(data)) {
+          data.forEach((topic: any) => {
+            results.push({
+              type: 'topic',
+              id: topic.id,
+              title: topic.name,
+              description: topic.description,
+              route: `/explore/${categoryId}/${topic.id}`,
+              categoryId: categoryId,
+              icon: category?.icon || '🔮',
+              color: category?.color || '#8B5CF6',
+            });
+          });
+        }
       });
-    });
 
-    // Index haunted locations
-    hauntedLocations.forEach(location => {
-      results.push({
-        type: 'location',
-        id: location.id,
-        title: location.name,
-        description: location.description,
-        route: `/resources/haunted-locations/${location.id}`,
-        icon: '🏚️',
-        color: '#EC4899',
-      });
-    });
+      // Index glossary
+      if (glossaryData && Array.isArray(glossaryData)) {
+        glossaryData.forEach(item => {
+          results.push({
+            type: 'glossary',
+            id: item.id,
+            title: item.term,
+            description: item.definition,
+            route: `/resources/glossary/${item.id}`,
+            icon: '📖',
+            color: '#8B5CF6',
+          });
+        });
+      }
 
-    // Index facts
-    paranormalFacts.forEach((fact, index) => {
-      results.push({
-        type: 'fact',
-        id: `fact-${index}`,
-        title: fact.categoryName,
-        description: fact.fact,
-        route: '/',
-        icon: '💡',
-        color: fact.color,
-      });
-    });
+      // Index codex
+      if (codexData && Array.isArray(codexData)) {
+        codexData.forEach(item => {
+          results.push({
+            type: 'codex',
+            id: item.id,
+            title: item.title,
+            description: item.summary,
+            route: `/resources/codex/${item.id}`,
+            icon: '📕',
+            color: '#6366F1',
+          });
+        });
+      }
+
+      // Index haunted locations
+      if (hauntedLocations && Array.isArray(hauntedLocations)) {
+        hauntedLocations.forEach(location => {
+          results.push({
+            type: 'location',
+            id: location.id,
+            title: location.name,
+            description: location.description,
+            route: `/resources/haunted-locations/${location.id}`,
+            icon: '🏚️',
+            color: '#EC4899',
+          });
+        });
+      }
+
+      // Index facts
+      if (paranormalFacts && Array.isArray(paranormalFacts)) {
+        paranormalFacts.forEach((fact, index) => {
+          results.push({
+            type: 'fact',
+            id: `fact-${index}`,
+            title: fact.categoryName,
+            description: fact.fact,
+            route: '/',
+            icon: '💡',
+            color: fact.color,
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Error building search index:', error);
+    }
 
     return results;
   }
@@ -134,15 +178,20 @@ class FuzzySearchService {
       this.initialize();
     }
 
-    if (!query || query.trim().length < 2) {
+    if (!this.fuse || !query || query.trim().length < 2) {
       return [];
     }
 
-    const results = this.fuse!.search(query, { limit });
-    return results.map(result => ({
-      ...result.item,
-      score: result.score,
-    }));
+    try {
+      const results = this.fuse.search(query, { limit });
+      return results.map(result => ({
+        ...result.item,
+        score: result.score,
+      }));
+    } catch (error) {
+      console.error('Error searching:', error);
+      return [];
+    }
   }
 
   searchByType(query: string, type: string, limit: number = 10): SearchResult[] {

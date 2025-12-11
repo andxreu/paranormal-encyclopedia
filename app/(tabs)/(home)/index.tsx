@@ -68,19 +68,28 @@ export default function HomeScreen() {
   const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fadeOpacity = useSharedValue(0);
 
   const loadData = useCallback(async () => {
     try {
+      console.log('Loading data...');
       await storage.saveCategories(categories);
       await storage.saveLastSync();
       
-      // Initialize fuzzy search
-      fuzzySearch.initialize();
+      // Initialize fuzzy search with error handling
+      try {
+        fuzzySearch.initialize();
+        console.log('Fuzzy search initialized successfully');
+      } catch (searchError) {
+        console.error('Error initializing fuzzy search:', searchError);
+        // Continue even if search fails
+      }
       
       console.log('Data cached successfully');
       setIsLoading(false);
+      setError(null);
       
       fadeOpacity.value = withTiming(1, {
         duration: 600,
@@ -95,6 +104,7 @@ export default function HomeScreen() {
       }
     } catch (error) {
       console.error('Error loading data:', error);
+      setError('Failed to load data. Please try again.');
       setIsLoading(false);
     }
   }, [fadeOpacity]);
@@ -113,6 +123,7 @@ export default function HomeScreen() {
       await loadData();
     } catch (error) {
       console.error('Error initializing app:', error);
+      setError('Failed to initialize app. Please restart.');
       setIsLoading(false);
     }
   }, [loadData]);
@@ -122,44 +133,67 @@ export default function HomeScreen() {
   }, [initializeApp]);
 
   const handleOnboardingComplete = async () => {
-    await storage.setOnboardingComplete(true);
-    await storage.saveData('@first_launch_after_onboarding', true);
-    setShowOnboarding(false);
-    setIsLoading(true);
-    await loadData();
+    try {
+      await storage.setOnboardingComplete(true);
+      await storage.saveData('@first_launch_after_onboarding', true);
+      setShowOnboarding(false);
+      setIsLoading(true);
+      await loadData();
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      setError('Failed to complete onboarding. Please try again.');
+    }
   };
 
   const handleLightningPress = () => {
-    HapticFeedback.medium();
-    console.log('Lightning button pressed');
-    const randomFact = getRandomFact();
-    setCurrentFact(randomFact);
-    setShowFactModal(true);
+    try {
+      HapticFeedback.medium();
+      console.log('Lightning button pressed');
+      const randomFact = getRandomFact();
+      setCurrentFact(randomFact);
+      setShowFactModal(true);
+    } catch (error) {
+      console.error('Error showing random fact:', error);
+    }
   };
 
   const handleSearchResultPress = (result: any) => {
-    HapticFeedback.light();
-    console.log('Search result pressed:', result);
-    if (result.route && result.route !== '/') {
-      router.push(result.route as any);
+    try {
+      HapticFeedback.light();
+      console.log('Search result pressed:', result);
+      if (result.route && result.route !== '/') {
+        router.push(result.route as any);
+      }
+    } catch (error) {
+      console.error('Error navigating to search result:', error);
     }
   };
 
   const handleResourcePress = (resource: ResourceCard) => {
-    HapticFeedback.light();
-    console.log('Resource pressed:', resource.id);
-    router.push(resource.route as any);
+    try {
+      HapticFeedback.light();
+      console.log('Resource pressed:', resource.id);
+      router.push(resource.route as any);
+    } catch (error) {
+      console.error('Error navigating to resource:', error);
+    }
   };
 
   const onRefresh = async () => {
-    HapticFeedback.medium();
-    setRefreshing(true);
-    
     try {
+      HapticFeedback.medium();
+      setRefreshing(true);
+      
       await new Promise(resolve => setTimeout(resolve, 1500));
       await storage.saveCategories(categories);
       await storage.saveLastSync();
-      fuzzySearch.initialize();
+      
+      try {
+        fuzzySearch.initialize();
+      } catch (searchError) {
+        console.error('Error reinitializing search:', searchError);
+      }
+      
       HapticFeedback.success();
     } catch (error) {
       console.error('Error refreshing:', error);
@@ -189,6 +223,34 @@ export default function HomeScreen() {
           end={{ x: 0, y: 1 }}
         >
           <HomeLoadingSkeleton />
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={theme.colors.backgroundGradient}
+          style={styles.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        >
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorIcon}>⚠️</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => {
+                setError(null);
+                setIsLoading(true);
+                initializeApp();
+              }}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
         </LinearGradient>
       </View>
     );
@@ -406,5 +468,36 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorIcon: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontFamily: 'SpaceMono',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: 'rgba(139, 92, 246, 0.8)',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 1)',
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: 'SpaceMono',
   },
 });
