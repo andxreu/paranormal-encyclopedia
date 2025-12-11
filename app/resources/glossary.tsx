@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +21,10 @@ export default function GlossaryScreen() {
   const { theme, textScale } = useAppTheme();
   const router = useRouter();
   const fadeOpacity = useSharedValue(0);
+
+  const entryCount = useMemo(() => {
+    return glossaryData.length;
+  }, []);
 
   useEffect(() => {
     fadeOpacity.value = withTiming(1, {
@@ -45,7 +49,9 @@ export default function GlossaryScreen() {
     };
   });
 
-  const sortedGlossary = [...glossaryData].sort((a, b) => a.term.localeCompare(b.term));
+  const sortedGlossary = useMemo(() => {
+    return [...glossaryData].sort((a, b) => a.term.localeCompare(b.term));
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -75,7 +81,7 @@ export default function GlossaryScreen() {
                   Glossary A-Z
                 </Text>
                 <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                  Browse paranormal terms and definitions
+                  {entryCount} entries
                 </Text>
               </View>
             </View>

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { categories, Category } from '@/data/paranormal/categories';
+import { getTotalTopicsCount, getCategoryTopicsCount } from '@/data/paranormal/index';
 import { ParticleEffect } from '@/components/ParticleEffect';
 import { HapticFeedback } from '@/utils/haptics';
 
@@ -20,6 +21,10 @@ const cardWidth = (width - 48) / 2;
 const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = ({ category, onPress }) => {
   const { theme, textScale } = useAppTheme();
   const scale = useSharedValue(1);
+
+  const categoryTopicCount = useMemo(() => {
+    return getCategoryTopicsCount(category.id);
+  }, [category.id]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -72,7 +77,7 @@ const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = 
             </Text>
             <View style={[styles.topicCount, { backgroundColor: theme.colors.cardBgTranslucent, borderColor: theme.colors.border }]}>
               <Text style={[styles.topicCountText, { color: theme.colors.textPrimary, fontSize: 10 * textScale }]}>
-                {category.topics.length} topics
+                {categoryTopicCount} topics
               </Text>
             </View>
           </View>
@@ -88,6 +93,10 @@ export default function ExploreScreen() {
   const { theme, textScale } = useAppTheme();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+
+  const totalTopics = useMemo(() => {
+    return getTotalTopicsCount();
+  }, []);
 
   const handleCategoryPress = (category: Category) => {
     HapticFeedback.light();
@@ -110,8 +119,6 @@ export default function ExploreScreen() {
     }
   };
 
-  const totalTopics = categories.reduce((sum, cat) => sum + cat.topics.length, 0);
-
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -126,7 +133,7 @@ export default function ExploreScreen() {
               Explore
             </Text>
             <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-              {categories.length} Categories • {totalTopics} Topics
+              {totalTopics} topics
             </Text>
           </View>
 

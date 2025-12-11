@@ -12,7 +12,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { storage, AppSettings } from '@/utils/storage';
-import { categories, getAllTopics } from '@/data/paranormal/categories';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { LightningButton } from '@/components/LightningButton';
 import { RandomFactModal } from '@/components/RandomFactModal';
@@ -39,7 +38,6 @@ export default function SettingsScreen() {
     dailyNotificationsEnabled: false,
   });
   const [showClearModal, setShowClearModal] = useState(false);
-  const [totalTopics, setTotalTopics] = useState(0);
   const [showFactModal, setShowFactModal] = useState(false);
   const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
 
@@ -65,9 +63,6 @@ export default function SettingsScreen() {
 
       const savedSettings = await storage.getSettings();
       setSettings(savedSettings);
-
-      const topics = getAllTopics();
-      setTotalTopics(topics.length);
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -135,7 +130,7 @@ export default function SettingsScreen() {
         HapticFeedback.success();
       }
 
-      Alert.alert('Cache Cleared', 'All cached data has been removed successfully.');
+      Alert.alert('Success', 'Cache and app data cleared successfully.');
     } catch (error) {
       console.error('Error clearing cache:', error);
       Alert.alert('Error', 'Failed to clear cache. Please try again.');
@@ -317,24 +312,6 @@ export default function SettingsScreen() {
               <View style={[styles.infoCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
                 <View style={styles.infoRow}>
                   <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                    Categories
-                  </Text>
-                  <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
-                    {categories.length}
-                  </Text>
-                </View>
-                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                    Total Topics
-                  </Text>
-                  <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
-                    {totalTopics}
-                  </Text>
-                </View>
-                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
                     Cache Size
                   </Text>
                   <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
@@ -365,7 +342,7 @@ export default function SettingsScreen() {
                 <Text style={styles.actionButtonEmoji}>🗑️</Text>
                 <View style={styles.actionButtonTextContainer}>
                   <Text style={[styles.actionButtonTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
-                    Clear Cache
+                    Clear cache and app data
                   </Text>
                   <Text style={[styles.actionButtonSubtitle, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
                     Remove all cached data
@@ -388,7 +365,7 @@ export default function SettingsScreen() {
                     Version
                   </Text>
                   <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
-                    1.3.0
+                    1.0.0
                   </Text>
                 </View>
                 <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
@@ -426,8 +403,8 @@ export default function SettingsScreen() {
 
         <ConfirmModal
           visible={showClearModal}
-          title="Clear Cache"
-          message="This will remove all cached data. You can re-sync anytime."
+          title="Clear cache and app data"
+          message="This will remove your favorites, achievements and path progress. Proceed with caution!"
           confirmText="Clear"
           cancelText="Cancel"
           onConfirm={handleClearCache}

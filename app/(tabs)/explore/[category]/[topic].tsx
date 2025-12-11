@@ -1,6 +1,5 @@
-
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -11,10 +10,10 @@ import Animated, {
   withTiming,
   Easing,
   FadeIn,
-  runOnUI,
+  runOnJS,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
-import { getCategoryById } from '@/data/paranormal/categories';
+import { getCategoryById, Category } from '@/data/paranormal/categories';
 import { getCategoryTopics } from '@/data/paranormal';
 import { ParticleEffect } from '@/components/ParticleEffect';
 import { GothicConfetti } from '@/components/GothicConfetti';
@@ -24,70 +23,75 @@ import { storage, FavoriteItem } from '@/utils/storage';
 import { recentTopicsService } from '@/utils/recentTopics';
 import { gamificationService, VeilRank } from '@/utils/gamification';
 
+// ──────────────────────────────────────────────────────────────
+// Constants
+// ──────────────────────────────────────────────────────────────
 const { width } = Dimensions.get('window');
+const SCROLL_THRESHOLD_PERCENTAGE = 70; // Percentage scrolled before marking as read
+const FADE_IN_DURATION = 600;
+const SECTION_STAGGER_DELAY = 100;
+
+// ──────────────────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────────────────
+interface TopicSection {
+  title: string;
+  content: string;
+}
+
+interface Topic {
+  id: string;
+  name: string;
+  description: string;
+  categoryId: string;
+  icon?: string;
+  sections: TopicSection[];
+}
 
 interface SectionCardProps {
-  section: any;
+  section: TopicSection;
   categoryColor: string;
   index: number;
 }
 
-const SectionCard: React.FC<SectionCardProps> = ({ section, categoryColor, index }) => {
+// ──────────────────────────────────────────────────────────────
+// Section Card Component
+// ──────────────────────────────────────────────────────────────
+const SectionCard: React.FC<SectionCardProps> = React.memo(({ section, categoryColor, index }) => {
   const { theme, textScale } = useAppTheme();
   const [expanded, setExpanded] = useState(true);
   const scale = useSharedValue(1);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    'worklet';
-    return {
-      transform: [{ scale: scale.value }],
-    };
-  });
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
-  const handlePress = () => {
-    try {
-      HapticFeedback.soft();
-      setExpanded(!expanded);
-    } catch (error) {
-      console.error('Error toggling section:', error);
-    }
-  };
+  const handlePress = useCallback(() => {
+    HapticFeedback.soft();
+    setExpanded(prev => !prev);
+  }, []);
 
-  const handlePressIn = () => {
-    try {
-      runOnUI(() => {
-        'worklet';
-        scale.value = withSpring(0.98, {
-          damping: 15,
-          stiffness: 300,
-        });
-      })();
-    } catch (error) {
-      console.error('Error in press animation:', error);
-    }
-  };
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.98, {
+      damping: 15,
+      stiffness: 300,
+    });
+  }, [scale]);
 
-  const handlePressOut = () => {
-    try {
-      runOnUI(() => {
-        'worklet';
-        scale.value = withSpring(1, {
-          damping: 15,
-          stiffness: 300,
-        });
-      })();
-    } catch (error) {
-      console.error('Error in press animation:', error);
-    }
-  };
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, {
+      damping: 15,
+      stiffness: 300,
+    });
+  }, [scale]);
 
-  if (!section || !section.title) {
+  if (!section?.title) {
     return null;
   }
 
   return (
     <Animated.View
-      entering={FadeIn.delay(index * 100).duration(400)}
+      entering={FadeIn.delay(index * SECTION_STAGGER_DELAY).duration(400)}
       style={styles.sectionCardWrapper}
     >
       <TouchableOpacity
@@ -98,6 +102,7 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, categoryColor, index
         accessibilityLabel={section.title}
         accessibilityHint={expanded ? 'Collapse section' : 'Expand section'}
         accessibilityRole="button"
+        accessibilityState={{ expanded }}
       >
         <Animated.View style={animatedStyle}>
           <LinearGradient
@@ -129,37 +134,50 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, categoryColor, index
       </TouchableOpacity>
     </Animated.View>
   );
-};
+});
 
+SectionCard.displayName = 'SectionCard';
+
+// ──────────────────────────────────────────────────────────────
+// Main Component
+// ──────────────────────────────────────────────────────────────
 export default function TopicDetailScreen() {
   const { category: categoryId, topic: topicId } = useLocalSearchParams<{ category: string; topic: string }>();
   const router = useRouter();
   const { theme, textScale } = useAppTheme();
-  const [category, setCategory] = useState<any>(null);
-  const [topic, setTopic] = useState<any>(null);
+  
+  // State
+  const [category, setCategory] = useState<Category | null>(null);
+  const [topic, setTopic] = useState<Topic | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showRankUpModal, setShowRankUpModal] = useState(false);
   const [newRank, setNewRank] = useState<VeilRank | null>(null);
   const [hasTrackedReading, setHasTrackedReading] = useState(false);
+  
+  // Refs
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // Animation values
   const fadeOpacity = useSharedValue(0);
   const scale = useSharedValue(0.95);
 
+  /**
+   * Loads topic and category data
+   */
   const loadTopicData = useCallback(async () => {
     if (!categoryId || !topicId) {
-      console.warn('Missing categoryId or topicId');
+      console.warn('⚠️ Missing categoryId or topicId');
       return;
     }
 
     try {
       const categoryData = getCategoryById(categoryId as string);
       const categoryTopics = getCategoryTopics(categoryId as string);
-      const topicData = categoryTopics?.find((t: any) => t && t.id === topicId);
+      const topicData = categoryTopics?.find((t: any) => t?.id === topicId) as Topic | undefined;
 
       if (!categoryData || !topicData) {
-        console.warn('Category or topic not found:', { categoryId, topicId });
+        console.warn('⚠️ Category or topic not found:', { categoryId, topicId });
         setCategory(null);
         setTopic(null);
         return;
@@ -168,36 +186,36 @@ export default function TopicDetailScreen() {
       setCategory(categoryData);
       setTopic(topicData);
 
+      // Check favorite status
       const favoriteId = `${categoryId}-${topicId}`;
       const favoriteStatus = await storage.isFavorite(favoriteId);
       setIsFavorite(favoriteStatus);
 
-      if (categoryData && topicData) {
-        await recentTopicsService.addRecentTopic({
-          categoryId: categoryId as string,
-          topicId: topicId as string,
-          title: topicData.name || 'Untitled',
-          categoryName: categoryData.name || 'Unknown',
-          categoryIcon: categoryData.icon || '❓',
-          categoryColor: categoryData.color || theme.colors.violet,
-          progress: 0,
-        });
-      }
+      // Add to recent topics
+      await recentTopicsService.addRecentTopic({
+        categoryId: categoryId as string,
+        topicId: topicId as string,
+        title: topicData.name || 'Untitled',
+        categoryName: categoryData.name || 'Unknown',
+        categoryIcon: categoryData.icon || '❓',
+        categoryColor: categoryData.color || theme.colors.violet,
+        progress: 0,
+      });
 
-      runOnUI(() => {
-        'worklet';
-        fadeOpacity.value = withTiming(1, {
-          duration: 600,
-          easing: Easing.inOut(Easing.ease),
-        });
+      // Animate in
+      fadeOpacity.value = withTiming(1, {
+        duration: FADE_IN_DURATION,
+        easing: Easing.inOut(Easing.ease),
+      });
 
-        scale.value = withTiming(1, {
-          duration: 600,
-          easing: Easing.out(Easing.ease),
-        });
-      })();
+      scale.value = withTiming(1, {
+        duration: FADE_IN_DURATION,
+        easing: Easing.out(Easing.ease),
+      });
+
+      console.log('✅ Topic loaded:', topicData.name);
     } catch (error) {
-      console.error('Error loading topic data:', error);
+      console.error('❌ Error loading topic data:', error);
       setCategory(null);
       setTopic(null);
     }
@@ -207,50 +225,72 @@ export default function TopicDetailScreen() {
     loadTopicData();
   }, [loadTopicData]);
 
-  const handleScroll = async (event: any) => {
+  /**
+   * Tracks reading progress and awards points
+   */
+  const trackReadingProgress = useCallback(async () => {
+    if (!categoryId || !topicId || hasTrackedReading) return;
+
     try {
-      if (!event || !event.nativeEvent) return;
-      
+      setHasTrackedReading(true);
+      const articleId = `${categoryId}-${topicId}`;
+      const result = await gamificationService.markArticleRead(articleId, 'topic', categoryId as string);
+
+      if (result?.newRank) {
+        setNewRank(result.newRank);
+        setShowRankUpModal(true);
+      }
+
+      if (result && (result.achievements?.length > 0 || result.newRank)) {
+        setShowConfetti(true);
+        HapticFeedback.success();
+      }
+
+      console.log('✅ Reading progress tracked');
+    } catch (error) {
+      console.error('❌ Error tracking reading:', error);
+    }
+  }, [categoryId, topicId, hasTrackedReading]);
+
+  /**
+   * Handles scroll events to track reading progress
+   */
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    try {
       const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      
       if (!contentOffset || !contentSize || !layoutMeasurement) return;
       
-      const scrollPercentage = (contentOffset.y / (contentSize.height - layoutMeasurement.height)) * 100;
+      const scrollHeight = contentSize.height - layoutMeasurement.height;
+      if (scrollHeight <= 0) return;
+      
+      const scrollPercentage = (contentOffset.y / scrollHeight) * 100;
 
-      if (scrollPercentage > 70 && !hasTrackedReading && categoryId && topicId) {
-        setHasTrackedReading(true);
-        const articleId = `${categoryId}-${topicId}`;
-        const result = await gamificationService.markArticleRead(articleId, 'topic', categoryId as string);
-
-        if (result && result.newRank) {
-          setNewRank(result.newRank);
-          setShowRankUpModal(true);
-        }
-
-        if (result && (result.achievements?.length > 0 || result.newRank)) {
-          setShowConfetti(true);
-          HapticFeedback.success();
-        }
+      if (scrollPercentage > SCROLL_THRESHOLD_PERCENTAGE && !hasTrackedReading) {
+        runOnJS(trackReadingProgress)();
       }
     } catch (error) {
-      console.error('Error handling scroll:', error);
+      console.error('❌ Error handling scroll:', error);
     }
-  };
+  }, [hasTrackedReading, trackReadingProgress]);
 
-  const handleBackPress = () => {
-    try {
-      HapticFeedback.light();
-      router.back();
-    } catch (error) {
-      console.error('Error navigating back:', error);
-    }
-  };
+  /**
+   * Navigates back to previous screen
+   */
+  const handleBackPress = useCallback(() => {
+    HapticFeedback.light();
+    router.back();
+  }, [router]);
 
-  const handleToggleFavorite = async () => {
+  /**
+   * Toggles favorite status
+   */
+  const handleToggleFavorite = useCallback(async () => {
     try {
       HapticFeedback.medium();
       
       if (!category || !topic || !categoryId || !topicId) {
-        console.warn('Missing category or topic data');
+        console.warn('⚠️ Missing category or topic data');
         return;
       }
 
@@ -259,6 +299,7 @@ export default function TopicDetailScreen() {
       if (isFavorite) {
         await storage.removeFavorite(favoriteId);
         setIsFavorite(false);
+        console.log('🗑️ Removed from favorites');
       } else {
         const favoriteItem: FavoriteItem = {
           id: favoriteId,
@@ -273,20 +314,32 @@ export default function TopicDetailScreen() {
         };
         await storage.addFavorite(favoriteItem);
         setIsFavorite(true);
+        console.log('⭐ Added to favorites');
       }
     } catch (error) {
-      console.error('Error toggling favorite:', error);
+      console.error('❌ Error toggling favorite:', error);
     }
-  };
+  }, [category, topic, categoryId, topicId, isFavorite, theme.colors.violet]);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    'worklet';
-    return {
-      opacity: fadeOpacity.value,
-      transform: [{ scale: scale.value }],
-    };
-  });
+  /**
+   * Animated style for container
+   */
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: fadeOpacity.value,
+    transform: [{ scale: scale.value }],
+  }));
 
+  /**
+   * Memoized gradient colors
+   */
+  const gradientColors = useMemo(() => {
+    if (!category?.color) return theme.colors.backgroundGradient;
+    return [category.color + '25', ...theme.colors.backgroundGradient.slice(1)];
+  }, [category?.color, theme.colors.backgroundGradient]);
+
+  // ──────────────────────────────────────────────────────────────
+  // Error State
+  // ──────────────────────────────────────────────────────────────
   if (!category || !topic) {
     return (
       <View style={styles.container}>
@@ -297,31 +350,45 @@ export default function TopicDetailScreen() {
           end={{ x: 0, y: 1 }}
         >
           <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <View style={styles.errorContainer}>
+            <Animated.View 
+              entering={FadeIn.duration(300)}
+              style={styles.errorContainer}
+            >
               <Text style={styles.errorEmoji}>❌</Text>
-              <Text style={[styles.errorText, { color: theme.colors.textPrimary }]}>Topic not found</Text>
-              <TouchableOpacity onPress={handleBackPress} style={styles.errorButton}>
+              <Text style={[styles.errorText, { color: theme.colors.textPrimary }]}>
+                Topic not found
+              </Text>
+              <TouchableOpacity 
+                onPress={handleBackPress} 
+                style={styles.errorButton}
+                activeOpacity={0.8}
+              >
                 <Text style={styles.errorButtonText}>Go Back</Text>
               </TouchableOpacity>
-            </View>
+            </Animated.View>
           </SafeAreaView>
         </LinearGradient>
       </View>
     );
   }
 
+  // ──────────────────────────────────────────────────────────────
+  // Main Content
+  // ──────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={[category.color + '25', ...theme.colors.backgroundGradient.slice(1)]}
+        colors={gradientColors}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <Animated.View style={[styles.animatedContainer, animatedStyle]}>
+            {/* Particle Effect */}
             <ParticleEffect count={12} color={category.color + '25'} />
             
+            {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerTop}>
                 <TouchableOpacity 
@@ -340,6 +407,7 @@ export default function TopicDetailScreen() {
                   style={styles.iconButton}
                   accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                   accessibilityRole="button"
+                  accessibilityState={{ selected: isFavorite }}
                 >
                   <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
                 </TouchableOpacity>
@@ -347,19 +415,20 @@ export default function TopicDetailScreen() {
               
               <View style={styles.headerContent}>
                 <Text style={[styles.topicTitle, { color: theme.colors.textPrimary, fontSize: 28 * textScale }]}>
-                  {topic.name || 'Untitled'}
+                  {topic.name}
                 </Text>
                 <Text style={[styles.topicDescription, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                  {topic.description || 'No description available'}
+                  {topic.description}
                 </Text>
                 <View style={[styles.categoryBadge, { backgroundColor: category.color + '30', borderColor: category.color + '60' }]}>
                   <Text style={[styles.categoryBadgeText, { color: theme.colors.textPrimary, fontSize: 11 * textScale }]}>
-                    {category.name || 'Unknown'}
+                    {category.name}
                   </Text>
                 </View>
               </View>
             </View>
 
+            {/* Sections */}
             <ScrollView
               ref={scrollViewRef}
               style={styles.scrollView}
@@ -372,19 +441,19 @@ export default function TopicDetailScreen() {
                 Explore Sections
               </Text>
               
-              {topic.sections && Array.isArray(topic.sections) && topic.sections.map((section: any, index: number) => (
-                <React.Fragment key={`section-${index}`}>
-                  <SectionCard
-                    section={section}
-                    categoryColor={category.color || theme.colors.violet}
-                    index={index}
-                  />
-                </React.Fragment>
+              {topic.sections?.map((section, index) => (
+                <SectionCard
+                  key={`section-${section.title}-${index}`}
+                  section={section}
+                  categoryColor={category.color}
+                  index={index}
+                />
               ))}
 
               <View style={styles.bottomSpacer} />
             </ScrollView>
 
+            {/* Confetti & Modals */}
             <GothicConfetti
               visible={showConfetti}
               onComplete={() => setShowConfetti(false)}
@@ -402,6 +471,9 @@ export default function TopicDetailScreen() {
   );
 }
 
+// ──────────────────────────────────────────────────────────────
+// Styles
+// ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -499,7 +571,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
     elevation: 6,
     overflow: 'hidden',
   },
@@ -553,6 +628,7 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     textAlign: 'center',
     marginBottom: 24,
+    lineHeight: 26,
   },
   errorButton: {
     backgroundColor: 'rgba(139, 92, 246, 0.8)',
@@ -561,6 +637,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(139, 92, 246, 1)',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   errorButtonText: {
     fontSize: 16,

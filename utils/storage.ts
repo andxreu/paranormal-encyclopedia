@@ -1,7 +1,10 @@
-
+// utils/storage.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const STORAGE_KEYS = {
+// ──────────────────────────────────────────────────────────────
+// Storage Keys – Central source of truth
+// ──────────────────────────────────────────────────────────────
+const KEYS = {
   CATEGORIES: '@paranormal_categories',
   FACTS: '@paranormal_facts',
   FAVORITES: '@paranormal_favorites',
@@ -11,8 +14,11 @@ const STORAGE_KEYS = {
   SEARCH_HISTORY: '@paranormal_search_history',
   THEME_PREFERENCE: '@theme_preference',
   TEXT_SCALE: '@text_scale',
-};
+} as const;
 
+// ──────────────────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────────────────
 export interface AppSettings {
   notificationsEnabled: boolean;
   soundsEnabled: boolean;
@@ -43,225 +49,159 @@ const defaultSettings: AppSettings = {
   dailyNotificationsEnabled: false,
 };
 
-export const storage = {
-  async saveData<T>(key: string, data: T): Promise<void> {
+// ──────────────────────────────────────────────────────────────
+// Core Generic Helpers (private)
+// ──────────────────────────────────────────────────────────────
+const Storage = {
+  async set<T>(key: string, value: T): Promise<void> {
     try {
-      if (data === null || data === undefined) {
-        console.warn(`Attempted to save null/undefined data for key: ${key}`);
+      if (value === null || value === undefined) {
+        console.warn(`[Storage] Attempted to save null/undefined for key: ${key}`);
         return;
       }
-      const jsonValue = JSON.stringify(data);
-      await AsyncStorage.setItem(key, jsonValue);
-      console.log(`Data saved to storage: ${key}`);
-    } catch (error) {
-      console.error(`Error saving data to storage: ${key}`, error);
+      await AsyncStorage.setItem(key, JSON.stringify(value));
+    } catch (err) {
+      console.error(`[Storage] Failed to set ${key}:`, err);
     }
   },
 
-  async getData<T>(key: string): Promise<T | null> {
+  async get<T>(key: string): Promise<T | null> {
     try {
-      const jsonValue = await AsyncStorage.getItem(key);
-      if (jsonValue !== null && jsonValue !== undefined) {
-        try {
-          const parsed = JSON.parse(jsonValue) as T;
-          console.log(`Data retrieved from storage: ${key}`);
-          return parsed;
-        } catch (parseError) {
-          console.error(`Error parsing data from storage: ${key}`, parseError);
-          return null;
-        }
-      }
-      return null;
-    } catch (error) {
-      console.error(`Error getting data from storage: ${key}`, error);
+      const raw = await AsyncStorage.getItem(key);
+      if (!raw) return null;
+      return JSON.parse(raw) as T;
+    } catch (err) {
+      console.error(`[Storage] Failed to get/parse ${key}:`, err);
       return null;
     }
   },
 
-  async removeData(key: string): Promise<void> {
+  async remove(key: string): Promise<void> {
     try {
       await AsyncStorage.removeItem(key);
-      console.log(`Data removed from storage: ${key}`);
-    } catch (error) {
-      console.error(`Error removing data from storage: ${key}`, error);
+    } catch (err) {
+      console.error(`[Storage] Failed to remove ${key}:`, err);
     }
   },
+};
 
+// ──────────────────────────────────────────────────────────────
+// Public API – Clean, typed, and bulletproof
+// ──────────────────────────────────────────────────────────────
+export const storage = {
+  // Generic
+  saveData: Storage.set,
+  getData: Storage.get,
+  removeData: Storage.remove,
+
+  // App-wide
   async clearAll(): Promise<void> {
     try {
       await AsyncStorage.clear();
-      console.log('All storage cleared');
-    } catch (error) {
-      console.error('Error clearing storage', error);
+      console.log('[Storage] All data cleared');
+    } catch (err) {
+      console.error('[Storage] Failed to clear all data:', err);
     }
   },
 
   async getCacheSize(): Promise<number> {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      let totalSize = 0;
-      
-      for (const key of keys) {
-        const value = await AsyncStorage.getItem(key);
-        if (value) {
-          totalSize += value.length;
-        }
-      }
-      
-      return totalSize;
-    } catch (error) {
-      console.error('Error calculating cache size:', error);
+      const values = await AsyncStorage.multiGet(keys);
+      return values.reduce((sum, [_key, value]) => sum + (value?.length ?? 0), 0);
+    } catch (err) {
+      console.error('[Storage] Failed to calculate cache size:', err);
       return 0;
     }
   },
 
-  async saveCategories(categories: any[]): Promise<void> {
-    if (!categories || !Array.isArray(categories)) {
-      console.warn('Invalid categories data, skipping save');
-      return;
-    }
-    await this.saveData(STORAGE_KEYS.CATEGORIES, categories);
-  },
-
-  async getCategories(): Promise<any[] | null> {
-    const categories = await this.getData<any[]>(STORAGE_KEYS.CATEGORIES);
-    return Array.isArray(categories) ? categories : null;
-  },
-
-  async saveFacts(facts: any[]): Promise<void> {
-    if (!facts || !Array.isArray(facts)) {
-      console.warn('Invalid facts data, skipping save');
-      return;
-    }
-    await this.saveData(STORAGE_KEYS.FACTS, facts);
-  },
-
-  async getFacts(): Promise<any[] | null> {
-    const facts = await this.getData<any[]>(STORAGE_KEYS.FACTS);
-    return Array.isArray(facts) ? facts : null;
+  // Favorites
+  async getFavorites(): Promise<FavoriteItem[]> {
+    const favs = await Storage.get<FavoriteItem[]>(KEYS.FAVORITES);
+    return Array.isArray(favs) ? favs : [];
   },
 
   async saveFavorites(favorites: FavoriteItem[]): Promise<void> {
-    if (!favorites || !Array.isArray(favorites)) {
-      console.warn('Invalid favorites data, skipping save');
-      return;
-    }
-    await this.saveData(STORAGE_KEYS.FAVORITES, favorites);
-  },
-
-  async getFavorites(): Promise<FavoriteItem[]> {
-    const favorites = await this.getData<FavoriteItem[]>(STORAGE_KEYS.FAVORITES);
-    return Array.isArray(favorites) ? favorites : [];
+    await Storage.set(KEYS.FAVORITES, favorites);
   },
 
   async addFavorite(item: FavoriteItem): Promise<void> {
-    if (!item || !item.id) {
-      console.warn('Invalid favorite item');
-      return;
-    }
-    const favorites = await this.getFavorites();
-    const existingIndex = favorites.findIndex(fav => fav.id === item.id);
-    
-    if (existingIndex === -1) {
-      favorites.unshift({ ...item, timestamp: Date.now() });
-      await this.saveFavorites(favorites);
-      console.log('Added favorite:', item.id);
-    }
+    if (!item?.id) return console.warn('[Storage] Cannot add favorite without id');
+    const favorites = await storage.getFavorites();
+    if (favorites.some(f => f.id === item.id)) return; // Already exists
+    favorites.unshift({ ...item, timestamp: Date.now() });
+    await storage.saveFavorites(favorites);
   },
 
   async removeFavorite(id: string): Promise<void> {
-    if (!id) {
-      console.warn('Invalid favorite id');
-      return;
-    }
-    const favorites = await this.getFavorites();
-    const filtered = favorites.filter(fav => fav.id !== id);
-    await this.saveFavorites(filtered);
-    console.log('Removed favorite:', id);
+    if (!id) return;
+    const favorites = await storage.getFavorites();
+    await storage.saveFavorites(favorites.filter(f => f.id !== id));
   },
 
   async isFavorite(id: string): Promise<boolean> {
-    if (!id) {
-      return false;
-    }
-    const favorites = await this.getFavorites();
-    return favorites.some(fav => fav.id === id);
+    if (!id) return false;
+    const favorites = await storage.getFavorites();
+    return favorites.some(f => f.id === id);
   },
 
-  async getFavoriteById(id: string): Promise<FavoriteItem | null> {
-    if (!id) {
-      return null;
-    }
-    const favorites = await this.getFavorites();
-    return favorites.find(fav => fav.id === id) || null;
-  },
-
-  async saveLastSync(): Promise<void> {
-    await this.saveData(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
-  },
-
-  async getLastSync(): Promise<string | null> {
-    return await this.getData(STORAGE_KEYS.LAST_SYNC);
-  },
-
+  // Onboarding
   async setOnboardingComplete(complete: boolean): Promise<void> {
-    await this.saveData(STORAGE_KEYS.ONBOARDING_COMPLETE, complete);
+    await Storage.set(KEYS.ONBOARDING_COMPLETE, complete);
   },
 
   async isOnboardingComplete(): Promise<boolean> {
-    const complete = await this.getData<boolean>(STORAGE_KEYS.ONBOARDING_COMPLETE);
-    return complete === true;
+    const value = await Storage.get<boolean>(KEYS.ONBOARDING_COMPLETE);
+    return value === true;
+  },
+
+  // Settings
+  async getSettings(): Promise<AppSettings> {
+    const saved = await Storage.get<AppSettings>(KEYS.SETTINGS);
+    if (!saved || typeof saved !== 'object') return { ...defaultSettings };
+    return { ...defaultSettings, ...saved };
   },
 
   async saveSettings(settings: AppSettings): Promise<void> {
-    if (!settings || typeof settings !== 'object') {
-      console.warn('Invalid settings data, skipping save');
-      return;
-    }
-    await this.saveData(STORAGE_KEYS.SETTINGS, settings);
+    await Storage.set(KEYS.SETTINGS, settings);
   },
 
-  async getSettings(): Promise<AppSettings> {
-    const settings = await this.getData<AppSettings>(STORAGE_KEYS.SETTINGS);
-    if (!settings || typeof settings !== 'object') {
-      return defaultSettings;
-    }
-    return { ...defaultSettings, ...settings };
-  },
-
-  async updateSetting<K extends keyof AppSettings>(
-    key: K,
-    value: AppSettings[K]
-  ): Promise<void> {
-    if (!key || value === undefined) {
-      console.warn('Invalid setting key or value');
-      return;
-    }
-    const settings = await this.getSettings();
+  async updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): Promise<void> {
+    const settings = await storage.getSettings();
     settings[key] = value;
-    await this.saveSettings(settings);
+    await storage.saveSettings(settings);
   },
 
+  // Search History
   async saveSearchHistory(query: string): Promise<void> {
-    try {
-      if (!query || typeof query !== 'string') {
-        console.warn('Invalid search query');
-        return;
-      }
-      const history = await this.getSearchHistory();
-      const updatedHistory = [query, ...history.filter(q => q !== query)].slice(0, 20);
-      await this.saveData(STORAGE_KEYS.SEARCH_HISTORY, updatedHistory);
-    } catch (error) {
-      console.error('Error saving search history:', error);
-    }
+    if (!query?.trim()) return;
+    const history = await storage.getSearchHistory();
+    const filtered = history.filter(q => q !== query);
+    const updated = [query, ...filtered].slice(0, 20);
+    await Storage.set(KEYS.SEARCH_HISTORY, updated);
   },
 
   async getSearchHistory(): Promise<string[]> {
-    const history = await this.getData<string[]>(STORAGE_KEYS.SEARCH_HISTORY);
+    const history = await Storage.get<string[]>(KEYS.SEARCH_HISTORY);
     return Array.isArray(history) ? history : [];
   },
 
   async clearSearchHistory(): Promise<void> {
-    await this.removeData(STORAGE_KEYS.SEARCH_HISTORY);
+    await Storage.remove(KEYS.SEARCH_HISTORY);
   },
-};
+
+  // Misc (used by other systems)
+  async saveLastSync(): Promise<void> {
+    await Storage.set(KEYS.LAST_SYNC, new Date().toISOString());
+  },
+
+  async getLastSync(): Promise<string | null> {
+    return await Storage.get<string>(KEYS.LAST_SYNC);
+  },
+
+  // Legacy helpers (kept for backward compatibility – can be removed later)
+  async saveCategories(data: any[]): Promise<void> { await Storage.set(KEYS.CATEGORIES, data); },
+  async getCategories(): Promise<any[] | null> { return await Storage.get(KEYS.CATEGORIES); },
+  async saveFacts(data: any[]): Promise<void> { await Storage.set(KEYS.FACTS, data); },
+  async getFacts(): Promise<any[] | null> { return await Storage.get(KEYS.FACTS); },
+} as const;

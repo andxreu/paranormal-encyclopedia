@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +21,10 @@ export default function CodexScreen() {
   const { theme, textScale } = useAppTheme();
   const router = useRouter();
   const fadeOpacity = useSharedValue(0);
+
+  const entryCount = useMemo(() => {
+    return codexData.length;
+  }, []);
 
   useEffect(() => {
     fadeOpacity.value = withTiming(1, {
@@ -73,7 +77,7 @@ export default function CodexScreen() {
                   The Codex
                 </Text>
                 <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                  Deep-dive articles on paranormal phenomena that baffle science
+                  {entryCount} entries
                 </Text>
               </View>
             </View>

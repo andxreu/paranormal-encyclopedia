@@ -1,5 +1,12 @@
+// data/paranormal/glossary.ts
+/**
+ * Glossary Data
+ * Comprehensive dictionary of paranormal and occult terminology
+ * 
+ * Contains 75+ terms organized A-Z covering all aspects of the paranormal
+ */
 
-import { TopicSection } from './types';
+import type { TopicSection } from './types';
 
 export interface GlossaryEntry {
   id: string;
@@ -1560,4 +1567,33 @@ export const getAllLetters = (): string[] => {
     letters.add(entry.term.charAt(0).toUpperCase());
   });
   return Array.from(letters).sort();
+};
+
+/**
+ * Get all glossary entries
+ * @returns Array of all glossary entries
+ */
+export const getAllGlossaryEntries = (): readonly GlossaryEntry[] => {
+  return glossaryData;
+};
+
+/**
+ * Get count of glossary entries
+ * @returns Total number of glossary entries
+ */
+export const getGlossaryCount = (): number => {
+  return glossaryData.length;
+};
+
+/**
+ * Search glossary entries by term or definition
+ * @param query - Search string
+ * @returns Matching glossary entries
+ */
+export const searchGlossary = (query: string): GlossaryEntry[] => {
+  const lowerQuery = query.toLowerCase();
+  return glossaryData.filter(entry =>
+    entry.term.toLowerCase().includes(lowerQuery) ||
+    entry.definition.toLowerCase().includes(lowerQuery)
+  );
 };

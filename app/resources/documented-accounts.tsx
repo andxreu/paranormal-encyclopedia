@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -42,10 +42,6 @@ const AccountCard: React.FC<{ account: DocumentedAccount; onPress: () => void }>
     });
   };
 
-  const renderStars = (rating: number) => {
-    return '⭐'.repeat(rating);
-  };
-
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -69,9 +65,6 @@ const AccountCard: React.FC<{ account: DocumentedAccount; onPress: () => void }>
           <View style={styles.cardHeader}>
             <Text style={[styles.cardTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
               {account.name}
-            </Text>
-            <Text style={[styles.cardStars, { fontSize: 14 * textScale }]}>
-              {renderStars(account.credibilityRating)}
             </Text>
           </View>
 
@@ -105,6 +98,10 @@ export default function DocumentedAccountsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showFactModal, setShowFactModal] = useState(false);
   const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
+
+  const entryCount = useMemo(() => {
+    return documentedAccountsData.length;
+  }, []);
 
   const handleAccountPress = (account: DocumentedAccount) => {
     HapticFeedback.light();
@@ -165,7 +162,7 @@ export default function DocumentedAccountsScreen() {
                 Documented Accounts
               </Text>
               <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]}>
-                {documentedAccountsData.length} credible paranormal cases
+                {entryCount} entries
               </Text>
             </View>
           </View>
@@ -184,21 +181,6 @@ export default function DocumentedAccountsScreen() {
               />
             }
           >
-            <View style={styles.infoCard}>
-              <LinearGradient
-                colors={[theme.colors.gold + '30', theme.colors.cardBg]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.infoCardGradient, { borderColor: theme.colors.border }]}
-              >
-                <Text style={[styles.infoText, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]}>
-                  These cases are backed by multiple credible sources including declassified government documents, 
-                  academic research, eyewitness testimonies, and physical evidence. Credibility ratings reflect 
-                  the strength of documentation and witness reliability.
-                </Text>
-              </LinearGradient>
-            </View>
-
             {documentedAccountsData.map((account, index) => (
               <React.Fragment key={index}>
                 <AccountCard
@@ -282,22 +264,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 120,
   },
-  infoCard: {
-    marginBottom: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  infoCardGradient: {
-    padding: 16,
-    borderWidth: 1,
-    borderRadius: 16,
-  },
-  infoText: {
-    fontSize: 13,
-    fontFamily: 'SpaceMono',
-    lineHeight: 20,
-    textAlign: 'center',
-  },
   cardWrapper: {
     marginBottom: 12,
   },
@@ -310,24 +276,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     marginBottom: 10,
-    gap: 12,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: '800',
     fontFamily: 'SpaceMono',
-    flex: 1,
     textShadowColor: 'rgba(139, 92, 246, 0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
-  },
-  cardStars: {
-    fontSize: 14,
-    textShadowColor: 'rgba(212, 175, 55, 0.6)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },

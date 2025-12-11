@@ -1,6 +1,5 @@
-
-import React, { useEffect, useState, useCallback } from "react";
-import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text } from "react-native";
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Animated, {
@@ -9,25 +8,30 @@ import Animated, {
   withTiming,
   withSpring,
   Easing,
+  FadeIn,
+  FadeOut,
 } from 'react-native-reanimated';
-import { SpaceHeader } from "@/components/SpaceHeader";
-import { SearchBar } from "@/components/SearchBar";
-import { TodaysMysteries } from "@/components/TodaysMysteries";
-import { ContinueReading } from "@/components/ContinueReading";
-import { SectionHeader } from "@/components/SectionHeader";
-import { CategoryCard } from "@/components/CategoryCard";
-import { LightningButton } from "@/components/LightningButton";
-import { RandomFactModal } from "@/components/RandomFactModal";
-import { OnboardingScreen } from "@/components/OnboardingScreen";
-import { HomeLoadingSkeleton } from "@/components/LoadingSkeleton";
-import { categories } from "@/data/paranormal/categories";
-import { getRandomFact, ParanormalFact } from "@/data/paranormal/facts";
-import { storage } from "@/utils/storage";
-import { fuzzySearch } from "@/utils/fuzzySearch";
-import { useAppTheme } from "@/contexts/ThemeContext";
-import { useOnboarding } from "@/contexts/OnboardingContext";
-import { HapticFeedback } from "@/utils/haptics";
+import { SpaceHeader } from '@/components/SpaceHeader';
+import { SearchBar } from '@/components/SearchBar';
+import { TodaysMysteries } from '@/components/TodaysMysteries';
+import { ContinueReading } from '@/components/ContinueReading';
+import { SectionHeader } from '@/components/SectionHeader';
+import { CategoryCard } from '@/components/CategoryCard';
+import { LightningButton } from '@/components/LightningButton';
+import { RandomFactModal } from '@/components/RandomFactModal';
+import { OnboardingScreen } from '@/components/OnboardingScreen';
+import { HomeLoadingSkeleton } from '@/components/LoadingSkeleton';
+import { categories } from '@/data/paranormal/categories';
+import { getRandomFact, ParanormalFact } from '@/data/paranormal/facts';
+import { storage } from '@/utils/storage';
+import { fuzzySearch } from '@/utils/fuzzySearch';
+import { useAppTheme } from '@/contexts/ThemeContext';
+import { useOnboarding } from '@/contexts/OnboardingContext';
+import { HapticFeedback } from '@/utils/haptics';
 
+// ──────────────────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────────────────
 interface ResourceCard {
   id: string;
   title: string;
@@ -36,7 +40,14 @@ interface ResourceCard {
   route: string;
 }
 
-const resources: ResourceCard[] = [
+// ──────────────────────────────────────────────────────────────
+// Constants
+// ──────────────────────────────────────────────────────────────
+const REFRESH_DELAY = 1500;
+const CONFETTI_DURATION = 3000;
+const FADE_IN_DURATION = 600;
+
+const resources: readonly ResourceCard[] = [
   {
     id: 'documented-accounts',
     title: 'Documented Accounts',
@@ -54,7 +65,7 @@ const resources: ResourceCard[] = [
   {
     id: 'codex',
     title: 'The Codex',
-    description: 'Deep-dive articles on paranormal phenomena that baffle science',
+    description: 'A hand-picked collection of intriguing cases and phenomena',
     icon: '📕',
     route: '/resources/codex',
   },
@@ -65,162 +76,221 @@ const resources: ResourceCard[] = [
     icon: '📖',
     route: '/resources/glossary',
   },
-];
+] as const;
 
+// ──────────────────────────────────────────────────────────────
+// Main Component
+// ──────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const { theme } = useAppTheme();
   const { isOnboardingComplete, isCheckingOnboarding, setOnboardingComplete } = useOnboarding();
   const router = useRouter();
+
+  // State management
   const [isLoading, setIsLoading] = useState(true);
   const [showFactModal, setShowFactModal] = useState(false);
   const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Animation values
   const fadeOpacity = useSharedValue(0);
 
+  /**
+   * Loads and caches app data
+   */
   const loadData = useCallback(async () => {
     try {
-      console.log('Loading data...');
+      console.log('📦 Loading app data...');
+      
+      // Save categories to storage
       await storage.saveCategories(categories);
       await storage.saveLastSync();
       
+      // Initialize search index
       try {
         fuzzySearch.initialize();
-        console.log('Fuzzy search initialized successfully');
+        console.log('✅ Fuzzy search initialized');
       } catch (searchError) {
-        console.error('Error initializing fuzzy search:', searchError);
+        console.error('❌ Search initialization failed:', searchError);
+        // Non-critical error - continue loading
       }
       
-      console.log('Data cached successfully');
+      console.log('✅ Data cached successfully');
       setIsLoading(false);
       setError(null);
       
+      // Fade in content
       fadeOpacity.value = withTiming(1, {
-        duration: 600,
+        duration: FADE_IN_DURATION,
         easing: Easing.inOut(Easing.ease),
       });
 
+      // Check for first launch after onboarding (for potential confetti animation)
       const firstLaunchAfterOnboarding = await storage.getData<boolean>('@first_launch_after_onboarding');
-      if (firstLaunchAfterOnboarding !== false) {
-        setShowConfetti(true);
+      if (firstLaunchAfterOnboarding === true) {
         await storage.saveData('@first_launch_after_onboarding', false);
-        setTimeout(() => setShowConfetti(false), 3000);
+        // Confetti feature ready for future implementation
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('❌ Error loading data:', error);
       setError('Failed to load data. Please try again.');
       setIsLoading(false);
     }
   }, [fadeOpacity]);
 
+  /**
+   * Initializes the app on mount
+   */
   const initializeApp = useCallback(async () => {
     try {
-      console.log('Initializing app...');
+      console.log('🚀 Initializing app...');
       
       if (!isOnboardingComplete) {
-        console.log('Onboarding not complete, showing onboarding screen');
+        console.log('📝 Onboarding not complete, showing onboarding screen');
         setIsLoading(false);
         return;
       }
 
       await loadData();
     } catch (error) {
-      console.error('Error initializing app:', error);
+      console.error('❌ Error initializing app:', error);
       setError('Failed to initialize app. Please restart.');
       setIsLoading(false);
     }
   }, [isOnboardingComplete, loadData]);
 
+  /**
+   * Initialize app when onboarding check completes
+   */
   useEffect(() => {
     if (!isCheckingOnboarding) {
       initializeApp();
     }
   }, [isCheckingOnboarding, initializeApp]);
 
-  const handleOnboardingComplete = async () => {
+  /**
+   * Handles onboarding completion
+   */
+  const handleOnboardingComplete = useCallback(async () => {
     try {
-      console.log('Onboarding completed');
+      console.log('✅ Onboarding completed');
       await setOnboardingComplete(true);
       await storage.saveData('@first_launch_after_onboarding', true);
       setIsLoading(true);
       await loadData();
     } catch (error) {
-      console.error('Error completing onboarding:', error);
+      console.error('❌ Error completing onboarding:', error);
       setError('Failed to complete onboarding. Please try again.');
     }
-  };
+  }, [setOnboardingComplete, loadData]);
 
-  const handleLightningPress = () => {
+  /**
+   * Handles lightning button press - shows random fact
+   */
+  const handleLightningPress = useCallback(() => {
     try {
       HapticFeedback.medium();
-      console.log('Lightning button pressed');
+      console.log('⚡ Lightning button pressed');
       const randomFact = getRandomFact();
       setCurrentFact(randomFact);
       setShowFactModal(true);
     } catch (error) {
-      console.error('Error showing random fact:', error);
+      console.error('❌ Error showing random fact:', error);
     }
-  };
+  }, []);
 
-  const handleSearchResultPress = (result: any) => {
+  /**
+   * Handles search result selection
+   */
+  const handleSearchResultPress = useCallback((result: any) => {
     try {
       HapticFeedback.light();
-      console.log('Search result pressed:', result);
+      console.log('🔍 Search result pressed:', result.title);
       if (result.route && result.route !== '/') {
         router.push(result.route as any);
       }
     } catch (error) {
-      console.error('Error navigating to search result:', error);
+      console.error('❌ Error navigating to search result:', error);
     }
-  };
+  }, [router]);
 
-  const handleResourcePress = (resource: ResourceCard) => {
+  /**
+   * Handles resource card press
+   */
+  const handleResourcePress = useCallback((resource: ResourceCard) => {
     try {
       HapticFeedback.light();
-      console.log('Resource pressed:', resource.id);
+      console.log('📚 Resource pressed:', resource.id);
       router.push(resource.route as any);
     } catch (error) {
-      console.error('Error navigating to resource:', error);
+      console.error('❌ Error navigating to resource:', error);
     }
-  };
+  }, [router]);
 
-  const onRefresh = async () => {
+  /**
+   * Handles pull-to-refresh
+   */
+  const onRefresh = useCallback(async () => {
     try {
       HapticFeedback.medium();
       setRefreshing(true);
       
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Simulate network delay for better UX
+      await new Promise(resolve => setTimeout(resolve, REFRESH_DELAY));
+      
+      // Refresh data
       await storage.saveCategories(categories);
       await storage.saveLastSync();
       
+      // Reinitialize search
       try {
         fuzzySearch.initialize();
       } catch (searchError) {
-        console.error('Error reinitializing search:', searchError);
+        console.error('❌ Error reinitializing search:', searchError);
       }
       
       HapticFeedback.success();
+      console.log('🔄 Refresh completed');
     } catch (error) {
-      console.error('Error refreshing:', error);
+      console.error('❌ Error refreshing:', error);
       HapticFeedback.error();
     } finally {
       setRefreshing(false);
     }
-  };
+  }, []);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: fadeOpacity.value,
-    };
-  });
+  /**
+   * Handles retry after error
+   */
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setIsLoading(true);
+    initializeApp();
+  }, [initializeApp]);
 
+  /**
+   * Animated style for fade-in effect
+   */
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: fadeOpacity.value,
+  }));
+
+  /**
+   * Memoized gradient colors for performance
+   */
+  const gradientColors = useMemo(() => theme.colors.backgroundGradient, [theme]);
+
+  // ──────────────────────────────────────────────────────────────
+  // Render States
+  // ──────────────────────────────────────────────────────────────
+
+  // Loading onboarding state check
   if (isCheckingOnboarding) {
     return (
       <View style={styles.container}>
         <LinearGradient
-          colors={theme.colors.backgroundGradient}
+          colors={gradientColors}
           style={styles.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
@@ -231,15 +301,17 @@ export default function HomeScreen() {
     );
   }
 
+  // Onboarding not complete
   if (!isOnboardingComplete) {
     return <OnboardingScreen onComplete={handleOnboardingComplete} />;
   }
 
+  // Loading app data
   if (isLoading) {
     return (
       <View style={styles.container}>
         <LinearGradient
-          colors={theme.colors.backgroundGradient}
+          colors={gradientColors}
           style={styles.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
@@ -250,38 +322,42 @@ export default function HomeScreen() {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <View style={styles.container}>
         <LinearGradient
-          colors={theme.colors.backgroundGradient}
+          colors={gradientColors}
           style={styles.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
         >
-          <View style={styles.errorContainer}>
+          <Animated.View 
+            entering={FadeIn.duration(300)}
+            style={styles.errorContainer}
+          >
             <Text style={styles.errorIcon}>⚠️</Text>
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity
               style={styles.retryButton}
-              onPress={() => {
-                setError(null);
-                setIsLoading(true);
-                initializeApp();
-              }}
+              onPress={handleRetry}
+              activeOpacity={0.8}
             >
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         </LinearGradient>
       </View>
     );
   }
 
+  // ──────────────────────────────────────────────────────────────
+  // Main Content
+  // ──────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={theme.colors.backgroundGradient}
+        colors={gradientColors}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -301,36 +377,40 @@ export default function HomeScreen() {
               />
             }
           >
+            {/* Header */}
             <SpaceHeader />
 
+            {/* Search */}
             <View style={styles.searchBarContainer}>
               <SearchBar onResultPress={handleSearchResultPress} />
             </View>
 
+            {/* Today's Mysteries */}
             <TodaysMysteries />
 
+            {/* Continue Reading */}
             <ContinueReading />
 
+            {/* Categories Section */}
             <SectionHeader
               title="Explore Categories"
               subtitle="Discover the paranormal realm"
             />
             <View style={styles.categoriesGrid}>
-              {categories.map((category, index) => (
-                <React.Fragment key={index}>
-                  <CategoryCard category={category} />
-                </React.Fragment>
+              {categories.map((category) => (
+                <CategoryCard key={category.id} category={category} />
               ))}
             </View>
 
+            {/* Resources Section */}
             <SectionHeader
               title="Resources"
               subtitle="Expand your paranormal knowledge"
             />
             <View style={styles.resourcesContainer}>
-              {resources.map((resource, index) => (
+              {resources.map((resource) => (
                 <ResourceCardComponent
-                  key={index}
+                  key={resource.id}
                   resource={resource}
                   onPress={() => handleResourcePress(resource)}
                 />
@@ -340,8 +420,10 @@ export default function HomeScreen() {
             <View style={styles.bottomSpacer} />
           </ScrollView>
 
+          {/* Floating Action Button */}
           <LightningButton onPress={handleLightningPress} />
 
+          {/* Random Fact Modal */}
           <RandomFactModal
             visible={showFactModal}
             fact={currentFact}
@@ -353,35 +435,36 @@ export default function HomeScreen() {
   );
 }
 
+// ──────────────────────────────────────────────────────────────
+// Resource Card Component
+// ──────────────────────────────────────────────────────────────
 interface ResourceCardComponentProps {
   resource: ResourceCard;
   onPress: () => void;
 }
 
-const ResourceCardComponent: React.FC<ResourceCardComponentProps> = ({ resource, onPress }) => {
+const ResourceCardComponent: React.FC<ResourceCardComponentProps> = React.memo(({ resource, onPress }) => {
   const { theme, textScale } = useAppTheme();
   const scale = useSharedValue(1);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-    };
-  });
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
-  const handlePressIn = () => {
+  const handlePressIn = useCallback(() => {
     HapticFeedback.soft();
     scale.value = withSpring(0.98, {
       damping: 15,
       stiffness: 300,
     });
-  };
+  }, [scale]);
 
-  const handlePressOut = () => {
+  const handlePressOut = useCallback(() => {
     scale.value = withSpring(1, {
       damping: 15,
       stiffness: 300,
     });
-  };
+  }, [scale]);
 
   return (
     <TouchableOpacity
@@ -413,8 +496,13 @@ const ResourceCardComponent: React.FC<ResourceCardComponentProps> = ({ resource,
       </Animated.View>
     </TouchableOpacity>
   );
-};
+});
 
+ResourceCardComponent.displayName = 'ResourceCardComponent';
+
+// ──────────────────────────────────────────────────────────────
+// Styles
+// ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -454,7 +542,10 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderRadius: 18,
-    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
     elevation: 8,
   },
   resourceIcon: {
@@ -507,6 +598,7 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     textAlign: 'center',
     marginBottom: 24,
+    lineHeight: 24,
   },
   retryButton: {
     backgroundColor: 'rgba(139, 92, 246, 0.8)',
@@ -515,6 +607,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(139, 92, 246, 1)',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   retryButtonText: {
     fontSize: 16,

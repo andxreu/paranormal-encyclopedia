@@ -1,250 +1,218 @@
+// utils/storage.ts
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import Fuse from 'fuse.js';
-import { categories } from '@/data/paranormal/categories';
-import { glossaryData } from '@/data/paranormal/glossary';
-import { codexData } from '@/data/paranormal/codex';
-import { hauntedLocations } from '@/data/paranormal/hauntedLocations';
-import { documentedAccountsData } from '@/data/paranormal/documentedAccounts';
-import { creaturesData } from '@/data/paranormal/creatures';
-import { ufosData } from '@/data/paranormal/ufos';
-import { ghostsData } from '@/data/paranormal/ghosts';
-import { occultData } from '@/data/paranormal/occult';
-import { psychicData } from '@/data/paranormal/psychic';
-import { ancientsData } from '@/data/paranormal/ancients';
-import { folkloreData } from '@/data/paranormal/folklore';
-import { phenomenaData } from '@/data/paranormal/phenomena';
-import { peopleData } from '@/data/paranormal/people';
-import { trulyStrangeData } from '@/data/paranormal/trulyStrange';
+// ──────────────────────────────────────────────────────────────
+// Storage Keys – Central source of truth
+// ──────────────────────────────────────────────────────────────
+const KEYS = {
+  CATEGORIES: '@paranormal_categories',
+  FACTS: '@paranormal_facts',
+  FAVORITES: '@paranormal_favorites',
+  LAST_SYNC: '@paranormal_last_sync',
+  ONBOARDING_COMPLETE: '@paranormal_onboarding_complete',
+  SETTINGS: '@paranormal_settings',
+  SEARCH_HISTORY: '@paranormal_search_history',
+  THEME_PREFERENCE: '@theme_preference',
+  TEXT_SCALE: '@text_scale',
+} as const;
 
-export interface SearchResult {
-  type: 'category' | 'topic' | 'glossary' | 'codex' | 'location' | 'documented' | 'person' | 'phenomenon';
+// ──────────────────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────────────────
+export interface AppSettings {
+  notificationsEnabled: boolean;
+  soundsEnabled: boolean;
+  hapticsEnabled: boolean;
+  themeVariant: 'default' | 'dark' | 'cosmic';
+  ambientSoundEnabled: boolean;
+  dailyNotificationsEnabled: boolean;
+}
+
+export interface FavoriteItem {
   id: string;
+  type: 'topic' | 'codex' | 'haunted-location' | 'documented-account';
   title: string;
   description: string;
-  route: string;
   categoryId?: string;
-  icon?: string;
-  color?: string;
-  score?: number;
+  categoryName?: string;
+  categoryColor?: string;
+  categoryIcon?: string;
+  timestamp: number;
 }
 
-class FuzzySearchService {
-  private fuse: Fuse<SearchResult> | null = null;
-  private searchIndex: SearchResult[] = [];
+const defaultSettings: AppSettings = {
+  notificationsEnabled: true,
+  soundsEnabled: true,
+  hapticsEnabled: true,
+  themeVariant: 'default',
+  ambientSoundEnabled: false,
+  dailyNotificationsEnabled: false,
+};
 
-  initialize(): void {
+// ──────────────────────────────────────────────────────────────
+// Core Generic Helpers (private)
+// ──────────────────────────────────────────────────────────────
+const Storage = {
+  async set<T>(key: string, value: T): Promise<void> {
     try {
-      console.log('Initializing fuzzy search index...');
-      this.searchIndex = this.buildSearchIndex();
-      
-      this.fuse = new Fuse(this.searchIndex, {
-        keys: [
-          { name: 'title', weight: 2 },
-          { name: 'description', weight: 1 },
-          { name: 'type', weight: 0.5 },
-        ],
-        threshold: 0.4,
-        includeScore: true,
-        minMatchCharLength: 2,
-        ignoreLocation: true,
-        useExtendedSearch: true,
-      });
-
-      console.log(`Search index built with ${this.searchIndex.length} items`);
-    } catch (error) {
-      console.error('Error initializing fuzzy search:', error);
-      this.searchIndex = [];
-      this.fuse = null;
+      if (value === null || value === undefined) {
+        console.warn(`[Storage] Attempted to save null/undefined for key: ${key}`);
+        return;
+      }
+      await AsyncStorage.setItem(key, JSON.stringify(value));
+    } catch (err) {
+      console.error(`[Storage] Failed to set ${key}:`, err);
     }
-  }
+  },
 
-  private buildSearchIndex(): SearchResult[] {
-    const results: SearchResult[] = [];
-
+  async get<T>(key: string): Promise<T | null> {
     try {
-      // Index categories
-      categories.forEach(category => {
-        results.push({
-          type: 'category',
-          id: category.id,
-          title: category.name,
-          description: category.description,
-          route: `/explore/${category.id}`,
-          icon: category.icon,
-          color: category.color,
-        });
-      });
-
-      // Index topics from all data sources
-      const allTopicsData = [
-        { data: creaturesData, categoryId: 'creatures' },
-        { data: ufosData, categoryId: 'ufos' },
-        { data: ghostsData, categoryId: 'ghosts' },
-        { data: occultData, categoryId: 'occult' },
-        { data: psychicData, categoryId: 'psychic' },
-        { data: ancientsData, categoryId: 'ancients' },
-        { data: folkloreData, categoryId: 'folklore' },
-        { data: phenomenaData, categoryId: 'phenomena' },
-        { data: peopleData, categoryId: 'people' },
-        { data: trulyStrangeData, categoryId: 'truly-strange' },
-      ];
-
-      allTopicsData.forEach(({ data, categoryId }) => {
-        const category = categories.find(c => c.id === categoryId);
-        if (data && Array.isArray(data)) {
-          data.forEach((topic: any) => {
-            results.push({
-              type: 'topic',
-              id: topic.id,
-              title: topic.name,
-              description: topic.description,
-              route: `/explore/${categoryId}/${topic.id}`,
-              categoryId: categoryId,
-              icon: category?.icon || '🔮',
-              color: category?.color || '#8B5CF6',
-            });
-          });
-        }
-      });
-
-      // Index glossary
-      if (glossaryData && Array.isArray(glossaryData)) {
-        glossaryData.forEach(item => {
-          results.push({
-            type: 'glossary',
-            id: item.id,
-            title: item.term,
-            description: item.definition,
-            route: `/resources/glossary/${item.id}`,
-            icon: '📖',
-            color: '#8B5CF6',
-          });
-        });
-      }
-
-      // Index codex
-      if (codexData && Array.isArray(codexData)) {
-        codexData.forEach(item => {
-          results.push({
-            type: 'codex',
-            id: item.id,
-            title: item.title,
-            description: item.summary,
-            route: `/resources/codex/${item.id}`,
-            icon: '📕',
-            color: '#6366F1',
-          });
-        });
-      }
-
-      // Index haunted locations
-      if (hauntedLocations && Array.isArray(hauntedLocations)) {
-        hauntedLocations.forEach(location => {
-          results.push({
-            type: 'location',
-            id: location.id,
-            title: location.name,
-            description: location.description,
-            route: `/resources/haunted-locations/${location.id}`,
-            icon: '🏚️',
-            color: '#EC4899',
-          });
-        });
-      }
-
-      // Index documented accounts
-      if (documentedAccountsData && Array.isArray(documentedAccountsData)) {
-        documentedAccountsData.forEach(account => {
-          results.push({
-            type: 'documented',
-            id: account.id,
-            title: account.name,
-            description: account.description,
-            route: `/resources/documented-accounts/${account.id}`,
-            icon: '🖋️',
-            color: '#D4AF37',
-          });
-        });
-      }
-
-      // NOTE: Facts are intentionally excluded from search results
-      // They remain accessible only through the Random Fact button
-    } catch (error) {
-      console.error('Error building search index:', error);
+      const raw = await AsyncStorage.getItem(key);
+      if (!raw) return null;
+      return JSON.parse(raw) as T;
+    } catch (err) {
+      console.error(`[Storage] Failed to get/parse ${key}:`, err);
+      return null;
     }
+  },
 
-    return results;
-  }
-
-  search(query: string, limit: number = 30): SearchResult[] {
-    if (!this.fuse) {
-      this.initialize();
-    }
-
-    if (!this.fuse || !query || query.trim().length < 2) {
-      return [];
-    }
-
+  async remove(key: string): Promise<void> {
     try {
-      const results = this.fuse.search(query, { limit });
-      return results.map(result => ({
-        ...result.item,
-        score: result.score,
-      }));
-    } catch (error) {
-      console.error('Error searching:', error);
-      return [];
+      await AsyncStorage.removeItem(key);
+    } catch (err) {
+      console.error(`[Storage] Failed to remove ${key}:`, err);
     }
-  }
+  },
+};
 
-  searchByType(query: string, type: string, limit: number = 10): SearchResult[] {
-    const allResults = this.search(query, 100);
-    return allResults.filter(result => result.type === type).slice(0, limit);
-  }
+// ──────────────────────────────────────────────────────────────
+// Public API – Clean, typed, and bulletproof
+// ──────────────────────────────────────────────────────────────
+export const storage = {
+  // Generic
+  saveData: Storage.set,
+  getData: Storage.get,
+  removeData: Storage.remove,
 
-  getAll(): SearchResult[] {
-    if (this.searchIndex.length === 0) {
-      this.initialize();
+  // App-wide
+  async clearAll(): Promise<void> {
+    try {
+      await AsyncStorage.clear();
+      console.log('[Storage] All data cleared');
+    } catch (err) {
+      console.error('[Storage] Failed to clear all data:', err);
     }
-    return this.searchIndex;
-  }
+  },
 
-  getCategorizedResults(query: string): Record<string, SearchResult[]> {
-    const results = this.search(query, 50);
-    const categorized: Record<string, SearchResult[]> = {
-      topics: [],
-      locations: [],
-      codex: [],
-      glossary: [],
-      documented: [],
-      categories: [],
-    };
+  async getCacheSize(): Promise<number> {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const values = await AsyncStorage.multiGet(keys);
+      return values.reduce((sum, [_key, value]) => sum + (value?.length ?? 0), 0);
+    } catch (err) {
+      console.error('[Storage] Failed to calculate cache size:', err);
+      return 0;
+    }
+  },
 
-    results.forEach(result => {
-      switch (result.type) {
-        case 'topic':
-          categorized.topics.push(result);
-          break;
-        case 'location':
-          categorized.locations.push(result);
-          break;
-        case 'codex':
-          categorized.codex.push(result);
-          break;
-        case 'glossary':
-          categorized.glossary.push(result);
-          break;
-        case 'documented':
-          categorized.documented.push(result);
-          break;
-        case 'category':
-          categorized.categories.push(result);
-          break;
-      }
-    });
+  // Favorites
+  async getFavorites(): Promise<FavoriteItem[]> {
+    const favs = await Storage.get<FavoriteItem[]>(KEYS.FAVORITES);
+    return Array.isArray(favs) ? favs : [];
+  },
 
-    return categorized;
-  }
-}
+  async saveFavorites(favorites: FavoriteItem[]): Promise<void> {
+    await Storage.set(KEYS.FAVORITES, favorites);
+  },
 
-export const fuzzySearch = new FuzzySearchService();
+  async addFavorite(item: FavoriteItem): Promise<void> {
+    if (!item?.id) return console.warn('[Storage] Cannot add favorite without id');
+    const favorites = await storage.getFavorites();
+    if (favorites.some(f => f.id === item.id)) return;
+    favorites.unshift({ ...item, timestamp: Date.now() });
+    await storage.saveFavorites(favorites);
+  },
+
+  async removeFavorite(id: string): Promise<void> {
+    if (!id) return;
+    const favorites = await storage.getFavorites();
+    await storage.saveFavorites(favorites.filter(f => f.id !== id));
+  },
+
+  async isFavorite(id: string): Promise<boolean> {
+    if (!id) return false;
+    const favorites = await storage.getFavorites();
+    return favorites.some(f => f.id === id);
+  },
+
+  // Onboarding
+  async setOnboardingComplete(complete: boolean): Promise<void> {
+    await Storage.set(KEYS.ONBOARDING_COMPLETE, complete);
+  },
+
+  async isOnboardingComplete(): Promise<boolean> {
+    const value = await Storage.get<boolean>(KEYS.ONBOARDING_COMPLETE);
+    return value === true;
+  },
+
+  // Settings
+  async getSettings(): Promise<AppSettings> {
+    const saved = await Storage.get<AppSettings>(KEYS.SETTINGS);
+    if (!saved || typeof saved !== 'object') return { ...defaultSettings };
+    return { ...defaultSettings, ...saved };
+  },
+
+  async saveSettings(settings: AppSettings): Promise<void> {
+    await Storage.set(KEYS.SETTINGS, settings);
+  },
+
+  async updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): Promise<void> {
+    const settings = await storage.getSettings();
+    settings[key] = value;
+    await storage.saveSettings(settings);
+  },
+
+  // Search History
+  async saveSearchHistory(query: string): Promise<void> {
+    if (!query?.trim()) return;
+    const history = await storage.getSearchHistory();
+    const filtered = history.filter(q => q !== query);
+    const updated = [query, ...filtered].slice(0, 20);
+    await Storage.set(KEYS.SEARCH_HISTORY, updated);
+  },
+
+  async getSearchHistory(): Promise<string[]> {
+    const history = await Storage.get<string[]>(KEYS.SEARCH_HISTORY);
+    return Array.isArray(history) ? history : [];
+  },
+
+  async clearSearchHistory(): Promise<void> {
+    await Storage.remove(KEYS.SEARCH_HISTORY);
+  },
+
+  // Misc (used by other systems)
+  async saveLastSync(): Promise<void> {
+    await Storage.set(KEYS.LAST_SYNC, new Date().toISOString());
+  },
+
+  async getLastSync(): Promise<string | null> {
+    return await Storage.get<string>(KEYS.LAST_SYNC);
+  },
+
+  // Legacy helpers (kept for backward compatibility - can be removed later)
+  async saveCategories(data: any[]): Promise<void> { 
+    await Storage.set(KEYS.CATEGORIES, data); 
+  },
+  
+  async getCategories(): Promise<any[] | null> { 
+    return await Storage.get(KEYS.CATEGORIES); 
+  },
+  
+  async saveFacts(data: any[]): Promise<void> { 
+    await Storage.set(KEYS.FACTS, data); 
+  },
+  
+  async getFacts(): Promise<any[] | null> { 
+    return await Storage.get(KEYS.FACTS); 
+  },
+} as const;

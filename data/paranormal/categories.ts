@@ -1,15 +1,23 @@
+// data/paranormal/categories.ts
+/**
+ * Categories Data
+ * Main category definitions and topic listings for the paranormal encyclopedia
+ * 
+ * Central registry of all categories with their metadata and associated topics
+ */
 
 import { categoryColors } from '@/constants/Colors';
+import type { CategoryId } from './types';
 
 export interface Topic {
   id: string;
   name: string;
   description: string;
-  categoryId: string;
+  categoryId: CategoryId;
 }
 
 export interface Category {
-  id: string;
+  id: CategoryId;
   code: string;
   name: string;
   color: string;
@@ -18,7 +26,7 @@ export interface Category {
   topics: Topic[];
 }
 
-export const categories: Category[] = [
+export const categories: readonly Category[] = [
   {
     id: 'creatures',
     code: 'CR',
@@ -185,4 +193,37 @@ export const getAllTopics = (): Topic[] => {
 export const getTopicsByCategory = (categoryId: string): Topic[] => {
   const category = getCategoryById(categoryId);
   return category ? category.topics : [];
+};
+
+/**
+ * Get all categories
+ * @returns Array of all categories
+ */
+export const getAllCategories = (): readonly Category[] => {
+  return categories;
+};
+
+/**
+ * Get count of categories
+ * @returns Total number of categories
+ */
+export const getCategoriesCount = (): number => {
+  return categories.length;
+};
+
+/**
+ * Get category by code
+ * @param code - Category code (e.g., "CR", "UF")
+ * @returns Category matching the code
+ */
+export const getCategoryByCode = (code: string): Category | undefined => {
+  return categories.find(cat => cat.code === code);
+};
+
+/**
+ * Get total count of all topics across all categories
+ * @returns Total number of topics
+ */
+export const getTotalTopicsCount = (): number => {
+  return categories.reduce((sum, cat) => sum + cat.topics.length, 0);
 };
