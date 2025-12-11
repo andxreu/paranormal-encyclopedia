@@ -426,7 +426,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: 12,
-    gap: 7,
   },
   resourcesContainer: {
     gap: 10,

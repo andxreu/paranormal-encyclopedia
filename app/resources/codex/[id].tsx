@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Clipboard, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -138,24 +138,6 @@ export default function CodexDetailScreen() {
     router.back();
   };
 
-  const handleCopyToClipboard = () => {
-    HapticFeedback.success();
-    const text = `${entry.name}\n${entry.category}\n\n${entry.description}`;
-    Clipboard.setString(text);
-    Alert.alert('Copied!', 'Entry details copied to clipboard');
-  };
-
-  const handleShare = async () => {
-    HapticFeedback.light();
-    try {
-      await Share.share({
-        message: `${entry.name}\n${entry.category}\n\n${entry.description}\n\nFrom Paranormal Encyclopedia`,
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
-  };
-
   const handleToggleFavorite = async () => {
     HapticFeedback.medium();
     const favoriteId = `codex-${id}`;
@@ -217,32 +199,14 @@ export default function CodexDetailScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity 
-                    onPress={handleToggleFavorite} 
-                    style={styles.iconButton}
-                    accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={handleCopyToClipboard} 
-                    style={styles.iconButton}
-                    accessibilityLabel="Copy to clipboard"
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.iconButtonText}>📋</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={handleShare} 
-                    style={styles.iconButton}
-                    accessibilityLabel="Share entry"
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.iconButtonText}>📤</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity 
+                  onPress={handleToggleFavorite} 
+                  style={styles.iconButton}
+                  accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+                </TouchableOpacity>
               </View>
               
               <View style={styles.headerContent}>
@@ -315,10 +279,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'SpaceMono',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
   },
   iconButton: {
     width: 36,

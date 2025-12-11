@@ -17,6 +17,7 @@ import { LightningButton } from '@/components/LightningButton';
 import { RandomFactModal } from '@/components/RandomFactModal';
 import { getRandomFact, ParanormalFact } from '@/data/paranormal/facts';
 import { HapticFeedback } from '@/utils/haptics';
+import { storage } from '@/utils/storage';
 
 export default function DocumentedAccountDetailScreen() {
   const { theme, textScale } = useAppTheme();
@@ -25,21 +26,29 @@ export default function DocumentedAccountDetailScreen() {
   const [account, setAccount] = useState<DocumentedAccount | null>(null);
   const [showFactModal, setShowFactModal] = useState(false);
   const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const fadeOpacity = useSharedValue(0);
 
   useEffect(() => {
-    if (typeof id === 'string') {
-      const foundAccount = getDocumentedAccountById(id);
-      setAccount(foundAccount || null);
-      
-      if (foundAccount) {
-        fadeOpacity.value = withTiming(1, {
-          duration: 600,
-          easing: Easing.inOut(Easing.ease),
-        });
+    const loadAccount = async () => {
+      if (typeof id === 'string') {
+        const foundAccount = getDocumentedAccountById(id);
+        setAccount(foundAccount || null);
+        
+        if (foundAccount) {
+          const favoriteStatus = await storage.isFavorite(`documented-account-${id}`);
+          setIsFavorite(favoriteStatus);
+          
+          fadeOpacity.value = withTiming(1, {
+            duration: 600,
+            easing: Easing.inOut(Easing.ease),
+          });
+        }
       }
-    }
+    };
+    
+    loadAccount();
   }, [id, fadeOpacity]);
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -58,6 +67,18 @@ export default function DocumentedAccountDetailScreen() {
   const handleBack = () => {
     HapticFeedback.light();
     router.back();
+  };
+
+  const handleToggleFavorite = async () => {
+    HapticFeedback.medium();
+    const favoriteId = `documented-account-${id}`;
+    if (isFavorite) {
+      await storage.removeFavorite(favoriteId);
+      setIsFavorite(false);
+    } else {
+      await storage.addFavorite(favoriteId);
+      setIsFavorite(true);
+    }
   };
 
   const renderStars = (rating: number) => {
@@ -102,16 +123,27 @@ export default function DocumentedAccountDetailScreen() {
       >
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <View style={styles.header}>
-            <TouchableOpacity
-              onPress={handleBack}
-              style={styles.backButton}
-              accessibilityLabel="Go back"
-              accessibilityRole="button"
-            >
-              <Text style={[styles.backButtonText, { color: theme.colors.textPrimary, fontSize: 28 * textScale }]}>
-                ←
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.headerTop}>
+              <TouchableOpacity
+                onPress={handleBack}
+                style={styles.backButton}
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
+              >
+                <Text style={[styles.backButtonText, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
+                  ← Back
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                onPress={handleToggleFavorite} 
+                style={styles.iconButton}
+                accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                accessibilityRole="button"
+              >
+                <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <Animated.View style={[styles.animatedContainer, animatedStyle]}>
@@ -197,18 +229,36 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 10,
     paddingBottom: 10,
+    zIndex: 2,
   },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
+  backButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
   backButtonText: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'SpaceMono',
+  },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(212, 175, 55, 0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconButtonText: {
+    fontSize: 18,
   },
   animatedContainer: {
     flex: 1,

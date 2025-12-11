@@ -93,12 +93,12 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
 const styles = StyleSheet.create({
   container: {
     width: cardWidth,
-    height: cardWidth * 1.0,
+    marginBottom: 12,
     borderRadius: 18,
     overflow: 'visible',
   },
   gradient: {
-    flex: 1,
+    height: cardWidth * 1.0,
     padding: 14,
     justifyContent: 'center',
     alignItems: 'center',
