@@ -19,7 +19,7 @@ interface CategoryCardProps {
 }
 
 const { width } = Dimensions.get('window');
-const cardWidth = (width - 60) / 2;
+const cardWidth = (width - 48) / 2;
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress }) => {
   const { theme } = useAppTheme();
@@ -94,7 +94,6 @@ const styles = StyleSheet.create({
   container: {
     width: cardWidth,
     height: cardWidth * 1.0,
-    marginBottom: 12,
     borderRadius: 18,
     overflow: 'visible',
   },

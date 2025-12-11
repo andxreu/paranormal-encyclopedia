@@ -23,7 +23,7 @@ const features = [
   {
     icon: '🛸',
     title: 'Explore Mysteries',
-    description: 'Discover 10 categories of paranormal phenomena',
+    description: 'Explore over 1,300 documented mysteries across 10 paranormal categories',
   },
   {
     icon: '⚡',

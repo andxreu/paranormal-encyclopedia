@@ -37,6 +37,13 @@ interface ResourceCard {
 
 const resources: ResourceCard[] = [
   {
+    id: 'documented-accounts',
+    title: 'Documented Accounts',
+    description: 'Real historical records of paranormal events',
+    icon: '🖋️',
+    route: '/resources/documented-accounts',
+  },
+  {
     id: 'haunted-locations',
     title: 'Haunted Locations',
     description: 'Explore the world\'s most haunted places',
@@ -419,6 +426,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: 12,
+    gap: 7,
   },
   resourcesContainer: {
     gap: 10,

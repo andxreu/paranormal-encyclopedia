@@ -16,6 +16,7 @@ export * from './facts';
 export * from './hauntedLocations';
 export * from './codex';
 export * from './glossary';
+export * from './documentedAccounts';
 
 export {
   creaturesData,
