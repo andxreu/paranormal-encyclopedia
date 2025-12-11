@@ -49,7 +49,8 @@ interface ThemeContextType {
   setTextScale: (scale: number) => void;
 }
 
-const darkTheme: Theme = {
+// Mystic Theme (formerly dark theme)
+const mysticTheme: Theme = {
   colors: {
     background: cosmicColors.purpleBlack,
     backgroundAlt: cosmicColors.darkPurple,
@@ -84,8 +85,8 @@ const darkTheme: Theme = {
   },
 };
 
-// Light mode is now a high-contrast mystical dark theme
-const lightTheme: Theme = {
+// Arcane Theme (formerly light theme)
+const arcaneTheme: Theme = {
   colors: {
     background: '#0b0b1a',
     backgroundAlt: '#121225',
@@ -121,7 +122,7 @@ const lightTheme: Theme = {
 };
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: darkTheme,
+  theme: mysticTheme,
   colorScheme: 'dark',
   toggleTheme: () => console.warn('No theme provider'),
   textScale: 1,
@@ -186,7 +187,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     await storage.saveData('@text_scale', scale);
   };
 
-  const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
+  const theme = colorScheme === 'dark' ? mysticTheme : arcaneTheme;
 
   return (
     <ThemeContext.Provider value={{ theme, colorScheme, toggleTheme, textScale, setTextScale }}>

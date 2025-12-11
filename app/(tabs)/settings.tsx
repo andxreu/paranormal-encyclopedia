@@ -172,6 +172,10 @@ export default function SettingsScreen() {
     };
   });
 
+  const getThemeName = () => {
+    return colorScheme === 'dark' ? 'Mystic Theme' : 'Arcane Theme';
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -206,10 +210,10 @@ export default function SettingsScreen() {
                     <Text style={styles.settingIcon}>🌓</Text>
                     <View style={styles.settingTextContainer}>
                       <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
-                        Dark Mode
+                        Theme
                       </Text>
                       <Text style={[styles.settingDescription, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
-                        {colorScheme === 'dark' ? 'Dark theme active' : 'Light theme active'}
+                        {getThemeName()}
                       </Text>
                     </View>
                   </View>
@@ -218,28 +222,6 @@ export default function SettingsScreen() {
                     onValueChange={handleThemeToggle}
                     trackColor={{ false: theme.colors.border, true: theme.colors.violet }}
                     thumbColor={colorScheme === 'dark' ? '#FFFFFF' : '#f4f3f4'}
-                  />
-                </View>
-
-                <View style={[styles.settingDivider, { backgroundColor: theme.colors.border }]} />
-
-                <View style={styles.settingRow}>
-                  <View style={styles.settingInfo}>
-                    <Text style={styles.settingIcon}>🔔</Text>
-                    <View style={styles.settingTextContainer}>
-                      <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
-                        Daily Mysteries
-                      </Text>
-                      <Text style={[styles.settingDescription, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
-                        Receive daily paranormal notifications
-                      </Text>
-                    </View>
-                  </View>
-                  <Switch
-                    value={settings.dailyNotificationsEnabled}
-                    onValueChange={() => handleToggleSetting('dailyNotificationsEnabled')}
-                    trackColor={{ false: theme.colors.border, true: theme.colors.violet }}
-                    thumbColor={settings.dailyNotificationsEnabled ? '#FFFFFF' : '#f4f3f4'}
                   />
                 </View>
 
