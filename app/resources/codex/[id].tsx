@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,8 +15,12 @@ import Animated, {
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { getCodexEntryById } from '@/data/paranormal/codex';
 import { ParticleEffect } from '@/components/ParticleEffect';
+import { FloatingRankOrb } from '@/components/FloatingRankOrb';
+import { GothicConfetti } from '@/components/GothicConfetti';
+import { RankUpModal } from '@/components/RankUpModal';
 import { HapticFeedback } from '@/utils/haptics';
 import { storage } from '@/utils/storage';
+import { gamificationService, VeilRank } from '@/utils/gamification';
 
 interface SectionCardProps {
   section: any;
@@ -25,7 +29,7 @@ interface SectionCardProps {
 
 const SectionCard: React.FC<SectionCardProps> = ({ section, index }) => {
   const { theme, textScale } = useAppTheme();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -105,6 +109,11 @@ export default function CodexDetailScreen() {
   const { theme, textScale } = useAppTheme();
   const [entry, setEntry] = useState<any>(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showRankUpModal, setShowRankUpModal] = useState(false);
+  const [newRank, setNewRank] = useState<VeilRank | null>(null);
+  const [hasTrackedReading, setHasTrackedReading] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const fadeOpacity = useSharedValue(0);
   const scale = useSharedValue(0.95);
@@ -132,6 +141,26 @@ export default function CodexDetailScreen() {
 
     loadEntry();
   }, [id, fadeOpacity, scale]);
+
+  const handleScroll = async (event: any) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const scrollPercentage = (contentOffset.y / (contentSize.height - layoutMeasurement.height)) * 100;
+
+    if (scrollPercentage > 70 && !hasTrackedReading && id) {
+      setHasTrackedReading(true);
+      const result = await gamificationService.markArticleRead(id as string, 'codex');
+
+      if (result.newRank) {
+        setNewRank(result.newRank);
+        setShowRankUpModal(true);
+      }
+
+      if (result.achievements.length > 0 || result.newRank) {
+        setShowConfetti(true);
+        HapticFeedback.success();
+      }
+    }
+  };
 
   const handleBackPress = () => {
     HapticFeedback.light();
@@ -223,9 +252,12 @@ export default function CodexDetailScreen() {
             </View>
 
             <ScrollView
+              ref={scrollViewRef}
               style={styles.scrollView}
               contentContainerStyle={styles.contentContainer}
               showsVerticalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
             >
               <Text style={[styles.sectionsHeader, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
                 Explore Sections
@@ -239,6 +271,19 @@ export default function CodexDetailScreen() {
 
               <View style={styles.bottomSpacer} />
             </ScrollView>
+
+            <FloatingRankOrb />
+
+            <GothicConfetti
+              visible={showConfetti}
+              onComplete={() => setShowConfetti(false)}
+            />
+
+            <RankUpModal
+              visible={showRankUpModal}
+              rank={newRank}
+              onClose={() => setShowRankUpModal(false)}
+            />
           </Animated.View>
         </SafeAreaView>
       </LinearGradient>

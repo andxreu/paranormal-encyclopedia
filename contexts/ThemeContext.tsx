@@ -20,6 +20,8 @@ interface ThemeColors {
   glow: string;
   shadow: string;
   particleOpacity: number;
+  accent: string;
+  accentRed: string;
 }
 
 interface Theme {
@@ -64,6 +66,8 @@ const darkTheme: Theme = {
     glow: 'rgba(139, 92, 246, 0.5)',
     shadow: 'rgba(0, 0, 0, 0.5)',
     particleOpacity: 1,
+    accent: '#00e5ff',
+    accentRed: '#cc0000',
   },
   fontFamily: 'SpaceMono',
   borderRadius: {
@@ -80,23 +84,26 @@ const darkTheme: Theme = {
   },
 };
 
+// Light mode is now a high-contrast mystical dark theme
 const lightTheme: Theme = {
   colors: {
-    background: '#E8E4F3',
-    backgroundAlt: '#D6CFEB',
-    backgroundGradient: ['#E8E4F3', '#D6CFEB', '#C4BAE3'],
-    gold: '#9A7B0A',
-    indigo: '#4338CA',
-    violet: '#6D28D9',
-    white: '#1F1F1F',
-    textPrimary: '#1F1F1F',
-    textSecondary: '#4B5563',
-    cardBg: 'rgba(255, 255, 255, 0.9)',
-    cardBgTranslucent: 'rgba(255, 255, 255, 0.7)',
-    border: 'rgba(109, 40, 217, 0.4)',
-    glow: 'rgba(109, 40, 217, 0.4)',
-    shadow: 'rgba(0, 0, 0, 0.15)',
-    particleOpacity: 0.5,
+    background: '#0b0b1a',
+    backgroundAlt: '#121225',
+    backgroundGradient: ['#0b0b1a', '#121225', '#1a1a35'],
+    gold: cosmicColors.starGold,
+    indigo: '#6366F1',
+    violet: '#8B5CF6',
+    white: '#f0f0ff',
+    textPrimary: '#f0f0ff',
+    textSecondary: '#b0b0e0',
+    cardBg: 'rgba(18, 18, 37, 0.8)',
+    cardBgTranslucent: 'rgba(18, 18, 37, 0.6)',
+    border: 'rgba(192, 192, 192, 0.3)',
+    glow: 'rgba(0, 229, 255, 0.4)',
+    shadow: 'rgba(0, 0, 0, 0.7)',
+    particleOpacity: 0.8,
+    accent: '#00e5ff',
+    accentRed: '#cc0000',
   },
   fontFamily: 'SpaceMono',
   borderRadius: {

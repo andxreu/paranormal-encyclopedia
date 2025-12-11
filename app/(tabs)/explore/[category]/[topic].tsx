@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,9 +19,13 @@ import { getRandomFact } from '@/data/paranormal/facts';
 import { ParticleEffect } from '@/components/ParticleEffect';
 import { RandomFactModal } from '@/components/RandomFactModal';
 import { LightningButton } from '@/components/LightningButton';
+import { FloatingRankOrb } from '@/components/FloatingRankOrb';
+import { GothicConfetti } from '@/components/GothicConfetti';
+import { RankUpModal } from '@/components/RankUpModal';
 import { HapticFeedback } from '@/utils/haptics';
 import { storage } from '@/utils/storage';
 import { recentTopicsService } from '@/utils/recentTopics';
+import { gamificationService, VeilRank, Achievement } from '@/utils/gamification';
 
 const { width } = Dimensions.get('window');
 
@@ -33,7 +37,7 @@ interface SectionCardProps {
 
 const SectionCard: React.FC<SectionCardProps> = ({ section, categoryColor, index }) => {
   const { theme, textScale } = useAppTheme();
-  const [expanded, setExpanded] = useState(true); // Auto-expanded by default
+  const [expanded, setExpanded] = useState(true);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -116,6 +120,11 @@ export default function TopicDetailScreen() {
   const [showOracleModal, setShowOracleModal] = useState(false);
   const [oracleFact, setOracleFact] = useState<any>(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showRankUpModal, setShowRankUpModal] = useState(false);
+  const [newRank, setNewRank] = useState<VeilRank | null>(null);
+  const [hasTrackedReading, setHasTrackedReading] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const fadeOpacity = useSharedValue(0);
   const scale = useSharedValue(0.95);
@@ -134,7 +143,6 @@ export default function TopicDetailScreen() {
       const favoriteStatus = await storage.isFavorite(`${categoryId}-${topicId}`);
       setIsFavorite(favoriteStatus);
 
-      // Add to recent topics
       if (categoryData && topicData) {
         await recentTopicsService.addRecentTopic({
           categoryId: categoryId as string,
@@ -164,6 +172,27 @@ export default function TopicDetailScreen() {
   useEffect(() => {
     loadTopicData();
   }, [loadTopicData]);
+
+  const handleScroll = async (event: any) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const scrollPercentage = (contentOffset.y / (contentSize.height - layoutMeasurement.height)) * 100;
+
+    if (scrollPercentage > 70 && !hasTrackedReading && categoryId && topicId) {
+      setHasTrackedReading(true);
+      const articleId = `${categoryId}-${topicId}`;
+      const result = await gamificationService.markArticleRead(articleId, 'topic', categoryId as string);
+
+      if (result.newRank) {
+        setNewRank(result.newRank);
+        setShowRankUpModal(true);
+      }
+
+      if (result.achievements.length > 0 || result.newRank) {
+        setShowConfetti(true);
+        HapticFeedback.success();
+      }
+    }
+  };
 
   const handleBackPress = () => {
     HapticFeedback.light();
@@ -264,9 +293,12 @@ export default function TopicDetailScreen() {
             </View>
 
             <ScrollView
+              ref={scrollViewRef}
               style={styles.scrollView}
               contentContainerStyle={styles.contentContainer}
               showsVerticalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
             >
               <Text style={[styles.sectionsHeader, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
                 Explore Sections
@@ -285,12 +317,24 @@ export default function TopicDetailScreen() {
               <View style={styles.bottomSpacer} />
             </ScrollView>
 
+            <FloatingRankOrb />
             <LightningButton onPress={handleOraclePress} />
 
             <RandomFactModal
               visible={showOracleModal}
               fact={oracleFact}
               onClose={() => setShowOracleModal(false)}
+            />
+
+            <GothicConfetti
+              visible={showConfetti}
+              onComplete={() => setShowConfetti(false)}
+            />
+
+            <RankUpModal
+              visible={showRankUpModal}
+              rank={newRank}
+              onClose={() => setShowRankUpModal(false)}
             />
           </Animated.View>
         </SafeAreaView>

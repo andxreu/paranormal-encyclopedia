@@ -30,6 +30,12 @@ export default function TabLayout() {
       label: 'Explore',
     },
     {
+      name: 'arcana',
+      route: '/(tabs)/arcana',
+      icon: 'arcana',
+      label: 'Arcana',
+    },
+    {
       name: 'favorites',
       route: '/(tabs)/favorites',
       icon: 'favorite',
@@ -60,11 +66,12 @@ export default function TabLayout() {
       >
         <Stack.Screen key="home" name="(home)" />
         <Stack.Screen key="explore" name="explore" />
+        <Stack.Screen key="arcana" name="arcana" />
         <Stack.Screen key="favorites" name="favorites" />
         <Stack.Screen key="search" name="search" />
         <Stack.Screen key="settings" name="settings" />
       </Stack>
-      {showTabBar && <FloatingTabBar tabs={tabs} containerWidth={350} />}
+      {showTabBar && <FloatingTabBar tabs={tabs} containerWidth={380} />}
     </>
   );
 }

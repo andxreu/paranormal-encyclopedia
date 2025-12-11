@@ -129,6 +129,7 @@ const TabButton: React.FC<{
     const icons: { [key: string]: string } = {
       home: '🏠',
       explore: '👁️',
+      arcana: '🔮',
       favorite: '⭐',
       search: '🔎',
       settings: '⚙️',
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 12,
   },
   tabButton: {
@@ -256,7 +257,7 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   tabIcon: {
-    fontSize: 24,
+    fontSize: 20,
     marginBottom: 4,
     color: '#B0B0B0',
   },
@@ -264,7 +265,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
     color: '#B0B0B0',
     fontFamily: 'SpaceMono',

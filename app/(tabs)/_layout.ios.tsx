@@ -17,6 +17,10 @@ export default function TabLayout() {
         <Icon sf="safari.fill" />
         <Label>Explore</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger key="arcana" name="arcana">
+        <Icon sf="eye.trianglebadge.exclamationmark.fill" />
+        <Label>Arcana</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger key="favorites" name="favorites">
         <Icon sf="heart.fill" />
         <Label>Favorites</Label>
