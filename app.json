@@ -1,34 +1,37 @@
+
 {
   "expo": {
     "name": "Paranormal Encyclopedia",
     "slug": "Paranormal Encyclopedia",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/natively-dark.png",
+    "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/natively-dark.png",
+      "image": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.Natively",
+      "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/natively-dark.png",
+        "foregroundImage": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
         "backgroundColor": "#000000"
       },
+      "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.Natively"
     },
     "web": {
-      "favicon": "./assets/images/final_quest_240x240.png",
+      "favicon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
       "bundler": "metro"
     },
     "plugins": [

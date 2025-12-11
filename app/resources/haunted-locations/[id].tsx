@@ -15,9 +15,8 @@ import Animated, {
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { getHauntedLocationById } from '@/data/paranormal/hauntedLocations';
 import { ParticleEffect } from '@/components/ParticleEffect';
-import { FloatingOracleButton } from '@/components/FloatingOracleButton';
 import { HapticFeedback } from '@/utils/haptics';
-import { storage } from '@/utils/storage';
+import { storage, FavoriteItem } from '@/utils/storage';
 
 interface SectionCardProps {
   section: any;
@@ -117,7 +116,8 @@ export default function HauntedLocationDetailScreen() {
       const locationData = getHauntedLocationById(id as string);
       setLocation(locationData);
 
-      const favoriteStatus = await storage.isFavorite(`haunted-location-${id}`);
+      const favoriteId = `haunted-location-${id}`;
+      const favoriteStatus = await storage.isFavorite(favoriteId);
       setIsFavorite(favoriteStatus);
 
       fadeOpacity.value = withTiming(1, {
@@ -141,12 +141,29 @@ export default function HauntedLocationDetailScreen() {
 
   const handleToggleFavorite = async () => {
     HapticFeedback.medium();
+    
+    if (!location || !id) {
+      console.warn('Missing location data');
+      return;
+    }
+
     const favoriteId = `haunted-location-${id}`;
+    
     if (isFavorite) {
       await storage.removeFavorite(favoriteId);
       setIsFavorite(false);
     } else {
-      await storage.addFavorite(favoriteId);
+      const favoriteItem: FavoriteItem = {
+        id: favoriteId,
+        type: 'haunted-location',
+        title: location.name,
+        description: location.description,
+        categoryName: 'Haunted Locations',
+        categoryColor: theme.colors.violet,
+        categoryIcon: '🏚️',
+        timestamp: Date.now(),
+      };
+      await storage.addFavorite(favoriteItem);
       setIsFavorite(true);
     }
   };
@@ -200,18 +217,14 @@ export default function HauntedLocationDetailScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                <View style={styles.headerButtons}>
-                  <FloatingOracleButton />
-                  <View style={styles.buttonSpacer} />
-                  <TouchableOpacity 
-                    onPress={handleToggleFavorite} 
-                    style={styles.iconButton}
-                    accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity 
+                  onPress={handleToggleFavorite} 
+                  style={styles.iconButton}
+                  accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+                </TouchableOpacity>
               </View>
               
               <View style={styles.headerContent}>
@@ -284,13 +297,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'SpaceMono',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  buttonSpacer: {
-    width: 12,
   },
   iconButton: {
     width: 36,

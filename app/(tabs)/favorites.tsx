@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -12,25 +12,13 @@ import Animated, {
   FadeIn,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
-import { storage } from '@/utils/storage';
-import { getCategoryById } from '@/data/paranormal/categories';
-import { getCategoryTopics } from '@/data/paranormal';
+import { storage, FavoriteItem } from '@/utils/storage';
 import { SortModal, SortOption } from '@/components/SortModal';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { LightningButton } from '@/components/LightningButton';
 import { RandomFactModal } from '@/components/RandomFactModal';
 import { getRandomFact, ParanormalFact } from '@/data/paranormal/facts';
 import { HapticFeedback } from '@/utils/haptics';
-
-interface FavoriteItem {
-  id: string;
-  categoryId: string;
-  topicId: string;
-  name: string;
-  description: string;
-  categoryName: string;
-  categoryColor: string;
-}
 
 export default function FavoritesScreen() {
   const { theme, textScale } = useAppTheme();
@@ -49,50 +37,7 @@ export default function FavoritesScreen() {
     try {
       setIsLoading(true);
       const savedFavorites = await storage.getFavorites();
-      const favoriteItems: FavoriteItem[] = [];
-
-      for (const favoriteId of savedFavorites) {
-        try {
-          const [categoryId, topicId] = favoriteId.split('-');
-          
-          if (!categoryId || !topicId) {
-            console.warn('Invalid favorite ID format:', favoriteId);
-            continue;
-          }
-
-          const category = getCategoryById(categoryId);
-          if (!category) {
-            console.warn('Category not found:', categoryId);
-            continue;
-          }
-
-          const topics = getCategoryTopics(categoryId);
-          if (!topics || !Array.isArray(topics)) {
-            console.warn('Topics not found for category:', categoryId);
-            continue;
-          }
-
-          const topic = topics.find((t: any) => t.id === topicId);
-          if (!topic) {
-            console.warn('Topic not found:', topicId);
-            continue;
-          }
-
-          favoriteItems.push({
-            id: favoriteId,
-            categoryId,
-            topicId,
-            name: topic.name || 'Unknown',
-            description: topic.description || '',
-            categoryName: category.name || 'Unknown',
-            categoryColor: category.color || '#8B5CF6',
-          });
-        } catch (error) {
-          console.error('Error processing favorite:', favoriteId, error);
-        }
-      }
-
-      setFavorites(favoriteItems);
+      setFavorites(savedFavorites);
     } catch (error) {
       console.error('Error loading favorites:', error);
       setFavorites([]);
@@ -109,19 +54,25 @@ export default function FavoritesScreen() {
     loadFavorites();
   }, [loadFavorites]);
 
+  useFocusEffect(
+    useCallback(() => {
+      loadFavorites();
+    }, [loadFavorites])
+  );
+
   const handleSort = (option: SortOption) => {
     setSortBy(option);
     const sorted = [...favorites];
     
     switch (option) {
       case 'name':
-        sorted.sort((a, b) => a.name.localeCompare(b.name));
+        sorted.sort((a, b) => a.title.localeCompare(b.title));
         break;
       case 'date-added':
-        // Keep original order (most recent first)
+        sorted.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         break;
       case 'category':
-        sorted.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+        sorted.sort((a, b) => (a.categoryName || '').localeCompare(b.categoryName || ''));
         break;
     }
     
@@ -138,7 +89,27 @@ export default function FavoritesScreen() {
 
   const handleFavoritePress = (favorite: FavoriteItem) => {
     HapticFeedback.light();
-    router.push(`/explore/${favorite.categoryId}/${favorite.topicId}` as any);
+    
+    switch (favorite.type) {
+      case 'topic':
+        if (favorite.categoryId) {
+          const topicId = favorite.id.split('-')[1];
+          router.push(`/explore/${favorite.categoryId}/${topicId}` as any);
+        }
+        break;
+      case 'codex':
+        const codexId = favorite.id.replace('codex-', '');
+        router.push(`/resources/codex/${codexId}` as any);
+        break;
+      case 'haunted-location':
+        const locationId = favorite.id.replace('haunted-location-', '');
+        router.push(`/resources/haunted-locations/${locationId}` as any);
+        break;
+      case 'documented-account':
+        const accountId = favorite.id.replace('documented-account-', '');
+        router.push(`/resources/documented-accounts/${accountId}` as any);
+        break;
+    }
   };
 
   const handleLightningPress = () => {
@@ -231,31 +202,36 @@ export default function FavoritesScreen() {
 
                   {favorites.map((favorite, index) => (
                     <Animated.View
-                      key={index}
+                      key={favorite.id}
                       entering={FadeIn.delay(index * 50).duration(300)}
                     >
                       <TouchableOpacity
                         style={styles.favoriteCard}
                         onPress={() => handleFavoritePress(favorite)}
                         activeOpacity={0.8}
-                        accessibilityLabel={favorite.name}
-                        accessibilityHint={`${favorite.categoryName} topic`}
+                        accessibilityLabel={favorite.title}
+                        accessibilityHint={`${favorite.categoryName || 'Item'}`}
                         accessibilityRole="button"
                       >
                         <LinearGradient
-                          colors={[favorite.categoryColor + '40', favorite.categoryColor + '20', theme.colors.cardBg]}
+                          colors={[(favorite.categoryColor || theme.colors.violet) + '40', (favorite.categoryColor || theme.colors.violet) + '20', theme.colors.cardBg]}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
-                          style={[styles.favoriteCardGradient, { borderColor: favorite.categoryColor + '60', borderLeftColor: favorite.categoryColor }]}
+                          style={[styles.favoriteCardGradient, { borderColor: (favorite.categoryColor || theme.colors.violet) + '60', borderLeftColor: favorite.categoryColor || theme.colors.violet }]}
                         >
                           <View style={styles.favoriteCardContent}>
-                            <View style={[styles.categoryBadge, { backgroundColor: favorite.categoryColor + '30' }]}>
-                              <Text style={[styles.categoryBadgeText, { color: theme.colors.textPrimary, fontSize: 10 * textScale }]}>
-                                {favorite.categoryName}
-                              </Text>
+                            <View style={styles.categoryBadgeRow}>
+                              {favorite.categoryIcon && (
+                                <Text style={styles.categoryIcon}>{favorite.categoryIcon}</Text>
+                              )}
+                              <View style={[styles.categoryBadge, { backgroundColor: (favorite.categoryColor || theme.colors.violet) + '30' }]}>
+                                <Text style={[styles.categoryBadgeText, { color: theme.colors.textPrimary, fontSize: 10 * textScale }]}>
+                                  {favorite.categoryName || 'Unknown'}
+                                </Text>
+                              </View>
                             </View>
                             <Text style={[styles.favoriteTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
-                              {favorite.name}
+                              {favorite.title}
                             </Text>
                             <Text style={[styles.favoriteDescription, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]} numberOfLines={2}>
                               {favorite.description}
@@ -432,6 +408,14 @@ const styles = StyleSheet.create({
   },
   favoriteCardContent: {
     gap: 8,
+  },
+  categoryBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  categoryIcon: {
+    fontSize: 16,
   },
   categoryBadge: {
     alignSelf: 'flex-start',

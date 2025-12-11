@@ -22,6 +22,18 @@ export interface AppSettings {
   dailyNotificationsEnabled: boolean;
 }
 
+export interface FavoriteItem {
+  id: string;
+  type: 'topic' | 'codex' | 'haunted-location' | 'documented-account';
+  title: string;
+  description: string;
+  categoryId?: string;
+  categoryName?: string;
+  categoryColor?: string;
+  categoryIcon?: string;
+  timestamp: number;
+}
+
 const defaultSettings: AppSettings = {
   notificationsEnabled: true,
   soundsEnabled: true,
@@ -129,7 +141,7 @@ export const storage = {
     return Array.isArray(facts) ? facts : null;
   },
 
-  async saveFavorites(favorites: string[]): Promise<void> {
+  async saveFavorites(favorites: FavoriteItem[]): Promise<void> {
     if (!favorites || !Array.isArray(favorites)) {
       console.warn('Invalid favorites data, skipping save');
       return;
@@ -137,20 +149,23 @@ export const storage = {
     await this.saveData(STORAGE_KEYS.FAVORITES, favorites);
   },
 
-  async getFavorites(): Promise<string[]> {
-    const favorites = await this.getData<string[]>(STORAGE_KEYS.FAVORITES);
+  async getFavorites(): Promise<FavoriteItem[]> {
+    const favorites = await this.getData<FavoriteItem[]>(STORAGE_KEYS.FAVORITES);
     return Array.isArray(favorites) ? favorites : [];
   },
 
-  async addFavorite(id: string): Promise<void> {
-    if (!id) {
-      console.warn('Invalid favorite id');
+  async addFavorite(item: FavoriteItem): Promise<void> {
+    if (!item || !item.id) {
+      console.warn('Invalid favorite item');
       return;
     }
     const favorites = await this.getFavorites();
-    if (!favorites.includes(id)) {
-      favorites.push(id);
+    const existingIndex = favorites.findIndex(fav => fav.id === item.id);
+    
+    if (existingIndex === -1) {
+      favorites.unshift({ ...item, timestamp: Date.now() });
       await this.saveFavorites(favorites);
+      console.log('Added favorite:', item.id);
     }
   },
 
@@ -160,8 +175,9 @@ export const storage = {
       return;
     }
     const favorites = await this.getFavorites();
-    const filtered = favorites.filter(fav => fav !== id);
+    const filtered = favorites.filter(fav => fav.id !== id);
     await this.saveFavorites(filtered);
+    console.log('Removed favorite:', id);
   },
 
   async isFavorite(id: string): Promise<boolean> {
@@ -169,7 +185,15 @@ export const storage = {
       return false;
     }
     const favorites = await this.getFavorites();
-    return favorites.includes(id);
+    return favorites.some(fav => fav.id === id);
+  },
+
+  async getFavoriteById(id: string): Promise<FavoriteItem | null> {
+    if (!id) {
+      return null;
+    }
+    const favorites = await this.getFavorites();
+    return favorites.find(fav => fav.id === id) || null;
   },
 
   async saveLastSync(): Promise<void> {

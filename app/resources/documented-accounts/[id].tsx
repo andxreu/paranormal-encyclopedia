@@ -13,9 +13,8 @@ import Animated, {
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { getDocumentedAccountById, DocumentedAccount } from '@/data/paranormal/documentedAccounts';
 import { ParticleEffect } from '@/components/ParticleEffect';
-import { FloatingOracleButton } from '@/components/FloatingOracleButton';
 import { HapticFeedback } from '@/utils/haptics';
-import { storage } from '@/utils/storage';
+import { storage, FavoriteItem } from '@/utils/storage';
 
 export default function DocumentedAccountDetailScreen() {
   const { theme, textScale } = useAppTheme();
@@ -33,7 +32,8 @@ export default function DocumentedAccountDetailScreen() {
         setAccount(foundAccount || null);
         
         if (foundAccount) {
-          const favoriteStatus = await storage.isFavorite(`documented-account-${id}`);
+          const favoriteId = `documented-account-${id}`;
+          const favoriteStatus = await storage.isFavorite(favoriteId);
           setIsFavorite(favoriteStatus);
           
           fadeOpacity.value = withTiming(1, {
@@ -60,12 +60,29 @@ export default function DocumentedAccountDetailScreen() {
 
   const handleToggleFavorite = async () => {
     HapticFeedback.medium();
+    
+    if (!account || !id || typeof id !== 'string') {
+      console.warn('Missing account data');
+      return;
+    }
+
     const favoriteId = `documented-account-${id}`;
+    
     if (isFavorite) {
       await storage.removeFavorite(favoriteId);
       setIsFavorite(false);
     } else {
-      await storage.addFavorite(favoriteId);
+      const favoriteItem: FavoriteItem = {
+        id: favoriteId,
+        type: 'documented-account',
+        title: account.name,
+        description: account.description,
+        categoryName: 'Documented Accounts',
+        categoryColor: theme.colors.gold,
+        categoryIcon: '📜',
+        timestamp: Date.now(),
+      };
+      await storage.addFavorite(favoriteItem);
       setIsFavorite(true);
     }
   };
@@ -124,18 +141,14 @@ export default function DocumentedAccountDetailScreen() {
                 </Text>
               </TouchableOpacity>
 
-              <View style={styles.headerButtons}>
-                <FloatingOracleButton />
-                <View style={styles.buttonSpacer} />
-                <TouchableOpacity 
-                  onPress={handleToggleFavorite} 
-                  style={styles.iconButton}
-                  accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity 
+                onPress={handleToggleFavorite} 
+                style={styles.iconButton}
+                accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                accessibilityRole="button"
+              >
+                <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -231,13 +244,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'SpaceMono',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  buttonSpacer: {
-    width: 12,
   },
   iconButton: {
     width: 36,

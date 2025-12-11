@@ -15,12 +15,11 @@ import Animated, {
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { getCodexEntryById } from '@/data/paranormal/codex';
 import { ParticleEffect } from '@/components/ParticleEffect';
-import { FloatingOracleButton } from '@/components/FloatingOracleButton';
 import { FloatingRankOrb } from '@/components/FloatingRankOrb';
 import { GothicConfetti } from '@/components/GothicConfetti';
 import { RankUpModal } from '@/components/RankUpModal';
 import { HapticFeedback } from '@/utils/haptics';
-import { storage } from '@/utils/storage';
+import { storage, FavoriteItem } from '@/utils/storage';
 import { gamificationService, VeilRank } from '@/utils/gamification';
 
 interface SectionCardProps {
@@ -126,7 +125,8 @@ export default function CodexDetailScreen() {
       const entryData = getCodexEntryById(id as string);
       setEntry(entryData);
 
-      const favoriteStatus = await storage.isFavorite(`codex-${id}`);
+      const favoriteId = `codex-${id}`;
+      const favoriteStatus = await storage.isFavorite(favoriteId);
       setIsFavorite(favoriteStatus);
 
       fadeOpacity.value = withTiming(1, {
@@ -170,12 +170,29 @@ export default function CodexDetailScreen() {
 
   const handleToggleFavorite = async () => {
     HapticFeedback.medium();
+    
+    if (!entry || !id) {
+      console.warn('Missing entry data');
+      return;
+    }
+
     const favoriteId = `codex-${id}`;
+    
     if (isFavorite) {
       await storage.removeFavorite(favoriteId);
       setIsFavorite(false);
     } else {
-      await storage.addFavorite(favoriteId);
+      const favoriteItem: FavoriteItem = {
+        id: favoriteId,
+        type: 'codex',
+        title: entry.name,
+        description: entry.description,
+        categoryName: 'The Codex',
+        categoryColor: theme.colors.indigo,
+        categoryIcon: '📖',
+        timestamp: Date.now(),
+      };
+      await storage.addFavorite(favoriteItem);
       setIsFavorite(true);
     }
   };
@@ -229,18 +246,14 @@ export default function CodexDetailScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                <View style={styles.headerButtons}>
-                  <FloatingOracleButton />
-                  <View style={styles.buttonSpacer} />
-                  <TouchableOpacity 
-                    onPress={handleToggleFavorite} 
-                    style={styles.iconButton}
-                    accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity 
+                  onPress={handleToggleFavorite} 
+                  style={styles.iconButton}
+                  accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+                </TouchableOpacity>
               </View>
               
               <View style={styles.headerContent}>
@@ -329,13 +342,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'SpaceMono',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  buttonSpacer: {
-    width: 12,
   },
   iconButton: {
     width: 36,

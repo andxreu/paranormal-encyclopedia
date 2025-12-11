@@ -16,12 +16,11 @@ import { useAppTheme } from '@/contexts/ThemeContext';
 import { getCategoryById } from '@/data/paranormal/categories';
 import { getCategoryTopics } from '@/data/paranormal';
 import { ParticleEffect } from '@/components/ParticleEffect';
-import { FloatingOracleButton } from '@/components/FloatingOracleButton';
 import { FloatingRankOrb } from '@/components/FloatingRankOrb';
 import { GothicConfetti } from '@/components/GothicConfetti';
 import { RankUpModal } from '@/components/RankUpModal';
 import { HapticFeedback } from '@/utils/haptics';
-import { storage } from '@/utils/storage';
+import { storage, FavoriteItem } from '@/utils/storage';
 import { recentTopicsService } from '@/utils/recentTopics';
 import { gamificationService, VeilRank } from '@/utils/gamification';
 
@@ -136,7 +135,8 @@ export default function TopicDetailScreen() {
       setCategory(categoryData);
       setTopic(topicData);
 
-      const favoriteStatus = await storage.isFavorite(`${categoryId}-${topicId}`);
+      const favoriteId = `${categoryId}-${topicId}`;
+      const favoriteStatus = await storage.isFavorite(favoriteId);
       setIsFavorite(favoriteStatus);
 
       if (categoryData && topicData) {
@@ -197,12 +197,30 @@ export default function TopicDetailScreen() {
 
   const handleToggleFavorite = async () => {
     HapticFeedback.medium();
+    
+    if (!category || !topic || !categoryId || !topicId) {
+      console.warn('Missing category or topic data');
+      return;
+    }
+
     const favoriteId = `${categoryId}-${topicId}`;
+    
     if (isFavorite) {
       await storage.removeFavorite(favoriteId);
       setIsFavorite(false);
     } else {
-      await storage.addFavorite(favoriteId);
+      const favoriteItem: FavoriteItem = {
+        id: favoriteId,
+        type: 'topic',
+        title: topic.name,
+        description: topic.description,
+        categoryId: categoryId as string,
+        categoryName: category.name,
+        categoryColor: category.color,
+        categoryIcon: category.icon,
+        timestamp: Date.now(),
+      };
+      await storage.addFavorite(favoriteItem);
       setIsFavorite(true);
     }
   };
@@ -256,18 +274,14 @@ export default function TopicDetailScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                <View style={styles.headerButtons}>
-                  <FloatingOracleButton />
-                  <View style={styles.buttonSpacer} />
-                  <TouchableOpacity 
-                    onPress={handleToggleFavorite} 
-                    style={styles.iconButton}
-                    accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity 
+                  onPress={handleToggleFavorite} 
+                  style={styles.iconButton}
+                  accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
+                </TouchableOpacity>
               </View>
               
               <View style={styles.headerContent}>
@@ -362,13 +376,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'SpaceMono',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  buttonSpacer: {
-    width: 12,
   },
   iconButton: {
     width: 36,
