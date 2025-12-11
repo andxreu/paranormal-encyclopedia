@@ -24,7 +24,7 @@ export const categories: Category[] = [
     code: 'CR',
     name: 'Creatures',
     color: categoryColors.creatures,
-    icon: '🐉',
+    icon: '🐲',
     description: 'Cryptids and mysterious beasts from around the world',
     topics: [
       { id: 'cr-1', name: 'Bigfoot', description: 'The legendary ape-like creature of North American forests', categoryId: 'creatures' },
@@ -114,7 +114,7 @@ export const categories: Category[] = [
     code: 'FL',
     name: 'Folklore',
     color: categoryColors.folklore,
-    icon: '📖',
+    icon: '🦅',
     description: 'Myths, legends, and traditional tales from around the world',
     topics: [
       { id: 'fl-1', name: 'Vampires', description: 'The immortal blood-drinking creatures of the night', categoryId: 'folklore' },
@@ -144,7 +144,7 @@ export const categories: Category[] = [
     code: 'PE',
     name: 'People',
     color: categoryColors.people,
-    icon: '👤',
+    icon: '🥷',
     description: 'Mysterious figures and enigmatic individuals',
     topics: [
       { id: 'pe-1', name: 'Nostradamus', description: 'The prophet who predicted the future', categoryId: 'people' },

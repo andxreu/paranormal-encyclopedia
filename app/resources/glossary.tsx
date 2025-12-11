@@ -70,7 +70,7 @@ export default function GlossaryScreen() {
               </TouchableOpacity>
               
               <View style={styles.headerContent}>
-                <Text style={styles.headerIcon}>📜</Text>
+                <Text style={styles.headerIcon}>📖</Text>
                 <Text style={[styles.headerTitle, { color: theme.colors.textPrimary, fontSize: 32 * textScale }]}>
                   Glossary A-Z
                 </Text>
@@ -222,11 +222,11 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   entryCardWrapper: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   entryCard: {
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 18,
+    padding: 18,
     borderWidth: 1,
     boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.4)',
     elevation: 8,
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   entryDefinition: {
     fontSize: 13,
     fontFamily: 'SpaceMono',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   entryBorder: {
     position: 'absolute',
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 2,
     opacity: 0.3,
   },

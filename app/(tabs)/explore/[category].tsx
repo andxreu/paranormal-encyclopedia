@@ -82,12 +82,6 @@ const TopicCard: React.FC<TopicCardProps> = ({ topic, categoryColor, onPress, in
                   {topic.description}
                 </Text>
               </View>
-              
-              <View style={[styles.sectionBadge, { backgroundColor: categoryColor + '30', borderColor: categoryColor + '60' }]}>
-                <Text style={[styles.sectionBadgeText, { color: theme.colors.textPrimary, fontSize: 11 * textScale }]}>
-                  {topic.sections?.length || 0} sections
-                </Text>
-              </View>
             </View>
             
             <View style={[styles.topicCardBorder, { borderColor: categoryColor + '60' }]} />
@@ -332,11 +326,11 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   topicCardWrapper: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   topicCard: {
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 18,
+    padding: 18,
     borderWidth: 1,
     boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.4)',
     elevation: 8,
@@ -346,7 +340,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   topicTextContainer: {
-    marginBottom: 12,
+    marginBottom: 0,
   },
   topicName: {
     fontSize: 18,
@@ -362,25 +356,13 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     lineHeight: 18,
   },
-  sectionBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  sectionBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: 'SpaceMono',
-  },
   topicCardBorder: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 2,
     opacity: 0.3,
   },

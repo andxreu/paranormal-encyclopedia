@@ -146,13 +146,13 @@ export const TodaysMysteries: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 28,
+    marginBottom: 24,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   titleContainer: {
     flexDirection: 'row',
@@ -180,17 +180,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   cardsContainer: {
-    gap: 12,
+    gap: 10,
   },
   cardWrapper: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   card: {
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: 'rgba(139, 92, 246, 0.3)',
-    borderRadius: 16,
+    borderRadius: 14,
     boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.3)',
     elevation: 6,
   },
@@ -198,10 +198,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   cardIcon: {
-    fontSize: 32,
+    fontSize: 28,
   },
   cardLabel: {
     fontSize: 11,
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   cardDescription: {
     fontSize: 13,
     color: '#B0B0B0',
-    lineHeight: 20,
+    lineHeight: 18,
     fontFamily: 'SpaceMono',
   },
   cardBorder: {
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 2,
     opacity: 0.3,
   },
