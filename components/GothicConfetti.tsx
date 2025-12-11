@@ -10,6 +10,7 @@ import Animated, {
   withDelay,
   Easing,
   runOnJS,
+  runOnUI,
 } from 'react-native-reanimated';
 
 const { width, height } = Dimensions.get('window');
@@ -36,19 +37,23 @@ export const GothicConfetti: React.FC<GothicConfettiProps> = ({ visible, onCompl
 
   useEffect(() => {
     if (visible) {
-      opacity.value = 1;
-      opacity.value = withDelay(
-        2500,
-        withTiming(0, { duration: 500 }, (finished) => {
-          if (finished && onComplete) {
-            runOnJS(onComplete)();
-          }
-        })
-      );
+      runOnUI(() => {
+        'worklet';
+        opacity.value = 1;
+        opacity.value = withDelay(
+          2500,
+          withTiming(0, { duration: 500 }, (finished) => {
+            if (finished && onComplete) {
+              runOnJS(onComplete)();
+            }
+          })
+        );
+      })();
     }
   }, [visible, opacity, onComplete]);
 
   const containerStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       opacity: opacity.value,
     };
@@ -67,7 +72,7 @@ export const GothicConfetti: React.FC<GothicConfettiProps> = ({ visible, onCompl
   }));
 
   return (
-    <Animated.View style={[styles.container, containerStyle]} pointerEvents="none">
+    <Animated.View style={[styles.container, containerStyle]}>
       {pieces.map((piece) => (
         <ConfettiPieceComponent key={piece.id} piece={piece} />
       ))}
@@ -82,46 +87,50 @@ const ConfettiPieceComponent: React.FC<{ piece: ConfettiPiece }> = ({ piece }) =
   const scale = useSharedValue(0);
 
   useEffect(() => {
-    scale.value = withDelay(
-      piece.delay,
-      withSpring(piece.scale, {
-        damping: 10,
-        stiffness: 100,
-      })
-    );
-
-    translateY.value = withDelay(
-      piece.delay,
-      withTiming(height + 100, {
-        duration: 2500 + Math.random() * 1000,
-        easing: Easing.inOut(Easing.quad),
-      })
-    );
-
-    translateX.value = withDelay(
-      piece.delay,
-      withSequence(
-        withTiming(piece.x + (Math.random() - 0.5) * 100, {
-          duration: 1000,
-          easing: Easing.inOut(Easing.sine),
-        }),
-        withTiming(piece.x + (Math.random() - 0.5) * 100, {
-          duration: 1000,
-          easing: Easing.inOut(Easing.sine),
+    runOnUI(() => {
+      'worklet';
+      scale.value = withDelay(
+        piece.delay,
+        withSpring(piece.scale, {
+          damping: 10,
+          stiffness: 100,
         })
-      )
-    );
+      );
 
-    rotation.value = withDelay(
-      piece.delay,
-      withTiming(piece.rotation + 360 * 3, {
-        duration: 2500,
-        easing: Easing.linear,
-      })
-    );
+      translateY.value = withDelay(
+        piece.delay,
+        withTiming(height + 100, {
+          duration: 2500 + Math.random() * 1000,
+          easing: Easing.inOut(Easing.quad),
+        })
+      );
+
+      translateX.value = withDelay(
+        piece.delay,
+        withSequence(
+          withTiming(piece.x + (Math.random() - 0.5) * 100, {
+            duration: 1000,
+            easing: Easing.inOut(Easing.sin),
+          }),
+          withTiming(piece.x + (Math.random() - 0.5) * 100, {
+            duration: 1000,
+            easing: Easing.inOut(Easing.sin),
+          })
+        )
+      );
+
+      rotation.value = withDelay(
+        piece.delay,
+        withTiming(piece.rotation + 360 * 3, {
+          duration: 2500,
+          easing: Easing.linear,
+        })
+      );
+    })();
   }, [piece, translateY, translateX, rotation, scale]);
 
   const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       transform: [
         { translateX: translateX.value },
@@ -147,6 +156,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 9999,
+    pointerEvents: 'none',
   },
   confettiPiece: {
     position: 'absolute',

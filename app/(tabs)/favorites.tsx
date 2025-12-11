@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
   Easing,
   FadeIn,
+  runOnUI,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { storage, FavoriteItem } from '@/utils/storage';
@@ -43,10 +44,13 @@ export default function FavoritesScreen() {
       setFavorites([]);
     } finally {
       setIsLoading(false);
-      fadeOpacity.value = withTiming(1, {
-        duration: 600,
-        easing: Easing.inOut(Easing.ease),
-      });
+      runOnUI(() => {
+        'worklet';
+        fadeOpacity.value = withTiming(1, {
+          duration: 600,
+          easing: Easing.inOut(Easing.ease),
+        });
+      })();
     }
   }, [fadeOpacity]);
 
@@ -107,11 +111,8 @@ export default function FavoritesScreen() {
       switch (favorite.type) {
         case 'topic':
           if (favorite.categoryId && favorite.id) {
-            const parts = favorite.id.split('-');
-            if (parts.length >= 2) {
-              const topicId = parts.slice(1).join('-');
-              router.push(`/explore/${favorite.categoryId}/${topicId}` as any);
-            }
+            const topicId = favorite.id.replace(`${favorite.categoryId}-`, '');
+            router.push(`/explore/${favorite.categoryId}/${topicId}` as any);
           }
           break;
         case 'codex':
@@ -152,6 +153,7 @@ export default function FavoritesScreen() {
   };
 
   const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       opacity: fadeOpacity.value,
     };
@@ -331,9 +333,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '900',
     fontFamily: 'SpaceMono',
-    textShadowColor: 'rgba(139, 92, 246, 0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
   },
   headerSubtitle: {
     fontSize: 14,

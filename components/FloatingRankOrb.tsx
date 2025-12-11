@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
   withSpring,
   Easing,
+  runOnUI,
 } from 'react-native-reanimated';
 import { gamificationService, VeilRank } from '@/utils/gamification';
 import * as Haptics from 'expo-haptics';
@@ -18,6 +19,7 @@ import * as Haptics from 'expo-haptics';
 export const FloatingRankOrb: React.FC = () => {
   const [currentRank, setCurrentRank] = useState<VeilRank | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
   
   const scale = useSharedValue(1);
   const pulseScale = useSharedValue(1);
@@ -26,69 +28,94 @@ export const FloatingRankOrb: React.FC = () => {
   useEffect(() => {
     loadRank();
 
-    pulseScale.value = withRepeat(
-      withSequence(
-        withTiming(1.15, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
-    );
+    runOnUI(() => {
+      'worklet';
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.15, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        false
+      );
 
-    glowOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.8, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.5, { duration: 1200, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
-    );
+      glowOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.8, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.5, { duration: 1200, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        false
+      );
+    })();
   }, [pulseScale, glowOpacity]);
 
   const loadRank = async () => {
-    const progress = await gamificationService.getProgress();
-    const rank = gamificationService.getCurrentRank(progress.totalPoints);
-    setCurrentRank(rank);
+    try {
+      const progress = await gamificationService.getProgress();
+      const rank = gamificationService.getCurrentRank(progress.totalPoints);
+      setCurrentRank(rank);
+    } catch (error) {
+      console.error('Error loading rank:', error);
+    }
   };
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(tabs)/arcana' as any);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      router.push('/(tabs)/arcana' as any);
+    } catch (error) {
+      console.error('Error navigating to arcana:', error);
+    }
   };
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.9, {
-      damping: 15,
-      stiffness: 400,
-    });
+    runOnUI(() => {
+      'worklet';
+      scale.value = withSpring(0.9, {
+        damping: 15,
+        stiffness: 400,
+      });
+    })();
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 400,
-    });
+    runOnUI(() => {
+      'worklet';
+      scale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 400,
+      });
+    })();
   };
 
   const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       transform: [{ scale: scale.value }],
     };
   });
 
   const pulseStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       transform: [{ scale: pulseScale.value }],
     };
   });
 
   const glowStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       opacity: glowOpacity.value,
     };
   });
 
-  if (!currentRank) return null;
+  // Only show on home screen
+  const isHomeScreen = pathname === '/' || pathname === '/(tabs)/(home)' || pathname === '/(tabs)/(home)/';
+  
+  if (!isHomeScreen || !currentRank) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>

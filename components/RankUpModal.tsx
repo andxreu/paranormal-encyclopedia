@@ -10,6 +10,7 @@ import Animated, {
   withSequence,
   withTiming,
   Easing,
+  runOnUI,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { VeilRank } from '@/utils/gamification';
@@ -31,40 +32,52 @@ export const RankUpModal: React.FC<RankUpModalProps> = ({ visible, rank, onClose
     if (visible && rank) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      scale.value = withSpring(1, {
-        damping: 15,
-        stiffness: 200,
-      });
+      runOnUI(() => {
+        'worklet';
+        scale.value = withSpring(1, {
+          damping: 15,
+          stiffness: 200,
+        });
 
-      iconScale.value = withSequence(
-        withTiming(1.3, { duration: 300, easing: Easing.out(Easing.ease) }),
-        withSpring(1, { damping: 10, stiffness: 200 })
-      );
+        iconScale.value = withSequence(
+          withTiming(1.3, { 
+            duration: 300, 
+            easing: Easing.out(Easing.ease) 
+          }),
+          withSpring(1, { damping: 10, stiffness: 200 })
+        );
 
-      glowOpacity.value = withSequence(
-        withTiming(1, { duration: 500 }),
-        withTiming(0.7, { duration: 1000 })
-      );
+        glowOpacity.value = withSequence(
+          withTiming(1, { duration: 500 }),
+          withTiming(0.7, { duration: 1000 })
+        );
+      })();
     } else {
-      scale.value = 0;
-      iconScale.value = 0;
-      glowOpacity.value = 0;
+      runOnUI(() => {
+        'worklet';
+        scale.value = 0;
+        iconScale.value = 0;
+        glowOpacity.value = 0;
+      })();
     }
   }, [visible, rank, scale, iconScale, glowOpacity]);
 
   const containerStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       transform: [{ scale: scale.value }],
     };
   });
 
   const iconStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       transform: [{ scale: iconScale.value }],
     };
   });
 
   const glowStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       opacity: glowOpacity.value,
     };
@@ -179,9 +192,6 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     marginBottom: 16,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
   },
   description: {
     fontSize: 14,

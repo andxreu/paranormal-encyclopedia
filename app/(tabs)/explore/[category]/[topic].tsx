@@ -11,12 +11,12 @@ import Animated, {
   withTiming,
   Easing,
   FadeIn,
+  runOnUI,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { getCategoryById } from '@/data/paranormal/categories';
 import { getCategoryTopics } from '@/data/paranormal';
 import { ParticleEffect } from '@/components/ParticleEffect';
-import { FloatingRankOrb } from '@/components/FloatingRankOrb';
 import { GothicConfetti } from '@/components/GothicConfetti';
 import { RankUpModal } from '@/components/RankUpModal';
 import { HapticFeedback } from '@/utils/haptics';
@@ -38,6 +38,7 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, categoryColor, index
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       transform: [{ scale: scale.value }],
     };
@@ -54,10 +55,13 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, categoryColor, index
 
   const handlePressIn = () => {
     try {
-      scale.value = withSpring(0.98, {
-        damping: 15,
-        stiffness: 300,
-      });
+      runOnUI(() => {
+        'worklet';
+        scale.value = withSpring(0.98, {
+          damping: 15,
+          stiffness: 300,
+        });
+      })();
     } catch (error) {
       console.error('Error in press animation:', error);
     }
@@ -65,10 +69,13 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, categoryColor, index
 
   const handlePressOut = () => {
     try {
-      scale.value = withSpring(1, {
-        damping: 15,
-        stiffness: 300,
-      });
+      runOnUI(() => {
+        'worklet';
+        scale.value = withSpring(1, {
+          damping: 15,
+          stiffness: 300,
+        });
+      })();
     } catch (error) {
       console.error('Error in press animation:', error);
     }
@@ -177,15 +184,18 @@ export default function TopicDetailScreen() {
         });
       }
 
-      fadeOpacity.value = withTiming(1, {
-        duration: 600,
-        easing: Easing.inOut(Easing.ease),
-      });
+      runOnUI(() => {
+        'worklet';
+        fadeOpacity.value = withTiming(1, {
+          duration: 600,
+          easing: Easing.inOut(Easing.ease),
+        });
 
-      scale.value = withTiming(1, {
-        duration: 600,
-        easing: Easing.out(Easing.ease),
-      });
+        scale.value = withTiming(1, {
+          duration: 600,
+          easing: Easing.out(Easing.ease),
+        });
+      })();
     } catch (error) {
       console.error('Error loading topic data:', error);
       setCategory(null);
@@ -270,6 +280,7 @@ export default function TopicDetailScreen() {
   };
 
   const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       opacity: fadeOpacity.value,
       transform: [{ scale: scale.value }],
@@ -374,8 +385,6 @@ export default function TopicDetailScreen() {
               <View style={styles.bottomSpacer} />
             </ScrollView>
 
-            <FloatingRankOrb />
-
             <GothicConfetti
               visible={showConfetti}
               onComplete={() => setShowConfetti(false)}
@@ -450,9 +459,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
     paddingHorizontal: 20,
-    textShadowColor: 'rgba(139, 92, 246, 0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
   },
   topicDescription: {
     fontSize: 14,
@@ -485,9 +491,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontFamily: 'SpaceMono',
     marginBottom: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   sectionCardWrapper: {
     marginBottom: 12,

@@ -9,6 +9,7 @@ import Animated, {
   withSequence,
   withTiming,
   Easing,
+  runOnUI,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { useRouter } from 'expo-router';
@@ -24,32 +25,36 @@ export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPr
   const rotate = useSharedValue(0);
 
   useEffect(() => {
-    scale.value = withRepeat(
-      withSequence(
-        withTiming(1.05, {
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-        }),
-        withTiming(1, {
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-        })
-      ),
-      -1,
-      false
-    );
+    runOnUI(() => {
+      'worklet';
+      scale.value = withRepeat(
+        withSequence(
+          withTiming(1.05, {
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          withTiming(1, {
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+          })
+        ),
+        -1,
+        false
+      );
 
-    rotate.value = withRepeat(
-      withTiming(360, {
-        duration: 20000,
-        easing: Easing.linear,
-      }),
-      -1,
-      false
-    );
+      rotate.value = withRepeat(
+        withTiming(360, {
+          duration: 20000,
+          easing: Easing.linear,
+        }),
+        -1,
+        false
+      );
+    })();
   }, [scale, rotate]);
 
   const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       transform: [
         { scale: scale.value },
@@ -61,11 +66,14 @@ export const FloatingOracleButton: React.FC<FloatingOracleButtonProps> = ({ onPr
   const goldColor = theme?.colors?.gold || '#d4af37';
 
   const handlePress = () => {
-    if (onPress) {
-      onPress();
-    } else {
-      // Default behavior: navigate to Arcana screen
-      router.push('/(tabs)/arcana');
+    try {
+      if (onPress) {
+        onPress();
+      } else {
+        router.push('/(tabs)/arcana');
+      }
+    } catch (error) {
+      console.error('Error handling oracle button press:', error);
     }
   };
 

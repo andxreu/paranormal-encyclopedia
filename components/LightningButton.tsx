@@ -9,6 +9,7 @@ import Animated, {
   withSequence,
   withTiming,
   Easing,
+  runOnUI,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { usePathname } from 'expo-router';
@@ -24,61 +25,70 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
   const glowOpacity = useSharedValue(0.5);
 
   useEffect(() => {
-    scale.value = withRepeat(
-      withSequence(
-        withTiming(1.1, {
-          duration: 1500,
-          easing: Easing.inOut(Easing.ease),
-        }),
-        withTiming(1, {
-          duration: 1500,
-          easing: Easing.inOut(Easing.ease),
-        })
-      ),
-      -1,
-      false
-    );
+    runOnUI(() => {
+      'worklet';
+      scale.value = withRepeat(
+        withSequence(
+          withTiming(1.1, {
+            duration: 1500,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          withTiming(1, {
+            duration: 1500,
+            easing: Easing.inOut(Easing.ease),
+          })
+        ),
+        -1,
+        false
+      );
 
-    rotate.value = withRepeat(
-      withTiming(360, {
-        duration: 20000,
-        easing: Easing.linear,
-      }),
-      -1,
-      false
-    );
-
-    glowOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.9, {
-          duration: 1200,
-          easing: Easing.inOut(Easing.ease),
+      rotate.value = withRepeat(
+        withTiming(360, {
+          duration: 20000,
+          easing: Easing.linear,
         }),
-        withTiming(0.5, {
-          duration: 1200,
-          easing: Easing.inOut(Easing.ease),
-        })
-      ),
-      -1,
-      false
-    );
+        -1,
+        false
+      );
+
+      glowOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.9, {
+            duration: 1200,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          withTiming(0.5, {
+            duration: 1200,
+            easing: Easing.inOut(Easing.ease),
+          })
+        ),
+        -1,
+        false
+      );
+    })();
   }, [scale, rotate, glowOpacity]);
 
   const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       transform: [{ scale: scale.value }, { rotate: `${rotate.value}deg` }],
     };
   });
 
   const glowStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       opacity: glowOpacity.value,
     };
   });
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onPress?.();
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onPress?.();
+    } catch (error) {
+      console.error('Error handling lightning button press:', error);
+    }
   };
 
   // Only show on home screen

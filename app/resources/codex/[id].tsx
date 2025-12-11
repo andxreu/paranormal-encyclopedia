@@ -11,11 +11,11 @@ import Animated, {
   withTiming,
   Easing,
   FadeIn,
+  runOnUI,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { getCodexEntryById } from '@/data/paranormal/codex';
 import { ParticleEffect } from '@/components/ParticleEffect';
-import { FloatingRankOrb } from '@/components/FloatingRankOrb';
 import { GothicConfetti } from '@/components/GothicConfetti';
 import { RankUpModal } from '@/components/RankUpModal';
 import { HapticFeedback } from '@/utils/haptics';
@@ -33,6 +33,7 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, index }) => {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       transform: [{ scale: scale.value }],
     };
@@ -49,10 +50,13 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, index }) => {
 
   const handlePressIn = () => {
     try {
-      scale.value = withSpring(0.98, {
-        damping: 15,
-        stiffness: 300,
-      });
+      runOnUI(() => {
+        'worklet';
+        scale.value = withSpring(0.98, {
+          damping: 15,
+          stiffness: 300,
+        });
+      })();
     } catch (error) {
       console.error('Error in press animation:', error);
     }
@@ -60,10 +64,13 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, index }) => {
 
   const handlePressOut = () => {
     try {
-      scale.value = withSpring(1, {
-        damping: 15,
-        stiffness: 300,
-      });
+      runOnUI(() => {
+        'worklet';
+        scale.value = withSpring(1, {
+          damping: 15,
+          stiffness: 300,
+        });
+      })();
     } catch (error) {
       console.error('Error in press animation:', error);
     }
@@ -156,15 +163,18 @@ export default function CodexDetailScreen() {
         const favoriteStatus = await storage.isFavorite(favoriteId);
         setIsFavorite(favoriteStatus);
 
-        fadeOpacity.value = withTiming(1, {
-          duration: 600,
-          easing: Easing.inOut(Easing.ease),
-        });
+        runOnUI(() => {
+          'worklet';
+          fadeOpacity.value = withTiming(1, {
+            duration: 600,
+            easing: Easing.inOut(Easing.ease),
+          });
 
-        scale.value = withTiming(1, {
-          duration: 600,
-          easing: Easing.out(Easing.ease),
-        });
+          scale.value = withTiming(1, {
+            duration: 600,
+            easing: Easing.out(Easing.ease),
+          });
+        })();
       } catch (error) {
         console.error('Error loading codex entry:', error);
         setEntry(null);
@@ -245,6 +255,7 @@ export default function CodexDetailScreen() {
   };
 
   const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
     return {
       opacity: fadeOpacity.value,
       transform: [{ scale: scale.value }],
@@ -343,8 +354,6 @@ export default function CodexDetailScreen() {
               <View style={styles.bottomSpacer} />
             </ScrollView>
 
-            <FloatingRankOrb />
-
             <GothicConfetti
               visible={showConfetti}
               onComplete={() => setShowConfetti(false)}
@@ -419,9 +428,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
     paddingHorizontal: 20,
-    textShadowColor: 'rgba(99, 102, 241, 0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
   },
   entryCategory: {
     fontSize: 14,
@@ -449,9 +455,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontFamily: 'SpaceMono',
     marginBottom: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   sectionCardWrapper: {
     marginBottom: 12,
