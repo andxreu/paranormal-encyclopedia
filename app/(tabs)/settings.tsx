@@ -74,46 +74,58 @@ export default function SettingsScreen() {
   };
 
   const handleToggleSetting = async (key: keyof AppSettings) => {
-    const newValue = !settings[key];
-    setSettings({ ...settings, [key]: newValue });
-    await storage.updateSetting(key, newValue);
-    
-    if (settings.hapticsEnabled) {
-      HapticFeedback.light();
-    }
+    try {
+      const newValue = !settings[key];
+      setSettings({ ...settings, [key]: newValue });
+      await storage.updateSetting(key, newValue);
+      
+      if (settings.hapticsEnabled) {
+        HapticFeedback.light();
+      }
 
-    toggleScale.value = withSpring(0.95, {
-      damping: 15,
-      stiffness: 300,
-    });
-    setTimeout(() => {
-      toggleScale.value = withSpring(1, {
+      toggleScale.value = withSpring(0.95, {
         damping: 15,
         stiffness: 300,
       });
-    }, 100);
+      setTimeout(() => {
+        toggleScale.value = withSpring(1, {
+          damping: 15,
+          stiffness: 300,
+        });
+      }, 100);
+    } catch (error) {
+      console.error('Error toggling setting:', error);
+    }
   };
 
   const handleThemeToggle = async () => {
-    if (settings.hapticsEnabled) {
-      HapticFeedback.medium();
+    try {
+      if (settings.hapticsEnabled) {
+        HapticFeedback.medium();
+      }
+      toggleTheme();
+    } catch (error) {
+      console.error('Error toggling theme:', error);
     }
-    toggleTheme();
   };
 
   const handleTextSizeChange = async (size: number) => {
-    if (settings.hapticsEnabled) {
-      HapticFeedback.light();
+    try {
+      if (settings.hapticsEnabled) {
+        HapticFeedback.light();
+      }
+      setTextScale(size);
+    } catch (error) {
+      console.error('Error changing text size:', error);
     }
-    setTextScale(size);
   };
 
   const handleClearCache = async () => {
-    if (settings.hapticsEnabled) {
-      HapticFeedback.medium();
-    }
-    
     try {
+      if (settings.hapticsEnabled) {
+        HapticFeedback.medium();
+      }
+      
       await storage.clearAll();
       setLastSync(null);
       setCacheSize('0 KB');
@@ -131,33 +143,47 @@ export default function SettingsScreen() {
   };
 
   const handleOpenWebsite = async () => {
-    if (settings.hapticsEnabled) {
-      HapticFeedback.light();
-    }
-    
-    const url = 'https://stormlightfoundry.com';
-    const supported = await Linking.canOpenURL(url);
-    
-    if (supported) {
-      await Linking.openURL(url);
-    } else {
+    try {
+      if (settings.hapticsEnabled) {
+        HapticFeedback.light();
+      }
+      
+      const url = 'https://stormlightfoundry.com';
+      const supported = await Linking.canOpenURL(url);
+      
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Unable to open website');
+      }
+    } catch (error) {
+      console.error('Error opening website:', error);
       Alert.alert('Error', 'Unable to open website');
     }
   };
 
   const handleLightningPress = () => {
-    HapticFeedback.medium();
-    const randomFact = getRandomFact();
-    setCurrentFact(randomFact);
-    setShowFactModal(true);
+    try {
+      HapticFeedback.medium();
+      const randomFact = getRandomFact();
+      setCurrentFact(randomFact);
+      setShowFactModal(true);
+    } catch (error) {
+      console.error('Error showing random fact:', error);
+    }
   };
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) {
       return 'Never';
     }
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Never';
+    }
   };
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -222,28 +248,6 @@ export default function SettingsScreen() {
                     onValueChange={handleThemeToggle}
                     trackColor={{ false: theme.colors.border, true: theme.colors.violet }}
                     thumbColor={colorScheme === 'dark' ? '#FFFFFF' : '#f4f3f4'}
-                  />
-                </View>
-
-                <View style={[styles.settingDivider, { backgroundColor: theme.colors.border }]} />
-
-                <View style={styles.settingRow}>
-                  <View style={styles.settingInfo}>
-                    <Text style={styles.settingIcon}>🔊</Text>
-                    <View style={styles.settingTextContainer}>
-                      <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
-                        Ambient Sounds
-                      </Text>
-                      <Text style={[styles.settingDescription, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
-                        Eerie audio for fact reveals
-                      </Text>
-                    </View>
-                  </View>
-                  <Switch
-                    value={settings.ambientSoundEnabled}
-                    onValueChange={() => handleToggleSetting('ambientSoundEnabled')}
-                    trackColor={{ false: theme.colors.border, true: theme.colors.violet }}
-                    thumbColor={settings.ambientSoundEnabled ? '#FFFFFF' : '#f4f3f4'}
                   />
                 </View>
 
@@ -384,7 +388,7 @@ export default function SettingsScreen() {
                     Version
                   </Text>
                   <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
-                    1.0.0
+                    1.3.0
                   </Text>
                 </View>
                 <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />

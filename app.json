@@ -3,7 +3,7 @@
   "expo": {
     "name": "Paranormal Encyclopedia",
     "slug": "Paranormal Encyclopedia",
-    "version": "1.0.0",
+    "version": "1.3.0",
     "orientation": "portrait",
     "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
     "userInterfaceStyle": "automatic",
@@ -28,7 +28,8 @@
       },
       "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.Natively"
+      "package": "com.anonymous.Natively",
+      "permissions": []
     },
     "web": {
       "favicon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",

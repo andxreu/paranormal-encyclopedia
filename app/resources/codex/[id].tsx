@@ -39,23 +39,39 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, index }) => {
   });
 
   const handlePress = () => {
-    HapticFeedback.soft();
-    setExpanded(!expanded);
+    try {
+      HapticFeedback.soft();
+      setExpanded(!expanded);
+    } catch (error) {
+      console.error('Error toggling section:', error);
+    }
   };
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.98, {
-      damping: 15,
-      stiffness: 300,
-    });
+    try {
+      scale.value = withSpring(0.98, {
+        damping: 15,
+        stiffness: 300,
+      });
+    } catch (error) {
+      console.error('Error in press animation:', error);
+    }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
+    try {
+      scale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 300,
+      });
+    } catch (error) {
+      console.error('Error in press animation:', error);
+    }
   };
+
+  if (!section || !section.title) {
+    return null;
+  }
 
   return (
     <Animated.View
@@ -87,7 +103,7 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, index }) => {
               </Text>
             </View>
             
-            {expanded && (
+            {expanded && section.content && (
               <Animated.View entering={FadeIn.duration(300)}>
                 <Text style={[styles.sectionContent, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
                   {section.content}
@@ -120,80 +136,111 @@ export default function CodexDetailScreen() {
 
   useEffect(() => {
     const loadEntry = async () => {
-      if (!id) return;
+      if (!id) {
+        console.warn('Missing codex entry id');
+        return;
+      }
 
-      const entryData = getCodexEntryById(id as string);
-      setEntry(entryData);
+      try {
+        const entryData = getCodexEntryById(id as string);
+        
+        if (!entryData) {
+          console.warn('Codex entry not found:', id);
+          setEntry(null);
+          return;
+        }
+        
+        setEntry(entryData);
 
-      const favoriteId = `codex-${id}`;
-      const favoriteStatus = await storage.isFavorite(favoriteId);
-      setIsFavorite(favoriteStatus);
+        const favoriteId = `codex-${id}`;
+        const favoriteStatus = await storage.isFavorite(favoriteId);
+        setIsFavorite(favoriteStatus);
 
-      fadeOpacity.value = withTiming(1, {
-        duration: 600,
-        easing: Easing.inOut(Easing.ease),
-      });
+        fadeOpacity.value = withTiming(1, {
+          duration: 600,
+          easing: Easing.inOut(Easing.ease),
+        });
 
-      scale.value = withTiming(1, {
-        duration: 600,
-        easing: Easing.out(Easing.ease),
-      });
+        scale.value = withTiming(1, {
+          duration: 600,
+          easing: Easing.out(Easing.ease),
+        });
+      } catch (error) {
+        console.error('Error loading codex entry:', error);
+        setEntry(null);
+      }
     };
 
     loadEntry();
   }, [id, fadeOpacity, scale]);
 
   const handleScroll = async (event: any) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const scrollPercentage = (contentOffset.y / (contentSize.height - layoutMeasurement.height)) * 100;
+    try {
+      if (!event || !event.nativeEvent) return;
+      
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      if (!contentOffset || !contentSize || !layoutMeasurement) return;
+      
+      const scrollPercentage = (contentOffset.y / (contentSize.height - layoutMeasurement.height)) * 100;
 
-    if (scrollPercentage > 70 && !hasTrackedReading && id) {
-      setHasTrackedReading(true);
-      const result = await gamificationService.markArticleRead(id as string, 'codex');
+      if (scrollPercentage > 70 && !hasTrackedReading && id) {
+        setHasTrackedReading(true);
+        const result = await gamificationService.markArticleRead(id as string, 'codex');
 
-      if (result.newRank) {
-        setNewRank(result.newRank);
-        setShowRankUpModal(true);
+        if (result && result.newRank) {
+          setNewRank(result.newRank);
+          setShowRankUpModal(true);
+        }
+
+        if (result && (result.achievements?.length > 0 || result.newRank)) {
+          setShowConfetti(true);
+          HapticFeedback.success();
+        }
       }
-
-      if (result.achievements.length > 0 || result.newRank) {
-        setShowConfetti(true);
-        HapticFeedback.success();
-      }
+    } catch (error) {
+      console.error('Error handling scroll:', error);
     }
   };
 
   const handleBackPress = () => {
-    HapticFeedback.light();
-    router.back();
+    try {
+      HapticFeedback.light();
+      router.back();
+    } catch (error) {
+      console.error('Error navigating back:', error);
+    }
   };
 
   const handleToggleFavorite = async () => {
-    HapticFeedback.medium();
-    
-    if (!entry || !id) {
-      console.warn('Missing entry data');
-      return;
-    }
+    try {
+      HapticFeedback.medium();
+      
+      if (!entry || !id) {
+        console.warn('Missing entry data');
+        return;
+      }
 
-    const favoriteId = `codex-${id}`;
-    
-    if (isFavorite) {
-      await storage.removeFavorite(favoriteId);
-      setIsFavorite(false);
-    } else {
-      const favoriteItem: FavoriteItem = {
-        id: favoriteId,
-        type: 'codex',
-        title: entry.name,
-        description: entry.description,
-        categoryName: 'The Codex',
-        categoryColor: theme.colors.indigo,
-        categoryIcon: '📖',
-        timestamp: Date.now(),
-      };
-      await storage.addFavorite(favoriteItem);
-      setIsFavorite(true);
+      const favoriteId = `codex-${id}`;
+      
+      if (isFavorite) {
+        await storage.removeFavorite(favoriteId);
+        setIsFavorite(false);
+      } else {
+        const favoriteItem: FavoriteItem = {
+          id: favoriteId,
+          type: 'codex',
+          title: entry.name || 'Untitled',
+          description: entry.description || 'No description',
+          categoryName: 'The Codex',
+          categoryColor: theme.colors.indigo,
+          categoryIcon: '📖',
+          timestamp: Date.now(),
+        };
+        await storage.addFavorite(favoriteItem);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
     }
   };
 
@@ -214,7 +261,13 @@ export default function CodexDetailScreen() {
           end={{ x: 0, y: 1 }}
         >
           <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <Text style={[styles.errorText, { color: theme.colors.textPrimary }]}>Entry not found</Text>
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorEmoji}>❌</Text>
+              <Text style={[styles.errorText, { color: theme.colors.textPrimary }]}>Entry not found</Text>
+              <TouchableOpacity onPress={handleBackPress} style={styles.errorButton}>
+                <Text style={styles.errorButtonText}>Go Back</Text>
+              </TouchableOpacity>
+            </View>
           </SafeAreaView>
         </LinearGradient>
       </View>
@@ -258,13 +311,13 @@ export default function CodexDetailScreen() {
               
               <View style={styles.headerContent}>
                 <Text style={[styles.entryTitle, { color: theme.colors.textPrimary, fontSize: 28 * textScale }]}>
-                  {entry.name}
+                  {entry.name || 'Untitled'}
                 </Text>
                 <Text style={[styles.entryCategory, { color: theme.colors.indigo, fontSize: 14 * textScale }]}>
-                  {entry.category}
+                  {entry.category || 'Unknown'}
                 </Text>
                 <Text style={[styles.entryDescription, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                  {entry.description}
+                  {entry.description || 'No description available'}
                 </Text>
               </View>
             </View>
@@ -281,7 +334,7 @@ export default function CodexDetailScreen() {
                 Explore Sections
               </Text>
               
-              {entry.sections?.map((section: any, index: number) => (
+              {entry.sections && Array.isArray(entry.sections) && entry.sections.map((section: any, index: number) => (
                 <React.Fragment key={`section-${index}`}>
                   <SectionCard section={section} index={index} />
                 </React.Fragment>
@@ -446,10 +499,34 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 20,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorEmoji: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
   errorText: {
     fontSize: 18,
     fontFamily: 'SpaceMono',
     textAlign: 'center',
-    marginTop: 40,
+    marginBottom: 24,
+  },
+  errorButton: {
+    backgroundColor: 'rgba(99, 102, 241, 0.8)',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 1)',
+  },
+  errorButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: 'SpaceMono',
   },
 });

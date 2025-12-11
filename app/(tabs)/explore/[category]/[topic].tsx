@@ -44,23 +44,39 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, categoryColor, index
   });
 
   const handlePress = () => {
-    HapticFeedback.soft();
-    setExpanded(!expanded);
+    try {
+      HapticFeedback.soft();
+      setExpanded(!expanded);
+    } catch (error) {
+      console.error('Error toggling section:', error);
+    }
   };
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.98, {
-      damping: 15,
-      stiffness: 300,
-    });
+    try {
+      scale.value = withSpring(0.98, {
+        damping: 15,
+        stiffness: 300,
+      });
+    } catch (error) {
+      console.error('Error in press animation:', error);
+    }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
+    try {
+      scale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 300,
+      });
+    } catch (error) {
+      console.error('Error in press animation:', error);
+    }
   };
+
+  if (!section || !section.title) {
+    return null;
+  }
 
   return (
     <Animated.View
@@ -92,7 +108,7 @@ const SectionCard: React.FC<SectionCardProps> = ({ section, categoryColor, index
               </Text>
             </View>
             
-            {expanded && (
+            {expanded && section.content && (
               <Animated.View entering={FadeIn.duration(300)}>
                 <Text style={[styles.sectionContent, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
                   {section.content}
@@ -125,12 +141,22 @@ export default function TopicDetailScreen() {
   const scale = useSharedValue(0.95);
 
   const loadTopicData = useCallback(async () => {
-    if (!categoryId || !topicId) return;
+    if (!categoryId || !topicId) {
+      console.warn('Missing categoryId or topicId');
+      return;
+    }
 
     try {
       const categoryData = getCategoryById(categoryId as string);
       const categoryTopics = getCategoryTopics(categoryId as string);
-      const topicData = categoryTopics.find((t: any) => t.id === topicId);
+      const topicData = categoryTopics?.find((t: any) => t && t.id === topicId);
+
+      if (!categoryData || !topicData) {
+        console.warn('Category or topic not found:', { categoryId, topicId });
+        setCategory(null);
+        setTopic(null);
+        return;
+      }
 
       setCategory(categoryData);
       setTopic(topicData);
@@ -143,10 +169,10 @@ export default function TopicDetailScreen() {
         await recentTopicsService.addRecentTopic({
           categoryId: categoryId as string,
           topicId: topicId as string,
-          title: topicData.name,
-          categoryName: categoryData.name,
-          categoryIcon: categoryData.icon,
-          categoryColor: categoryData.color,
+          title: topicData.name || 'Untitled',
+          categoryName: categoryData.name || 'Unknown',
+          categoryIcon: categoryData.icon || '❓',
+          categoryColor: categoryData.color || theme.colors.violet,
           progress: 0,
         });
       }
@@ -162,66 +188,84 @@ export default function TopicDetailScreen() {
       });
     } catch (error) {
       console.error('Error loading topic data:', error);
+      setCategory(null);
+      setTopic(null);
     }
-  }, [categoryId, topicId, fadeOpacity, scale]);
+  }, [categoryId, topicId, fadeOpacity, scale, theme.colors.violet]);
 
   useEffect(() => {
     loadTopicData();
   }, [loadTopicData]);
 
   const handleScroll = async (event: any) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const scrollPercentage = (contentOffset.y / (contentSize.height - layoutMeasurement.height)) * 100;
+    try {
+      if (!event || !event.nativeEvent) return;
+      
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      if (!contentOffset || !contentSize || !layoutMeasurement) return;
+      
+      const scrollPercentage = (contentOffset.y / (contentSize.height - layoutMeasurement.height)) * 100;
 
-    if (scrollPercentage > 70 && !hasTrackedReading && categoryId && topicId) {
-      setHasTrackedReading(true);
-      const articleId = `${categoryId}-${topicId}`;
-      const result = await gamificationService.markArticleRead(articleId, 'topic', categoryId as string);
+      if (scrollPercentage > 70 && !hasTrackedReading && categoryId && topicId) {
+        setHasTrackedReading(true);
+        const articleId = `${categoryId}-${topicId}`;
+        const result = await gamificationService.markArticleRead(articleId, 'topic', categoryId as string);
 
-      if (result.newRank) {
-        setNewRank(result.newRank);
-        setShowRankUpModal(true);
+        if (result && result.newRank) {
+          setNewRank(result.newRank);
+          setShowRankUpModal(true);
+        }
+
+        if (result && (result.achievements?.length > 0 || result.newRank)) {
+          setShowConfetti(true);
+          HapticFeedback.success();
+        }
       }
-
-      if (result.achievements.length > 0 || result.newRank) {
-        setShowConfetti(true);
-        HapticFeedback.success();
-      }
+    } catch (error) {
+      console.error('Error handling scroll:', error);
     }
   };
 
   const handleBackPress = () => {
-    HapticFeedback.light();
-    router.back();
+    try {
+      HapticFeedback.light();
+      router.back();
+    } catch (error) {
+      console.error('Error navigating back:', error);
+    }
   };
 
   const handleToggleFavorite = async () => {
-    HapticFeedback.medium();
-    
-    if (!category || !topic || !categoryId || !topicId) {
-      console.warn('Missing category or topic data');
-      return;
-    }
+    try {
+      HapticFeedback.medium();
+      
+      if (!category || !topic || !categoryId || !topicId) {
+        console.warn('Missing category or topic data');
+        return;
+      }
 
-    const favoriteId = `${categoryId}-${topicId}`;
-    
-    if (isFavorite) {
-      await storage.removeFavorite(favoriteId);
-      setIsFavorite(false);
-    } else {
-      const favoriteItem: FavoriteItem = {
-        id: favoriteId,
-        type: 'topic',
-        title: topic.name,
-        description: topic.description,
-        categoryId: categoryId as string,
-        categoryName: category.name,
-        categoryColor: category.color,
-        categoryIcon: category.icon,
-        timestamp: Date.now(),
-      };
-      await storage.addFavorite(favoriteItem);
-      setIsFavorite(true);
+      const favoriteId = `${categoryId}-${topicId}`;
+      
+      if (isFavorite) {
+        await storage.removeFavorite(favoriteId);
+        setIsFavorite(false);
+      } else {
+        const favoriteItem: FavoriteItem = {
+          id: favoriteId,
+          type: 'topic',
+          title: topic.name || 'Untitled',
+          description: topic.description || 'No description',
+          categoryId: categoryId as string,
+          categoryName: category.name || 'Unknown',
+          categoryColor: category.color || theme.colors.violet,
+          categoryIcon: category.icon || '❓',
+          timestamp: Date.now(),
+        };
+        await storage.addFavorite(favoriteItem);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
     }
   };
 
@@ -242,7 +286,13 @@ export default function TopicDetailScreen() {
           end={{ x: 0, y: 1 }}
         >
           <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <Text style={[styles.errorText, { color: theme.colors.textPrimary }]}>Topic not found</Text>
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorEmoji}>❌</Text>
+              <Text style={[styles.errorText, { color: theme.colors.textPrimary }]}>Topic not found</Text>
+              <TouchableOpacity onPress={handleBackPress} style={styles.errorButton}>
+                <Text style={styles.errorButtonText}>Go Back</Text>
+              </TouchableOpacity>
+            </View>
           </SafeAreaView>
         </LinearGradient>
       </View>
@@ -286,14 +336,14 @@ export default function TopicDetailScreen() {
               
               <View style={styles.headerContent}>
                 <Text style={[styles.topicTitle, { color: theme.colors.textPrimary, fontSize: 28 * textScale }]}>
-                  {topic.name}
+                  {topic.name || 'Untitled'}
                 </Text>
                 <Text style={[styles.topicDescription, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                  {topic.description}
+                  {topic.description || 'No description available'}
                 </Text>
                 <View style={[styles.categoryBadge, { backgroundColor: category.color + '30', borderColor: category.color + '60' }]}>
                   <Text style={[styles.categoryBadgeText, { color: theme.colors.textPrimary, fontSize: 11 * textScale }]}>
-                    {category.name}
+                    {category.name || 'Unknown'}
                   </Text>
                 </View>
               </View>
@@ -311,11 +361,11 @@ export default function TopicDetailScreen() {
                 Explore Sections
               </Text>
               
-              {topic.sections?.map((section: any, index: number) => (
-                <React.Fragment key={index}>
+              {topic.sections && Array.isArray(topic.sections) && topic.sections.map((section: any, index: number) => (
+                <React.Fragment key={`section-${index}`}>
                   <SectionCard
                     section={section}
-                    categoryColor={category.color}
+                    categoryColor={category.color || theme.colors.violet}
                     index={index}
                   />
                 </React.Fragment>
@@ -485,10 +535,34 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 20,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorEmoji: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
   errorText: {
     fontSize: 18,
     fontFamily: 'SpaceMono',
     textAlign: 'center',
-    marginTop: 40,
+    marginBottom: 24,
+  },
+  errorButton: {
+    backgroundColor: 'rgba(139, 92, 246, 0.8)',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 1)',
+  },
+  errorButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: 'SpaceMono',
   },
 });

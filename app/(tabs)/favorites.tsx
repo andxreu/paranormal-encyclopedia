@@ -37,7 +37,7 @@ export default function FavoritesScreen() {
     try {
       setIsLoading(true);
       const savedFavorites = await storage.getFavorites();
-      setFavorites(savedFavorites);
+      setFavorites(savedFavorites || []);
     } catch (error) {
       console.error('Error loading favorites:', error);
       setFavorites([]);
@@ -61,62 +61,94 @@ export default function FavoritesScreen() {
   );
 
   const handleSort = (option: SortOption) => {
-    setSortBy(option);
-    const sorted = [...favorites];
-    
-    switch (option) {
-      case 'name':
-        sorted.sort((a, b) => a.title.localeCompare(b.title));
-        break;
-      case 'date-added':
-        sorted.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        break;
-      case 'category':
-        sorted.sort((a, b) => (a.categoryName || '').localeCompare(b.categoryName || ''));
-        break;
+    try {
+      setSortBy(option);
+      const sorted = [...favorites];
+      
+      switch (option) {
+        case 'name':
+          sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+          break;
+        case 'date-added':
+          sorted.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          break;
+        case 'category':
+          sorted.sort((a, b) => (a.categoryName || '').localeCompare(b.categoryName || ''));
+          break;
+      }
+      
+      setFavorites(sorted);
+      HapticFeedback.success();
+    } catch (error) {
+      console.error('Error sorting favorites:', error);
     }
-    
-    setFavorites(sorted);
-    HapticFeedback.success();
   };
 
   const handleClearFavorites = async () => {
-    await storage.saveFavorites([]);
-    setFavorites([]);
-    setShowClearModal(false);
-    HapticFeedback.success();
+    try {
+      await storage.saveFavorites([]);
+      setFavorites([]);
+      setShowClearModal(false);
+      HapticFeedback.success();
+    } catch (error) {
+      console.error('Error clearing favorites:', error);
+    }
   };
 
   const handleFavoritePress = (favorite: FavoriteItem) => {
-    HapticFeedback.light();
-    
-    switch (favorite.type) {
-      case 'topic':
-        if (favorite.categoryId) {
-          const topicId = favorite.id.split('-')[1];
-          router.push(`/explore/${favorite.categoryId}/${topicId}` as any);
-        }
-        break;
-      case 'codex':
-        const codexId = favorite.id.replace('codex-', '');
-        router.push(`/resources/codex/${codexId}` as any);
-        break;
-      case 'haunted-location':
-        const locationId = favorite.id.replace('haunted-location-', '');
-        router.push(`/resources/haunted-locations/${locationId}` as any);
-        break;
-      case 'documented-account':
-        const accountId = favorite.id.replace('documented-account-', '');
-        router.push(`/resources/documented-accounts/${accountId}` as any);
-        break;
+    try {
+      HapticFeedback.light();
+      
+      if (!favorite || !favorite.id || !favorite.type) {
+        console.warn('Invalid favorite item:', favorite);
+        return;
+      }
+      
+      switch (favorite.type) {
+        case 'topic':
+          if (favorite.categoryId && favorite.id) {
+            const parts = favorite.id.split('-');
+            if (parts.length >= 2) {
+              const topicId = parts.slice(1).join('-');
+              router.push(`/explore/${favorite.categoryId}/${topicId}` as any);
+            }
+          }
+          break;
+        case 'codex':
+          if (favorite.id) {
+            const codexId = favorite.id.replace('codex-', '');
+            router.push(`/resources/codex/${codexId}` as any);
+          }
+          break;
+        case 'haunted-location':
+          if (favorite.id) {
+            const locationId = favorite.id.replace('haunted-location-', '');
+            router.push(`/resources/haunted-locations/${locationId}` as any);
+          }
+          break;
+        case 'documented-account':
+          if (favorite.id) {
+            const accountId = favorite.id.replace('documented-account-', '');
+            router.push(`/resources/documented-accounts/${accountId}` as any);
+          }
+          break;
+        default:
+          console.warn('Unknown favorite type:', favorite.type);
+      }
+    } catch (error) {
+      console.error('Error navigating to favorite:', error);
     }
   };
 
   const handleLightningPress = () => {
-    HapticFeedback.medium();
-    const randomFact = getRandomFact();
-    setCurrentFact(randomFact);
-    setShowFactModal(true);
+    try {
+      HapticFeedback.medium();
+      const randomFact = getRandomFact();
+      setCurrentFact(randomFact);
+      setShowFactModal(true);
+    } catch (error) {
+      console.error('Error showing random fact:', error);
+    }
   };
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -202,14 +234,14 @@ export default function FavoritesScreen() {
 
                   {favorites.map((favorite, index) => (
                     <Animated.View
-                      key={favorite.id}
+                      key={`${favorite.id}-${index}`}
                       entering={FadeIn.delay(index * 50).duration(300)}
                     >
                       <TouchableOpacity
                         style={styles.favoriteCard}
                         onPress={() => handleFavoritePress(favorite)}
                         activeOpacity={0.8}
-                        accessibilityLabel={favorite.title}
+                        accessibilityLabel={favorite.title || 'Favorite item'}
                         accessibilityHint={`${favorite.categoryName || 'Item'}`}
                         accessibilityRole="button"
                       >
@@ -231,10 +263,10 @@ export default function FavoritesScreen() {
                               </View>
                             </View>
                             <Text style={[styles.favoriteTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
-                              {favorite.title}
+                              {favorite.title || 'Untitled'}
                             </Text>
                             <Text style={[styles.favoriteDescription, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]} numberOfLines={2}>
-                              {favorite.description}
+                              {favorite.description || 'No description available'}
                             </Text>
                           </View>
                         </LinearGradient>
