@@ -1,20 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import FloatingTabBar, { TabBarItem } from '@/components/FloatingTabBar';
-import { storage } from '@/utils/storage';
+import { useOnboarding } from '@/contexts/OnboardingContext';
 
 export default function TabLayout() {
-  const [showTabBar, setShowTabBar] = useState(true);
+  const { isOnboardingComplete, isCheckingOnboarding } = useOnboarding();
 
   useEffect(() => {
-    checkOnboarding();
-  }, []);
-
-  const checkOnboarding = async () => {
-    const onboardingComplete = await storage.isOnboardingComplete();
-    setShowTabBar(onboardingComplete);
-  };
+    console.log('TabLayout - Onboarding complete:', isOnboardingComplete);
+    console.log('TabLayout - Checking onboarding:', isCheckingOnboarding);
+  }, [isOnboardingComplete, isCheckingOnboarding]);
 
   const tabs: TabBarItem[] = [
     {
@@ -71,7 +67,9 @@ export default function TabLayout() {
         <Stack.Screen key="search" name="search" />
         <Stack.Screen key="settings" name="settings" />
       </Stack>
-      {showTabBar && <FloatingTabBar tabs={tabs} containerWidth={380} />}
+      {!isCheckingOnboarding && isOnboardingComplete && (
+        <FloatingTabBar tabs={tabs} containerWidth={380} />
+      )}
     </>
   );
 }

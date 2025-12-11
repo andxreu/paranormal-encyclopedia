@@ -25,6 +25,7 @@ import { getRandomFact, ParanormalFact } from "@/data/paranormal/facts";
 import { storage } from "@/utils/storage";
 import { fuzzySearch } from "@/utils/fuzzySearch";
 import { useAppTheme } from "@/contexts/ThemeContext";
+import { useOnboarding } from "@/contexts/OnboardingContext";
 import { HapticFeedback } from "@/utils/haptics";
 
 interface ResourceCard {
@@ -68,9 +69,9 @@ const resources: ResourceCard[] = [
 
 export default function HomeScreen() {
   const { theme } = useAppTheme();
+  const { isOnboardingComplete, isCheckingOnboarding, setOnboardingComplete } = useOnboarding();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showFactModal, setShowFactModal] = useState(false);
   const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -85,13 +86,11 @@ export default function HomeScreen() {
       await storage.saveCategories(categories);
       await storage.saveLastSync();
       
-      // Initialize fuzzy search with error handling
       try {
         fuzzySearch.initialize();
         console.log('Fuzzy search initialized successfully');
       } catch (searchError) {
         console.error('Error initializing fuzzy search:', searchError);
-        // Continue even if search fails
       }
       
       console.log('Data cached successfully');
@@ -120,9 +119,8 @@ export default function HomeScreen() {
     try {
       console.log('Initializing app...');
       
-      const onboardingComplete = await storage.isOnboardingComplete();
-      if (!onboardingComplete) {
-        setShowOnboarding(true);
+      if (!isOnboardingComplete) {
+        console.log('Onboarding not complete, showing onboarding screen');
         setIsLoading(false);
         return;
       }
@@ -133,17 +131,19 @@ export default function HomeScreen() {
       setError('Failed to initialize app. Please restart.');
       setIsLoading(false);
     }
-  }, [loadData]);
+  }, [isOnboardingComplete, loadData]);
 
   useEffect(() => {
-    initializeApp();
-  }, [initializeApp]);
+    if (!isCheckingOnboarding) {
+      initializeApp();
+    }
+  }, [isCheckingOnboarding, initializeApp]);
 
   const handleOnboardingComplete = async () => {
     try {
-      await storage.setOnboardingComplete(true);
+      console.log('Onboarding completed');
+      await setOnboardingComplete(true);
       await storage.saveData('@first_launch_after_onboarding', true);
-      setShowOnboarding(false);
       setIsLoading(true);
       await loadData();
     } catch (error) {
@@ -216,7 +216,22 @@ export default function HomeScreen() {
     };
   });
 
-  if (showOnboarding) {
+  if (isCheckingOnboarding) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={theme.colors.backgroundGradient}
+          style={styles.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        >
+          <HomeLoadingSkeleton />
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  if (!isOnboardingComplete) {
     return <OnboardingScreen onComplete={handleOnboardingComplete} />;
   }
 
