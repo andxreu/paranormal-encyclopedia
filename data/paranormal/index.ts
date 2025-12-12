@@ -1,3 +1,4 @@
+
 // data/paranormal/index.ts
 // Central hub for all paranormal data with type-safe access
 
