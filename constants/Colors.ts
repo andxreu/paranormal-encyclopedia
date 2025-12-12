@@ -125,6 +125,186 @@ export const emojies = [
 ] as const;
 
 // ──────────────────────────────────────────────────────────────
+// 8. Icon Emojis (app-specific icons used throughout UI)
+// FIXED: Proper encoding for React Native
+// ──────────────────────────────────────────────────────────────
+export const iconEmojis = {
+  // Navigation
+  home: "🏠",
+  explore: "👁️",
+  arcana: "🔮",
+  favorite: "⭐",
+  search: "🔍",
+  settings: "⚙️",
+  
+  // Categories
+  creatures: "🦎",
+  ufos: "🛸",
+  ghosts: "👻",
+  occult: "🔮",
+  psychic: "🧠",
+  ancients: "🏛️",
+  folklore: "🦊",
+  phenomena: "⚡",
+  people: "💀",
+  trulyStrange: "❓",
+  
+  // Actions
+  back: "←",
+  forward: "→",
+  add: "➕",
+  remove: "➖",
+  edit: "✏️",
+  delete: "🗑️",
+  share: "📤",
+  copy: "📋",
+  link: "🔗",
+  
+  // Status
+  success: "✅",
+  error: "❌",
+  warning: "⚠️",
+  info: "ℹ️",
+  lock: "🔒",
+  unlock: "🔓",
+  
+  // Content
+  book: "📖",
+  document: "📄",
+  image: "🖼️",
+  video: "🎬",
+  audio: "🎵",
+  location: "📍",
+  calendar: "📅",
+  time: "⏰",
+  
+  // Gamification
+  trophy: "🏆",
+  medal: "🏅",
+  star: "⭐",
+  fire: "🔥",
+  lightning: "⚡",
+  crystal: "💎",
+  crown: "👑",
+  
+  // Misc
+  moon: "🌙",
+  sun: "☀️",
+  sparkle: "✨",
+  magic: "🪄",
+  eye: "👁️",
+  heart: "❤️",
+  broken_heart: "💔",
+  
+  // Special
+  enlightened: "✨",
+  mystery: "❓",
+  portal: "🌀",
+  cosmic: "🌌",
+} as const;
+
+// ──────────────────────────────────────────────────────────────
+// 9. Gradient Presets (ready-to-use gradient combinations)
+// ──────────────────────────────────────────────────────────────
+export const gradientPresets = {
+  cosmic: [cosmicColors.purpleBlack, cosmicColors.darkPurple, cosmicColors.deepViolet],
+  mystic: [cosmicColors.darkPurple, cosmicColors.cosmicPurple, cosmicColors.nebulaPink],
+  ethereal: ["#1a0b2e", "#2d1b4e", "#4a1d7e"],
+  sunset: ["#7c3aed", "#ec4899", "#f59e0b"],
+  ocean: ["#0ea5e9", "#06b6d4", "#14b8a6"],
+  forest: ["#16a34a", "#10b981", "#14b8a6"],
+  fire: ["#ef4444", "#f59e0b", "#facc15"],
+  twilight: ["#312e81", "#4c1d95", "#581c87"],
+  aurora: ["#6366f1", "#8b5cf6", "#a855f7"],
+  nebula: ["#4c1d95", "#701a75", "#831843"],
+} as const;
+
+// ──────────────────────────────────────────────────────────────
+// 10. Opacity Helpers (for consistent transparency)
+// ──────────────────────────────────────────────────────────────
+export const opacities = {
+  transparent: "00",
+  subtle: "0D",      // 5%
+  faint: "1A",       // 10%
+  light: "33",       // 20%
+  medium: "4D",      // 30%
+  visible: "66",     // 40%
+  strong: "80",      // 50%
+  prominent: "99",   // 60%
+  bold: "B3",        // 70%
+  intense: "CC",     // 80%
+  opaque: "E6",      // 90%
+  solid: "FF",       // 100%
+} as const;
+
+/**
+ * Adds opacity to a hex color
+ * @param color - Hex color (with or without #)
+ * @param opacity - Opacity key from opacities object
+ * @returns Color with opacity
+ * 
+ * @example
+ * withOpacity('#8B5CF6', 'medium') // '#8B5CF64D'
+ */
+export const withOpacity = (
+  color: string, 
+  opacity: keyof typeof opacities
+): string => {
+  const cleanColor = color.replace('#', '');
+  return `#${cleanColor}${opacities[opacity]}`;
+};
+
+/**
+ * Adds custom opacity percentage to a hex color
+ * @param color - Hex color (with or without #)
+ * @param percentage - Opacity percentage (0-100)
+ * @returns Color with opacity
+ * 
+ * @example
+ * withOpacityPercent('#8B5CF6', 50) // '#8B5CF680'
+ */
+export const withOpacityPercent = (
+  color: string, 
+  percentage: number
+): string => {
+  const cleanColor = color.replace('#', '');
+  const clampedPercent = Math.max(0, Math.min(100, percentage));
+  const hex = Math.round((clampedPercent / 100) * 255).toString(16).padStart(2, '0');
+  return `#${cleanColor}${hex}`;
+};
+
+// ──────────────────────────────────────────────────────────────
+// 11. Color Utilities
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Validates if a string is a valid hex color
+ * @param color - Color string to validate
+ * @returns True if valid hex color
+ */
+export const isValidHexColor = (color: string): boolean => {
+  return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})$/.test(color);
+};
+
+/**
+ * Gets a random color from backgroundColors array
+ * @returns Random background color
+ */
+export const getRandomBackgroundColor = (): string => {
+  const randomIndex = Math.floor(Math.random() * backgroundColors.length);
+  return backgroundColors[randomIndex];
+};
+
+/**
+ * Gets a random emoji from emojies array
+ * @returns Random emoji
+ */
+export const getRandomEmoji = (): string => {
+  const randomIndex = Math.floor(Math.random() * emojies.length);
+  return emojies[randomIndex];
+};
+
+// ──────────────────────────────────────────────────────────────
 // TypeScript Types for perfect autocomplete & safety
 // ──────────────────────────────────────────────────────────────
 export type CategoryColorKey = keyof typeof categoryColors;
@@ -132,3 +312,30 @@ export type CosmicColorKey = keyof typeof cosmicColors;
 export type ZincShade = keyof typeof zincColors;
 export type BackgroundColor = typeof backgroundColors[number];
 export type Emoji = typeof emojies[number];
+export type IconEmojiKey = keyof typeof iconEmojis;
+export type GradientPresetKey = keyof typeof gradientPresets;
+export type OpacityKey = keyof typeof opacities;
+
+// ──────────────────────────────────────────────────────────────
+// Export Everything
+// ──────────────────────────────────────────────────────────────
+export default {
+  Colors,
+  zincColors,
+  appleBlue,
+  appleRed,
+  appleGreen,
+  borderColor,
+  categoryColors,
+  cosmicColors,
+  backgroundColors,
+  emojies,
+  iconEmojis,
+  gradientPresets,
+  opacities,
+  withOpacity,
+  withOpacityPercent,
+  isValidHexColor,
+  getRandomBackgroundColor,
+  getRandomEmoji,
+} as const;

@@ -1,5 +1,5 @@
-
-import React, { useState, useMemo } from 'react';
+// app/(tabs)/explore.tsx
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,37 +15,57 @@ import { getTotalTopicsCount, getCategoryTopicsCount } from '@/data/paranormal/i
 import { ParticleEffect } from '@/components/ParticleEffect';
 import { HapticFeedback } from '@/utils/haptics';
 
+// ──────────────────────────────────────────────────────────────
+// Constants
+// ──────────────────────────────────────────────────────────────
 const { width } = Dimensions.get('window');
-const cardWidth = (width - 48) / 2;
+const CARD_WIDTH = (width - 48) / 2;
+const REFRESH_DELAY = 1500;
+const SPRING_CONFIG = {
+  damping: 15,
+  stiffness: 300,
+} as const;
 
-const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = ({ category, onPress }) => {
+// ──────────────────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────────────────
+interface CategoryGridCardProps {
+  category: Category;
+  onPress: () => void;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Category Card Component
+// ──────────────────────────────────────────────────────────────
+const CategoryGridCard: React.FC<CategoryGridCardProps> = React.memo(({ category, onPress }) => {
   const { theme, textScale } = useAppTheme();
   const scale = useSharedValue(1);
 
+  /**
+   * Memoize topic count to prevent recalculation
+   */
   const categoryTopicCount = useMemo(() => {
     return getCategoryTopicsCount(category.id);
   }, [category.id]);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-    };
-  });
+  /**
+   * Animated style for press effect
+   */
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
-  const handlePressIn = () => {
+  /**
+   * Press handlers with haptic feedback
+   */
+  const handlePressIn = useCallback(() => {
     HapticFeedback.soft();
-    scale.value = withSpring(0.95, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
+    scale.value = withSpring(0.95, SPRING_CONFIG);
+  }, [scale]);
 
-  const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, SPRING_CONFIG);
+  }, [scale]);
 
   return (
     <TouchableOpacity
@@ -87,37 +107,59 @@ const CategoryGridCard: React.FC<{ category: Category; onPress: () => void }> = 
       </Animated.View>
     </TouchableOpacity>
   );
-};
+});
 
+CategoryGridCard.displayName = 'CategoryGridCard';
+
+// ──────────────────────────────────────────────────────────────
+// Main Explore Screen Component
+// ──────────────────────────────────────────────────────────────
 export default function ExploreScreen() {
   const { theme, textScale } = useAppTheme();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
 
+  /**
+   * Memoize total topics count
+   */
   const totalTopics = useMemo(() => {
     return getTotalTopicsCount();
   }, []);
 
-  const handleCategoryPress = (category: Category) => {
-    HapticFeedback.light();
-    console.log('Category pressed:', category.name);
-    router.push(`/explore/${category.id}` as any);
-  };
-
-  const onRefresh = async () => {
-    HapticFeedback.medium();
-    setRefreshing(true);
-    
+  /**
+   * Handles category card press
+   */
+  const handleCategoryPress = useCallback((category: Category) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      HapticFeedback.success();
+      HapticFeedback.light();
+      console.log('[Explore] Category pressed:', category.name);
+      router.push(`/explore/${category.id}` as any);
     } catch (error) {
-      console.error('Error refreshing:', error);
+      console.error('[Explore] ✗ Error navigating to category:', error);
+      // Fail gracefully
+    }
+  }, [router]);
+
+  /**
+   * Handles pull-to-refresh
+   */
+  const onRefresh = useCallback(async () => {
+    try {
+      HapticFeedback.medium();
+      setRefreshing(true);
+      
+      // Simulate data refresh
+      await new Promise(resolve => setTimeout(resolve, REFRESH_DELAY));
+      
+      HapticFeedback.success();
+      console.log('[Explore] ✓ Refresh completed');
+    } catch (error) {
+      console.error('[Explore] ✗ Error refreshing:', error);
       HapticFeedback.error();
     } finally {
       setRefreshing(false);
     }
-  };
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -128,6 +170,7 @@ export default function ExploreScreen() {
         end={{ x: 0, y: 1 }}
       >
         <SafeAreaView style={styles.safeArea} edges={['top']}>
+          {/* Header */}
           <View style={styles.header}>
             <Text style={[styles.headerTitle, { color: theme.colors.textPrimary, fontSize: 36 * textScale }]}>
               Explore
@@ -137,6 +180,7 @@ export default function ExploreScreen() {
             </Text>
           </View>
 
+          {/* Categories Grid */}
           <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.contentContainer}
@@ -152,13 +196,12 @@ export default function ExploreScreen() {
             }
           >
             <View style={styles.grid}>
-              {categories.map((category, index) => (
-                <React.Fragment key={index}>
-                  <CategoryGridCard
-                    category={category}
-                    onPress={() => handleCategoryPress(category)}
-                  />
-                </React.Fragment>
+              {categories.map((category) => (
+                <CategoryGridCard
+                  key={category.id}
+                  category={category}
+                  onPress={() => handleCategoryPress(category)}
+                />
               ))}
             </View>
 
@@ -170,6 +213,9 @@ export default function ExploreScreen() {
   );
 }
 
+// ──────────────────────────────────────────────────────────────
+// Styles
+// ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -211,7 +257,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardWrapper: {
-    width: cardWidth,
+    width: CARD_WIDTH,
     marginBottom: 12,
   },
   card: {
@@ -219,7 +265,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     minHeight: 185,
-    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
     elevation: 8,
     overflow: 'hidden',
   },

@@ -1,9 +1,12 @@
-
+// components/ErrorBoundary.tsx
 import React, { Component, ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Clipboard, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as MailComposer from 'expo-mail-composer';
 
+// ──────────────────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────────────────
 interface Props {
   children: ReactNode;
 }
@@ -13,6 +16,11 @@ interface State {
   error: Error | null;
 }
 
+/**
+ * Error Boundary Component
+ * Catches JavaScript errors anywhere in the child component tree,
+ * logs those errors, and displays a fallback UI instead of crashing.
+ */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -76,7 +84,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <Text style={styles.emoji}>🌌</Text>
               <Text style={styles.title}>Cosmic Glitch</Text>
               <Text style={styles.message}>
-                Something went wrong in the paranormal realm. Don&apos;t worry, we can try again!
+                Something went wrong in the paranormal realm. Don't worry, we can try again!
               </Text>
               {__DEV__ && this.state.error && (
                 <Text style={styles.errorText}>
@@ -169,7 +177,10 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: 16,
     overflow: 'hidden',
-    boxShadow: '0px 8px 24px rgba(139, 92, 246, 0.4)',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
     elevation: 8,
   },
   buttonGradient: {

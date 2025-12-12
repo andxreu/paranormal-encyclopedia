@@ -26,7 +26,7 @@ interface SectionCardProps {
 
 const SectionCard: React.FC<SectionCardProps> = ({ section, index }) => {
   const { theme, textScale } = useAppTheme();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {

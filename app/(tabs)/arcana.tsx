@@ -1,5 +1,5 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+// app/(tabs)/arcana.tsx
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,60 +8,133 @@ import { useAppTheme } from '@/contexts/ThemeContext';
 import { gamificationService, VeilRank, Achievement, VEIL_RANKS } from '@/utils/gamification';
 import { LightningButton } from '@/components/LightningButton';
 import { RandomFactModal } from '@/components/RandomFactModal';
-import { getRandomFact } from '@/data/paranormal/facts';
+import { getRandomFact, ParanormalFact } from '@/data/paranormal/facts';
 import { HapticFeedback } from '@/utils/haptics';
 import { ParticleEffect } from '@/components/ParticleEffect';
 
+// ──────────────────────────────────────────────────────────────
+// Constants
+// ──────────────────────────────────────────────────────────────
 const { width } = Dimensions.get('window');
+const ACHIEVEMENT_CARD_WIDTH = (width - 52) / 2;
+const FADE_IN_DURATION = 600;
+const ANIMATION_DELAYS = {
+  header: 0,
+  rankCard: 200,
+  ascension: 400,
+  achievements: 600,
+} as const;
 
+const ACHIEVEMENT_CATEGORIES = ['all', 'reading', 'exploration', 'dedication', 'mastery'] as const;
+
+// ──────────────────────────────────────────────────────────────
+// Main Arcana Screen Component
+// ──────────────────────────────────────────────────────────────
 export default function ArcanaScreen() {
   const { theme, textScale } = useAppTheme();
+  
+  // State
   const [currentRank, setCurrentRank] = useState<VeilRank>(VEIL_RANKS[0]);
   const [nextRank, setNextRank] = useState<VeilRank | null>(null);
   const [totalPoints, setTotalPoints] = useState(0);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [dailyStreak, setDailyStreak] = useState(0);
   const [showOracleModal, setShowOracleModal] = useState(false);
-  const [oracleFact, setOracleFact] = useState<any>(null);
+  const [oracleFact, setOracleFact] = useState<ParanormalFact | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  useEffect(() => {
-    loadProgress();
+  /**
+   * Loads user progress and gamification data
+   */
+  const loadProgress = useCallback(async () => {
+    try {
+      console.log('[Arcana] Loading progress...');
+      
+      const progress = await gamificationService.getProgress();
+      const rank = gamificationService.getCurrentRank(progress.totalPoints);
+      const next = gamificationService.getNextRank(rank);
+      
+      setCurrentRank(rank);
+      setNextRank(next);
+      setTotalPoints(progress.totalPoints);
+      setAchievements(progress.achievements);
+      setDailyStreak(progress.dailyStreak);
+      
+      console.log('[Arcana] ✓ Progress loaded:', {
+        rank: rank.name,
+        points: progress.totalPoints,
+        achievements: progress.achievements.length,
+      });
+    } catch (error) {
+      console.error('[Arcana] ✗ Error loading progress:', error);
+      // Fail gracefully with defaults
+    }
   }, []);
 
-  const loadProgress = async () => {
-    const progress = await gamificationService.getProgress();
-    const rank = gamificationService.getCurrentRank(progress.totalPoints);
-    const next = gamificationService.getNextRank(rank);
-    
-    setCurrentRank(rank);
-    setNextRank(next);
-    setTotalPoints(progress.totalPoints);
-    setAchievements(progress.achievements);
-    setDailyStreak(progress.dailyStreak);
-  };
+  /**
+   * Initialize on mount
+   */
+  useEffect(() => {
+    loadProgress();
+  }, [loadProgress]);
 
-  const handleOraclePress = () => {
-    HapticFeedback.medium();
-    const randomFact = getRandomFact();
-    setOracleFact(randomFact);
-    setShowOracleModal(true);
-  };
+  /**
+   * Handles oracle button press - shows random fact
+   */
+  const handleOraclePress = useCallback(() => {
+    try {
+      HapticFeedback.medium();
+      console.log('[Arcana] ⚡ Oracle consulted');
+      const randomFact = getRandomFact();
+      setOracleFact(randomFact);
+      setShowOracleModal(true);
+    } catch (error) {
+      console.error('[Arcana] ✗ Error showing oracle:', error);
+      // Fail gracefully
+    }
+  }, []);
 
-  const getProgressPercentage = () => {
+  /**
+   * Calculates progress percentage to next rank
+   */
+  const getProgressPercentage = useCallback(() => {
     if (!nextRank) return 100;
     const currentMin = currentRank.minPoints;
     const nextMin = nextRank.minPoints;
     const progress = ((totalPoints - currentMin) / (nextMin - currentMin)) * 100;
     return Math.min(Math.max(progress, 0), 100);
-  };
+  }, [currentRank, nextRank, totalPoints]);
 
-  const filteredAchievements = selectedCategory === 'all' 
-    ? achievements 
-    : achievements.filter(a => a.category === selectedCategory);
+  /**
+   * Handles category filter selection
+   */
+  const handleCategorySelect = useCallback((category: string) => {
+    HapticFeedback.light();
+    setSelectedCategory(category);
+    console.log('[Arcana] Category filter:', category);
+  }, []);
 
-  const unlockedCount = achievements.filter(a => a.unlocked).length;
-  const totalAchievements = achievements.length;
+  /**
+   * Memoized filtered achievements
+   */
+  const filteredAchievements = useMemo(() => {
+    return selectedCategory === 'all' 
+      ? achievements 
+      : achievements.filter(a => a.category === selectedCategory);
+  }, [selectedCategory, achievements]);
+
+  /**
+   * Memoized achievement counts
+   */
+  const achievementCounts = useMemo(() => ({
+    unlocked: achievements.filter(a => a.unlocked).length,
+    total: achievements.length,
+  }), [achievements]);
+
+  /**
+   * Memoized progress percentage
+   */
+  const progressPercentage = useMemo(() => getProgressPercentage(), [getProgressPercentage]);
 
   return (
     <View style={styles.container}>
@@ -79,7 +152,8 @@ export default function ArcanaScreen() {
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
           >
-            <Animated.View entering={FadeIn.duration(600)}>
+            {/* Header */}
+            <Animated.View entering={FadeIn.duration(FADE_IN_DURATION)}>
               <Text style={[styles.header, { color: theme.colors.textPrimary, fontSize: 32 * textScale }]}>
                 Order of the Veil
               </Text>
@@ -88,21 +162,25 @@ export default function ArcanaScreen() {
               </Text>
             </Animated.View>
 
-            {/* Rank Progress Circle */}
-            <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.rankSection}>
+            {/* Rank Progress Card */}
+            <Animated.View 
+              entering={FadeInDown.delay(ANIMATION_DELAYS.rankCard).duration(FADE_IN_DURATION)} 
+              style={styles.rankSection}
+            >
               <LinearGradient
                 colors={[currentRank.color + '40', currentRank.color + '20', theme.colors.cardBg]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.rankCard}
               >
+                {/* Progress Circle */}
                 <View style={styles.progressCircleContainer}>
                   <View style={[styles.progressCircleOuter, { borderColor: currentRank.color + '40' }]}>
                     <View style={[styles.progressCircleInner, { borderColor: currentRank.color }]}>
                       <Text style={styles.rankIcon}>{currentRank.icon}</Text>
                     </View>
                   </View>
-                  <View style={[styles.progressBar, { width: `${getProgressPercentage()}%`, backgroundColor: currentRank.color }]} />
+                  <View style={[styles.progressBar, { width: `${progressPercentage}%`, backgroundColor: currentRank.color }]} />
                 </View>
 
                 <Text style={[styles.rankTitle, { color: currentRank.color, fontSize: 28 * textScale }]}>
@@ -119,6 +197,7 @@ export default function ArcanaScreen() {
                   </Text>
                 )}
 
+                {/* Stats Row */}
                 <View style={styles.statsRow}>
                   <View style={styles.statItem}>
                     <Text style={[styles.statValue, { color: theme.colors.accent, fontSize: 24 * textScale }]}>
@@ -130,7 +209,7 @@ export default function ArcanaScreen() {
                   </View>
                   <View style={styles.statItem}>
                     <Text style={[styles.statValue, { color: theme.colors.accent, fontSize: 24 * textScale }]}>
-                      {unlockedCount}/{totalAchievements}
+                      {achievementCounts.unlocked}/{achievementCounts.total}
                     </Text>
                     <Text style={[styles.statLabel, { color: theme.colors.textSecondary, fontSize: 11 * textScale }]}>
                       Achievements
@@ -140,74 +219,79 @@ export default function ArcanaScreen() {
               </LinearGradient>
             </Animated.View>
 
-            {/* Rank Ladder */}
-            <Animated.View entering={FadeInDown.delay(400).duration(600)} style={styles.section}>
+            {/* Ascension Path */}
+            <Animated.View 
+              entering={FadeInDown.delay(ANIMATION_DELAYS.ascension).duration(FADE_IN_DURATION)} 
+              style={styles.section}
+            >
               <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 20 * textScale }]}>
                 Ascension Path
               </Text>
               <View style={styles.rankLadder}>
-                {VEIL_RANKS.map((rank, index) => {
+                {VEIL_RANKS.map((rank) => {
                   const isUnlocked = totalPoints >= rank.minPoints;
                   const isCurrent = rank.id === currentRank.id;
                   
                   return (
-                    <React.Fragment key={rank.id}>
-                      <View style={[
+                    <View 
+                      key={rank.id}
+                      style={[
                         styles.rankItem,
                         { 
                           backgroundColor: isUnlocked ? rank.color + '20' : theme.colors.cardBg,
                           borderColor: isCurrent ? rank.color : (isUnlocked ? rank.color + '40' : theme.colors.border),
                           borderWidth: isCurrent ? 3 : 1,
                         }
-                      ]}>
-                        <Text style={[styles.rankItemIcon, { opacity: isUnlocked ? 1 : 0.3 }]}>
-                          {rank.icon}
+                      ]}
+                    >
+                      <Text style={[styles.rankItemIcon, { opacity: isUnlocked ? 1 : 0.3 }]}>
+                        {rank.icon}
+                      </Text>
+                      <View style={styles.rankItemInfo}>
+                        <Text style={[
+                          styles.rankItemName,
+                          { 
+                            color: isUnlocked ? rank.color : theme.colors.textSecondary,
+                            fontSize: 16 * textScale,
+                          }
+                        ]}>
+                          {rank.name}
                         </Text>
-                        <View style={styles.rankItemInfo}>
-                          <Text style={[
-                            styles.rankItemName,
-                            { 
-                              color: isUnlocked ? rank.color : theme.colors.textSecondary,
-                              fontSize: 16 * textScale,
-                            }
-                          ]}>
-                            {rank.name}
-                          </Text>
-                          <Text style={[styles.rankItemPoints, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
-                            {rank.minPoints} points
-                          </Text>
-                        </View>
-                        {isCurrent && (
-                          <View style={[styles.currentBadge, { backgroundColor: rank.color }]}>
-                            <Text style={styles.currentBadgeText}>Current</Text>
-                          </View>
-                        )}
+                        <Text style={[styles.rankItemPoints, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
+                          {rank.minPoints} points
+                        </Text>
                       </View>
-                    </React.Fragment>
+                      {isCurrent && (
+                        <View style={[styles.currentBadge, { backgroundColor: rank.color }]}>
+                          <Text style={styles.currentBadgeText}>Current</Text>
+                        </View>
+                      )}
+                    </View>
                   );
                 })}
               </View>
             </Animated.View>
 
             {/* Achievements */}
-            <Animated.View entering={FadeInDown.delay(600).duration(600)} style={styles.section}>
+            <Animated.View 
+              entering={FadeInDown.delay(ANIMATION_DELAYS.achievements).duration(FADE_IN_DURATION)} 
+              style={styles.section}
+            >
               <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 20 * textScale }]}>
                 Achievements
               </Text>
 
+              {/* Category Filter */}
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false}
                 style={styles.categoryFilter}
                 contentContainerStyle={styles.categoryFilterContent}
               >
-                {['all', 'reading', 'exploration', 'dedication', 'mastery'].map((cat) => (
+                {ACHIEVEMENT_CATEGORIES.map((cat) => (
                   <TouchableOpacity
                     key={cat}
-                    onPress={() => {
-                      HapticFeedback.light();
-                      setSelectedCategory(cat);
-                    }}
+                    onPress={() => handleCategorySelect(cat)}
                     style={[
                       styles.filterButton,
                       {
@@ -215,6 +299,8 @@ export default function ArcanaScreen() {
                         borderColor: selectedCategory === cat ? theme.colors.accent : theme.colors.border,
                       }
                     ]}
+                    accessibilityLabel={`${cat} category filter`}
+                    accessibilityRole="button"
                   >
                     <Text style={[
                       styles.filterButtonText,
@@ -229,36 +315,38 @@ export default function ArcanaScreen() {
                 ))}
               </ScrollView>
 
+              {/* Achievements Grid */}
               <View style={styles.achievementsGrid}>
-                {filteredAchievements.map((achievement, index) => (
-                  <React.Fragment key={achievement.id}>
-                    <View style={[
+                {filteredAchievements.map((achievement) => (
+                  <View 
+                    key={achievement.id}
+                    style={[
                       styles.achievementCard,
                       {
                         backgroundColor: achievement.unlocked ? theme.colors.accent + '15' : theme.colors.cardBg,
                         borderColor: achievement.unlocked ? theme.colors.accent + '60' : theme.colors.border,
                         opacity: achievement.unlocked ? 1 : 0.5,
                       }
-                    ]}>
-                      <Text style={styles.achievementIcon}>{achievement.icon}</Text>
-                      <Text style={[styles.achievementName, { color: theme.colors.textPrimary, fontSize: 13 * textScale }]}>
-                        {achievement.name}
+                    ]}
+                  >
+                    <Text style={styles.achievementIcon}>{achievement.icon}</Text>
+                    <Text style={[styles.achievementName, { color: theme.colors.textPrimary, fontSize: 13 * textScale }]}>
+                      {achievement.name}
+                    </Text>
+                    <Text style={[styles.achievementDesc, { color: theme.colors.textSecondary, fontSize: 10 * textScale }]}>
+                      {achievement.description}
+                    </Text>
+                    <View style={[styles.achievementPoints, { backgroundColor: theme.colors.accent + '20' }]}>
+                      <Text style={[styles.achievementPointsText, { color: theme.colors.accent, fontSize: 10 * textScale }]}>
+                        +{achievement.points} XP
                       </Text>
-                      <Text style={[styles.achievementDesc, { color: theme.colors.textSecondary, fontSize: 10 * textScale }]}>
-                        {achievement.description}
-                      </Text>
-                      <View style={[styles.achievementPoints, { backgroundColor: theme.colors.accent + '30' }]}>
-                        <Text style={[styles.achievementPointsText, { color: theme.colors.accent, fontSize: 10 * textScale }]}>
-                          +{achievement.points}
-                        </Text>
-                      </View>
-                      {achievement.unlocked && (
-                        <View style={styles.unlockedBadge}>
-                          <Text style={styles.unlockedBadgeText}>✓</Text>
-                        </View>
-                      )}
                     </View>
-                  </React.Fragment>
+                    {achievement.unlocked && (
+                      <View style={styles.unlockedBadge}>
+                        <Text style={styles.unlockedBadgeText}>✓</Text>
+                      </View>
+                    )}
+                  </View>
                 ))}
               </View>
             </Animated.View>
@@ -266,8 +354,10 @@ export default function ArcanaScreen() {
             <View style={styles.bottomSpacer} />
           </ScrollView>
 
+          {/* Oracle Button (Floating) */}
           <LightningButton onPress={handleOraclePress} />
 
+          {/* Oracle Modal */}
           <RandomFactModal
             visible={showOracleModal}
             fact={oracleFact}
@@ -279,6 +369,9 @@ export default function ArcanaScreen() {
   );
 }
 
+// ──────────────────────────────────────────────────────────────
+// Styles
+// ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -322,7 +415,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'rgba(139, 92, 246, 0.4)',
-    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 32,
     elevation: 12,
   },
   progressCircleContainer: {
@@ -462,7 +558,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   achievementCard: {
-    width: (width - 52) / 2,
+    width: ACHIEVEMENT_CARD_WIDTH,
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,

@@ -1,5 +1,5 @@
-
-import React, { useEffect } from 'react';
+// components/FloatingTabBar.tsx
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
@@ -10,10 +10,14 @@ import Animated, {
   withTiming,
   withRepeat,
   Easing,
+  interpolate,
 } from 'react-native-reanimated';
 import { HapticFeedback } from '@/utils/haptics';
 import { useAppTheme } from '@/contexts/ThemeContext';
 
+// ──────────────────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────────────────
 export interface TabBarItem {
   name: string;
   route: string;
@@ -26,64 +30,87 @@ interface FloatingTabBarProps {
   containerWidth?: number;
 }
 
-const TabButton: React.FC<{
+interface TabButtonProps {
   item: TabBarItem;
   isActive: boolean;
   onPress: () => void;
-}> = ({ item, isActive, onPress }) => {
+}
+
+// ──────────────────────────────────────────────────────────────
+// Constants
+// ──────────────────────────────────────────────────────────────
+const SPRING_CONFIG = {
+  damping: 15,
+  stiffness: 300,
+};
+
+const GLOW_ANIMATION_DURATION = 1500;
+const SCALE_PRESS_VALUE = 0.9;
+
+// Tab icon mapping with properly encoded emojis
+const TAB_ICONS: Record<string, string> = {
+  home: '🏠',
+  explore: '👁️',
+  arcana: '🔮',
+  favorite: '⭐',
+  search: '🔍',
+  settings: '⚙️',
+};
+
+// ──────────────────────────────────────────────────────────────
+// Tab Button Component
+// ──────────────────────────────────────────────────────────────
+const TabButton: React.FC<TabButtonProps> = React.memo(({ item, isActive, onPress }) => {
   const { theme } = useAppTheme();
+  
+  // Animation values
   const scale = useSharedValue(1);
   const iconScale = useSharedValue(1);
   const glowOpacity = useSharedValue(0);
   const glowScale = useSharedValue(0.8);
   const translateY = useSharedValue(0);
 
+  /**
+   * Active state animations
+   */
   useEffect(() => {
     if (isActive) {
-      iconScale.value = withSpring(1.15, {
-        damping: 15,
-        stiffness: 300,
-      });
+      // Icon scale up
+      iconScale.value = withSpring(1.15, SPRING_CONFIG);
+      
+      // Floating effect
+      translateY.value = withSpring(-2, SPRING_CONFIG);
+      
+      // Glow pulse animation
       glowOpacity.value = withRepeat(
         withTiming(1, {
-          duration: 1500,
+          duration: GLOW_ANIMATION_DURATION,
           easing: Easing.inOut(Easing.ease),
         }),
         -1,
         true
       );
+      
       glowScale.value = withRepeat(
         withTiming(1.1, {
-          duration: 1500,
+          duration: GLOW_ANIMATION_DURATION,
           easing: Easing.inOut(Easing.ease),
         }),
         -1,
         true
       );
-      translateY.value = withSpring(-2, {
-        damping: 15,
-        stiffness: 300,
-      });
     } else {
-      iconScale.value = withSpring(1, {
-        damping: 15,
-        stiffness: 300,
-      });
-      glowOpacity.value = withTiming(0, {
-        duration: 300,
-        easing: Easing.inOut(Easing.ease),
-      });
-      glowScale.value = withTiming(0.8, {
-        duration: 300,
-        easing: Easing.inOut(Easing.ease),
-      });
-      translateY.value = withSpring(0, {
-        damping: 15,
-        stiffness: 300,
-      });
+      // Reset to inactive state
+      iconScale.value = withSpring(1, SPRING_CONFIG);
+      translateY.value = withSpring(0, SPRING_CONFIG);
+      glowOpacity.value = withTiming(0, { duration: 300 });
+      glowScale.value = withTiming(0.8, { duration: 300 });
     }
   }, [isActive, iconScale, glowOpacity, glowScale, translateY]);
 
+  /**
+   * Animated styles
+   */
   const animatedIconStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -100,42 +127,34 @@ const TabButton: React.FC<{
     };
   });
 
-  const handlePressIn = () => {
-    scale.value = withSpring(0.9, {
-      damping: 15,
-      stiffness: 400,
-    });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 400,
-    });
-  };
-
   const animatedButtonStyle = useAnimatedStyle(() => {
     return {
       transform: [{ scale: scale.value }],
     };
   });
 
-  const handlePress = () => {
+  /**
+   * Press handlers
+   */
+  const handlePressIn = () => {
     HapticFeedback.light();
+    scale.value = withSpring(SCALE_PRESS_VALUE, SPRING_CONFIG);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, SPRING_CONFIG);
+  };
+
+  const handlePress = () => {
     onPress();
   };
 
-  const getIconForTab = (iconName: string) => {
-    const icons: { [key: string]: string } = {
-      home: '🏠',
-      explore: '👁️',
-      arcana: '🔮',
-      favorite: '⭐',
-      search: '🔎',
-      settings: '⚙️',
-    };
-    return icons[iconName] || '•';
-  };
+  /**
+   * Get icon emoji for tab
+   */
+  const getIconEmoji = useMemo(() => {
+    return TAB_ICONS[item.icon] || '•';
+  }, [item.icon]);
 
   return (
     <TouchableOpacity
@@ -150,59 +169,90 @@ const TabButton: React.FC<{
     >
       <Animated.View style={animatedButtonStyle}>
         <View style={styles.tabContent}>
+          {/* Glow effect for active tab */}
           {isActive && (
             <Animated.View style={[styles.liquidGlow, animatedGlowStyle]}>
               <View style={[styles.liquidGlowInner, { backgroundColor: theme.colors.violet }]} />
             </Animated.View>
           )}
-          <Animated.Text style={[
-            styles.tabIcon,
-            isActive && styles.tabIconActive,
-            animatedIconStyle,
-          ]}>
-            {getIconForTab(item.icon)}
+          
+          {/* Icon */}
+          <Animated.Text
+            style={[
+              styles.tabIcon,
+              isActive && styles.tabIconActive,
+              animatedIconStyle,
+            ]}
+          >
+            {getIconEmoji}
           </Animated.Text>
-          <Text style={[
-            styles.tabLabel,
-            isActive && styles.tabLabelActive,
-          ]}>
+          
+          {/* Label */}
+          <Text
+            style={[
+              styles.tabLabel,
+              isActive && styles.tabLabelActive,
+            ]}
+          >
             {item.label}
           </Text>
         </View>
       </Animated.View>
     </TouchableOpacity>
   );
-};
+});
 
+TabButton.displayName = 'TabButton';
+
+// ──────────────────────────────────────────────────────────────
+// Main FloatingTabBar Component
+// ──────────────────────────────────────────────────────────────
 export default function FloatingTabBar({ tabs, containerWidth = 380 }: FloatingTabBarProps) {
   const { theme } = useAppTheme();
   const pathname = usePathname();
   const router = useRouter();
 
+  /**
+   * Handles tab press with haptic feedback
+   */
   const handleTabPress = (route: string) => {
-    console.log('Navigating to:', route);
+    console.log('[FloatingTabBar] Navigating to:', route);
+    HapticFeedback.light();
     router.push(route as any);
   };
 
-  const isTabActive = (tabName: string) => {
+  /**
+   * Determines if a tab is currently active
+   */
+  const isTabActive = (tabName: string): boolean => {
     if (tabName === '(home)') {
       return pathname === '/' || pathname.includes('/(home)');
     }
     return pathname.includes(`/${tabName}`);
   };
 
+  /**
+   * Memoize blur tint based on theme
+   */
+  const blurTint = useMemo(() => {
+    return theme.colorScheme === 'light' ? 'light' : 'dark';
+  }, [theme.colorScheme]);
+
   return (
     <View style={[styles.container, { width: containerWidth }]}>
-      <BlurView intensity={80} tint={theme.colors.background === '#F5F3FF' ? 'light' : 'dark'} style={styles.blurContainer}>
+      <BlurView 
+        intensity={80} 
+        tint={blurTint} 
+        style={styles.blurContainer}
+      >
         <View style={[styles.tabBar, { backgroundColor: theme.colors.cardBg }]}>
           {tabs.map((item, index) => (
-            <React.Fragment key={`tab-${item.name}-${index}`}>
-              <TabButton
-                item={item}
-                isActive={isTabActive(item.name)}
-                onPress={() => handleTabPress(item.route)}
-              />
-            </React.Fragment>
+            <TabButton
+              key={`tab-${item.name}-${index}`}
+              item={item}
+              isActive={isTabActive(item.name)}
+              onPress={() => handleTabPress(item.route)}
+            />
           ))}
         </View>
       </BlurView>
@@ -210,6 +260,9 @@ export default function FloatingTabBar({ tabs, containerWidth = 380 }: FloatingT
   );
 }
 
+// ──────────────────────────────────────────────────────────────
+// Styles
+// ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
@@ -223,7 +276,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(139, 92, 246, 0.3)',
-    boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 32,
     elevation: 12,
   },
   tabBar: {

@@ -1,4 +1,4 @@
-
+// app/(tabs)/(home)/index.tsx
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -47,6 +47,10 @@ interface ResourceCard {
 const REFRESH_DELAY = 1500;
 const CONFETTI_DURATION = 3000;
 const FADE_IN_DURATION = 600;
+const SPRING_CONFIG = {
+  damping: 15,
+  stiffness: 300,
+} as const;
 
 const resources: readonly ResourceCard[] = [
   {
@@ -98,11 +102,16 @@ export default function HomeScreen() {
   const fadeOpacity = useSharedValue(0);
 
   /**
+   * Memoize gradient colors to prevent recalculation
+   */
+  const gradientColors = useMemo(() => theme.colors.backgroundGradient, [theme.colors.backgroundGradient]);
+
+  /**
    * Loads and caches app data
    */
   const loadData = useCallback(async () => {
     try {
-      console.log('📦 Loading app data...');
+      console.log('[Home] 📦 Loading app data...');
       
       // Save categories to storage
       await storage.saveCategories(categories);
@@ -111,13 +120,13 @@ export default function HomeScreen() {
       // Initialize search index
       try {
         fuzzySearch.initialize();
-        console.log('✅ Fuzzy search initialized');
+        console.log('[Home] ✓ Fuzzy search initialized');
       } catch (searchError) {
-        console.error('❌ Search initialization failed:', searchError);
+        console.error('[Home] ⚠️ Search initialization failed:', searchError);
         // Non-critical error - continue loading
       }
       
-      console.log('✅ Data cached successfully');
+      console.log('[Home] ✓ Data cached successfully');
       setIsLoading(false);
       setError(null);
       
@@ -131,10 +140,11 @@ export default function HomeScreen() {
       const firstLaunchAfterOnboarding = await storage.getData<boolean>('@first_launch_after_onboarding');
       if (firstLaunchAfterOnboarding === true) {
         await storage.saveData('@first_launch_after_onboarding', false);
+        console.log('[Home] ✓ First launch after onboarding detected');
         // Confetti feature ready for future implementation
       }
     } catch (error) {
-      console.error('❌ Error loading data:', error);
+      console.error('[Home] ✗ Error loading data:', error);
       setError('Failed to load data. Please try again.');
       setIsLoading(false);
     }
@@ -145,17 +155,17 @@ export default function HomeScreen() {
    */
   const initializeApp = useCallback(async () => {
     try {
-      console.log('🚀 Initializing app...');
+      console.log('[Home] 🚀 Initializing app...');
       
       if (!isOnboardingComplete) {
-        console.log('📝 Onboarding not complete, showing onboarding screen');
+        console.log('[Home] Onboarding not complete, showing onboarding screen');
         setIsLoading(false);
         return;
       }
 
       await loadData();
     } catch (error) {
-      console.error('❌ Error initializing app:', error);
+      console.error('[Home] ✗ Error initializing app:', error);
       setError('Failed to initialize app. Please restart.');
       setIsLoading(false);
     }
@@ -175,13 +185,13 @@ export default function HomeScreen() {
    */
   const handleOnboardingComplete = useCallback(async () => {
     try {
-      console.log('✅ Onboarding completed');
+      console.log('[Home] ✓ Onboarding completed');
       await setOnboardingComplete(true);
       await storage.saveData('@first_launch_after_onboarding', true);
       setIsLoading(true);
       await loadData();
     } catch (error) {
-      console.error('❌ Error completing onboarding:', error);
+      console.error('[Home] ✗ Error completing onboarding:', error);
       setError('Failed to complete onboarding. Please try again.');
     }
   }, [setOnboardingComplete, loadData]);
@@ -192,12 +202,13 @@ export default function HomeScreen() {
   const handleLightningPress = useCallback(() => {
     try {
       HapticFeedback.medium();
-      console.log('⚡ Lightning button pressed');
+      console.log('[Home] ⚡ Lightning button pressed');
       const randomFact = getRandomFact();
       setCurrentFact(randomFact);
       setShowFactModal(true);
     } catch (error) {
-      console.error('❌ Error showing random fact:', error);
+      console.error('[Home] ✗ Error showing random fact:', error);
+      // Fail gracefully - don't show error to user
     }
   }, []);
 
@@ -207,12 +218,13 @@ export default function HomeScreen() {
   const handleSearchResultPress = useCallback((result: any) => {
     try {
       HapticFeedback.light();
-      console.log('🔍 Search result pressed:', result.title);
+      console.log('[Home] 🔍 Search result pressed:', result.title);
       if (result.route && result.route !== '/') {
         router.push(result.route as any);
       }
     } catch (error) {
-      console.error('❌ Error navigating to search result:', error);
+      console.error('[Home] ✗ Error navigating to search result:', error);
+      // Fail gracefully
     }
   }, [router]);
 
@@ -222,10 +234,11 @@ export default function HomeScreen() {
   const handleResourcePress = useCallback((resource: ResourceCard) => {
     try {
       HapticFeedback.light();
-      console.log('📚 Resource pressed:', resource.id);
+      console.log('[Home] 📚 Resource pressed:', resource.id);
       router.push(resource.route as any);
     } catch (error) {
-      console.error('❌ Error navigating to resource:', error);
+      console.error('[Home] ✗ Error navigating to resource:', error);
+      // Fail gracefully
     }
   }, [router]);
 
@@ -248,13 +261,14 @@ export default function HomeScreen() {
       try {
         fuzzySearch.initialize();
       } catch (searchError) {
-        console.error('❌ Error reinitializing search:', searchError);
+        console.error('[Home] ⚠️ Error reinitializing search:', searchError);
+        // Non-critical - continue
       }
       
       HapticFeedback.success();
-      console.log('🔄 Refresh completed');
+      console.log('[Home] ✓ Refresh completed');
     } catch (error) {
-      console.error('❌ Error refreshing:', error);
+      console.error('[Home] ✗ Error refreshing:', error);
       HapticFeedback.error();
     } finally {
       setRefreshing(false);
@@ -277,53 +291,27 @@ export default function HomeScreen() {
     opacity: fadeOpacity.value,
   }));
 
-  /**
-   * Memoized gradient colors for performance
-   */
-  const gradientColors = useMemo(() => theme.colors.backgroundGradient, [theme]);
-
   // ──────────────────────────────────────────────────────────────
-  // Render States
+  // Loading State
   // ──────────────────────────────────────────────────────────────
-
-  // Loading onboarding state check
-  if (isCheckingOnboarding) {
-    return (
-      <View style={styles.container}>
-        <LinearGradient
-          colors={gradientColors}
-          style={styles.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        >
-          <HomeLoadingSkeleton />
-        </LinearGradient>
-      </View>
-    );
+  if (isCheckingOnboarding || isLoading) {
+    return <HomeLoadingSkeleton />;
   }
 
-  // Onboarding not complete
+  // ──────────────────────────────────────────────────────────────
+  // Onboarding Screen
+  // ──────────────────────────────────────────────────────────────
   if (!isOnboardingComplete) {
-    return <OnboardingScreen onComplete={handleOnboardingComplete} />;
-  }
-
-  // Loading app data
-  if (isLoading) {
     return (
-      <View style={styles.container}>
-        <LinearGradient
-          colors={gradientColors}
-          style={styles.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        >
-          <HomeLoadingSkeleton />
-        </LinearGradient>
-      </View>
+      <OnboardingScreen
+        onComplete={handleOnboardingComplete}
+      />
     );
   }
 
-  // Error state
+  // ──────────────────────────────────────────────────────────────
+  // Error State
+  // ──────────────────────────────────────────────────────────────
   if (error) {
     return (
       <View style={styles.container}>
@@ -334,15 +322,18 @@ export default function HomeScreen() {
           end={{ x: 0, y: 1 }}
         >
           <Animated.View 
-            entering={FadeIn.duration(300)}
+            entering={FadeIn}
+            exiting={FadeOut}
             style={styles.errorContainer}
           >
             <Text style={styles.errorIcon}>⚠️</Text>
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity
-              style={styles.retryButton}
               onPress={handleRetry}
+              style={styles.retryButton}
               activeOpacity={0.8}
+              accessibilityLabel="Retry loading"
+              accessibilityRole="button"
             >
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
@@ -454,17 +445,11 @@ const ResourceCardComponent: React.FC<ResourceCardComponentProps> = React.memo((
 
   const handlePressIn = useCallback(() => {
     HapticFeedback.soft();
-    scale.value = withSpring(0.98, {
-      damping: 15,
-      stiffness: 300,
-    });
+    scale.value = withSpring(0.98, SPRING_CONFIG);
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
+    scale.value = withSpring(1, SPRING_CONFIG);
   }, [scale]);
 
   return (

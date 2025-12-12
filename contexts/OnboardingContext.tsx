@@ -69,11 +69,11 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
       
       const complete = await storage.isOnboardingComplete();
       
-      console.log('[Onboarding] Complete:', complete);
+      console.log(`[Onboarding] ✓ Status loaded: ${complete}`);
       setIsOnboardingCompleteState(complete);
       setHasChecked(true);
     } catch (error) {
-      console.error('[Onboarding] Error checking status:', error);
+      console.error('[Onboarding] ✗ Error checking status:', error);
       // On error, assume onboarding is needed (safer default)
       setIsOnboardingCompleteState(defaultComplete);
       setHasChecked(true);
@@ -94,8 +94,14 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
       return;
     }
 
+    // Skip if already in this state
+    if (complete === isOnboardingComplete) {
+      console.log(`[Onboarding] Already ${complete ? 'complete' : 'incomplete'}, skipping`);
+      return;
+    }
+
     try {
-      console.log('[Onboarding] Setting complete:', complete);
+      console.log(`[Onboarding] Setting complete: ${complete}`);
       
       // Update storage first
       await storage.setOnboardingComplete(complete);
@@ -103,12 +109,14 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
       // Then update state
       setIsOnboardingCompleteState(complete);
       
-      console.log('[Onboarding] Status updated successfully');
+      console.log('[Onboarding] ✓ Status updated successfully');
     } catch (error) {
-      console.error('[Onboarding] Error setting complete:', error);
+      console.error('[Onboarding] ✗ Error setting complete:', error);
+      // Revert state on error
+      setIsOnboardingCompleteState(prevState => prevState);
       throw error; // Re-throw to allow caller to handle
     }
-  }, []);
+  }, [isOnboardingComplete]);
 
   /**
    * Resets onboarding state (useful for testing or re-onboarding)
@@ -118,12 +126,15 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
   const resetOnboarding = useCallback(async () => {
     try {
       console.log('[Onboarding] Resetting...');
+      
       await storage.setOnboardingComplete(false);
+      
       setIsOnboardingCompleteState(false);
       setHasChecked(false);
-      console.log('[Onboarding] Reset successfully');
+      
+      console.log('[Onboarding] ✓ Reset successfully');
     } catch (error) {
-      console.error('[Onboarding] Error resetting:', error);
+      console.error('[Onboarding] ✗ Error resetting:', error);
       throw error;
     }
   }, []);
@@ -242,7 +253,37 @@ export const useCompleteOnboarding = (): (() => Promise<void>) => {
 export const useSkipOnboarding = (): (() => Promise<void>) => {
   const { setOnboardingComplete } = useOnboarding();
   return useCallback(async () => {
-    console.warn('[Onboarding] Skipping (should only be used in development)');
+    console.warn('[Onboarding] ⚠️ Skipping (should only be used in development)');
     await setOnboardingComplete(true);
   }, [setOnboardingComplete]);
+};
+
+/**
+ * Helper hook to check if onboarding needs to be shown
+ * Combines checking and completion state
+ * 
+ * @returns True if onboarding should be shown
+ * 
+ * @example
+ * const shouldShowOnboarding = useShowOnboarding();
+ * if (shouldShowOnboarding) return <OnboardingScreen />;
+ */
+export const useShowOnboarding = (): boolean => {
+  const { isOnboardingComplete, isCheckingOnboarding } = useOnboarding();
+  return !isCheckingOnboarding && !isOnboardingComplete;
+};
+
+/**
+ * Helper hook for resetting onboarding (development/testing)
+ * Returns a function that resets onboarding state
+ * 
+ * @returns Function to reset onboarding
+ * 
+ * @example
+ * const resetOnboarding = useResetOnboarding();
+ * <Button onPress={resetOnboarding}>Reset Onboarding (Dev)</Button>
+ */
+export const useResetOnboarding = (): (() => Promise<void>) => {
+  const { resetOnboarding } = useOnboarding();
+  return resetOnboarding;
 };

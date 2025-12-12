@@ -175,9 +175,14 @@ const normalizeColorScheme = (systemScheme: ColorSchemeName): ColorScheme => {
  */
 const validateTextScale = (scale: number): number => {
   if (typeof scale !== 'number' || isNaN(scale)) {
+    console.warn('[Theme] Invalid text scale, using default');
     return TEXT_SCALE_DEFAULT;
   }
-  return Math.max(TEXT_SCALE_MIN, Math.min(TEXT_SCALE_MAX, scale));
+  const clamped = Math.max(TEXT_SCALE_MIN, Math.min(TEXT_SCALE_MAX, scale));
+  if (clamped !== scale) {
+    console.warn(`[Theme] Text scale clamped from ${scale} to ${clamped}`);
+  }
+  return clamped;
 };
 
 /**
@@ -187,6 +192,15 @@ const validateTextScale = (scale: number): number => {
  */
 const getThemeForScheme = (scheme: ColorScheme): Theme => {
   return scheme === 'dark' ? mysticTheme : arcaneTheme;
+};
+
+/**
+ * Validates color scheme value
+ * @param scheme - Scheme to validate
+ * @returns True if valid
+ */
+const isValidColorScheme = (scheme: any): scheme is ColorScheme => {
+  return scheme === 'light' || scheme === 'dark';
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -220,34 +234,38 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
    */
   const loadThemePreferences = useCallback(async () => {
     try {
+      console.log('[Theme] Loading preferences...');
+      
       const [savedTheme, savedTextScale] = await Promise.all([
         storage.getData<ColorScheme>(THEME_STORAGE_KEY),
         storage.getData<number>(TEXT_SCALE_STORAGE_KEY),
       ]);
 
       // Load saved theme preference
-      if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
+      if (savedTheme && isValidColorScheme(savedTheme)) {
         setColorScheme(savedTheme);
         setUserHasSetTheme(true);
-        console.log('[Theme] Loaded saved preference:', savedTheme);
+        console.log(`[Theme] ✓ Loaded saved preference: ${savedTheme}`);
       } else {
         // No saved preference - use system preference
         const systemScheme = Appearance.getColorScheme();
         const normalized = normalizeColorScheme(systemScheme);
         setColorScheme(normalized);
         setUserHasSetTheme(false);
-        console.log('[Theme] Using system preference:', normalized);
+        console.log(`[Theme] ✓ Using system preference: ${normalized}`);
       }
 
       // Load saved text scale
       if (typeof savedTextScale === 'number') {
         const validated = validateTextScale(savedTextScale);
         setTextScaleState(validated);
-        console.log('[Theme] Loaded text scale:', validated);
+        console.log(`[Theme] ✓ Loaded text scale: ${validated}`);
+      } else {
+        console.log(`[Theme] ✓ Using default text scale: ${TEXT_SCALE_DEFAULT}`);
       }
     } catch (error) {
-      console.error('[Theme] Failed to load preferences:', error);
-      // Fallback to default
+      console.error('[Theme] ✗ Failed to load preferences:', error);
+      // Fallback to defaults
       setColorScheme(defaultScheme);
       setTextScaleState(TEXT_SCALE_DEFAULT);
     } finally {
@@ -270,8 +288,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
       // Only auto-switch if user hasn't manually set a theme
       if (!userHasSetTheme) {
         const newScheme = normalizeColorScheme(systemScheme);
-        console.log('[Theme] System changed to:', newScheme);
+        console.log(`[Theme] System changed to: ${newScheme}`);
         setColorScheme(newScheme);
+      } else {
+        console.log('[Theme] System changed but user preference takes priority');
       }
     });
 
@@ -286,12 +306,19 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const toggleTheme = useCallback(async () => {
     try {
       const newScheme: ColorScheme = colorScheme === 'dark' ? 'light' : 'dark';
+      
+      console.log(`[Theme] Toggling: ${colorScheme} → ${newScheme}`);
+      
       setColorScheme(newScheme);
       setUserHasSetTheme(true);
+      
       await storage.saveData(THEME_STORAGE_KEY, newScheme);
-      console.log('[Theme] Toggled to:', newScheme);
+      
+      console.log(`[Theme] ✓ Toggled to: ${newScheme}`);
     } catch (error) {
-      console.error('[Theme] Failed to toggle:', error);
+      console.error('[Theme] ✗ Failed to toggle:', error);
+      // Revert on error
+      setColorScheme(prevScheme => prevScheme);
     }
   }, [colorScheme]);
 
@@ -300,20 +327,31 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
    * @param scheme - Color scheme to set
    */
   const setTheme = useCallback(async (scheme: ColorScheme) => {
-    if (scheme !== 'light' && scheme !== 'dark') {
-      console.warn('[Theme] Invalid color scheme provided:', scheme);
+    if (!isValidColorScheme(scheme)) {
+      console.warn(`[Theme] Invalid color scheme provided: ${scheme}`);
+      return;
+    }
+
+    if (scheme === colorScheme) {
+      console.log(`[Theme] Already using ${scheme} theme`);
       return;
     }
 
     try {
+      console.log(`[Theme] Setting theme to: ${scheme}`);
+      
       setColorScheme(scheme);
       setUserHasSetTheme(true);
+      
       await storage.saveData(THEME_STORAGE_KEY, scheme);
-      console.log('[Theme] Set to:', scheme);
+      
+      console.log(`[Theme] ✓ Set to: ${scheme}`);
     } catch (error) {
-      console.error('[Theme] Failed to set:', error);
+      console.error('[Theme] ✗ Failed to set:', error);
+      // Revert on error
+      setColorScheme(prevScheme => prevScheme);
     }
-  }, []);
+  }, [colorScheme]);
 
   /**
    * Set text scale with validation
@@ -322,13 +360,25 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const setTextScale = useCallback(async (scale: number) => {
     try {
       const validatedScale = validateTextScale(scale);
+      
+      if (validatedScale === textScale) {
+        console.log(`[Theme] Text scale already ${validatedScale}`);
+        return;
+      }
+      
+      console.log(`[Theme] Setting text scale to: ${validatedScale}`);
+      
       setTextScaleState(validatedScale);
+      
       await storage.saveData(TEXT_SCALE_STORAGE_KEY, validatedScale);
-      console.log('[Theme] Text scale set to:', validatedScale);
+      
+      console.log(`[Theme] ✓ Text scale set to: ${validatedScale}`);
     } catch (error) {
-      console.error('[Theme] Failed to set text scale:', error);
+      console.error('[Theme] ✗ Failed to set text scale:', error);
+      // Revert on error
+      setTextScaleState(prevScale => prevScale);
     }
-  }, []);
+  }, [textScale]);
 
   /**
    * Memoize theme object to prevent unnecessary re-renders
@@ -424,7 +474,7 @@ export const useIsDarkMode = (): boolean => {
  */
 export const useScaledText = (baseSize: number): number => {
   const { textScale } = useAppTheme();
-  return baseSize * textScale;
+  return Math.round(baseSize * textScale);
 };
 
 /**
@@ -453,4 +503,18 @@ export const useThemeSpacing = () => {
 export const useThemeBorderRadius = () => {
   const { theme } = useAppTheme();
   return theme.borderRadius;
+};
+
+/**
+ * Hook to check if theme is still loading
+ * 
+ * @returns True if theme is loading
+ * 
+ * @example
+ * const isLoadingTheme = useThemeLoading();
+ * if (isLoadingTheme) return <LoadingScreen />;
+ */
+export const useThemeLoading = (): boolean => {
+  const { isLoading } = useAppTheme();
+  return isLoading;
 };

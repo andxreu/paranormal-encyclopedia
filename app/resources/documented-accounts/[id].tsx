@@ -87,10 +87,6 @@ export default function DocumentedAccountDetailScreen() {
     }
   };
 
-  const renderStars = (rating: number) => {
-    return '⭐'.repeat(rating);
-  };
-
   if (!account) {
     return (
       <View style={styles.container}>
@@ -162,9 +158,6 @@ export default function DocumentedAccountDetailScreen() {
                 <Text style={[styles.icon, { fontSize: 64 * textScale }]}>🖋️</Text>
                 <Text style={[styles.title, { color: theme.colors.textPrimary, fontSize: 28 * textScale }]}>
                   {account.name}
-                </Text>
-                <Text style={[styles.stars, { fontSize: 18 * textScale }]}>
-                  {renderStars(account.credibilityRating)}
                 </Text>
                 <Text style={[styles.description, { color: theme.colors.textSecondary, fontSize: 15 * textScale }]}>
                   {account.description}
@@ -288,13 +281,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(139, 92, 246, 0.5)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
-  },
-  stars: {
-    fontSize: 18,
-    marginBottom: 12,
-    textShadowColor: 'rgba(212, 175, 55, 0.6)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
   },
   description: {
     fontSize: 15,

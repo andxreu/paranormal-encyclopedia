@@ -1,4 +1,3 @@
-
 // contexts/EnlightenedModeContext.tsx
 import React, { 
   createContext, 
@@ -31,6 +30,7 @@ interface EnlightenedModeContextType {
   setEnlightenedMode: (enabled: boolean) => Promise<void>;
   toggleEnlightenedMode: () => Promise<void>;
   isLoading: boolean;
+  progress: number;
 }
 
 interface EnlightenedModeProviderProps {
@@ -69,6 +69,13 @@ export const EnlightenedModeProvider: React.FC<EnlightenedModeProviderProps> = (
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   /**
+   * Calculate progress percentage
+   */
+  const progress = useMemo(() => {
+    return Math.min(100, (tapCount / requiredTaps) * 100);
+  }, [tapCount, requiredTaps]);
+
+  /**
    * Load enlightened mode state from storage on mount
    */
   useEffect(() => {
@@ -79,10 +86,12 @@ export const EnlightenedModeProvider: React.FC<EnlightenedModeProviderProps> = (
         
         if (typeof saved === 'boolean') {
           setIsEnlightened(saved);
-          console.log('[EnlightenedMode] Loaded:', saved);
+          console.log(`[EnlightenedMode] ✓ Loaded: ${saved ? '✨ Enlightened' : 'Normal'}`);
+        } else {
+          console.log('[EnlightenedMode] ✓ Using default: Normal');
         }
       } catch (error) {
-        console.error('[EnlightenedMode] Failed to load:', error);
+        console.error('[EnlightenedMode] ✗ Failed to load:', error);
       } finally {
         setIsLoading(false);
       }
@@ -110,7 +119,7 @@ export const EnlightenedModeProvider: React.FC<EnlightenedModeProviderProps> = (
         HapticFeedback.soft();
       }
       
-      console.log('[EnlightenedMode] Tap sequence started (1/7)');
+      console.log(`[EnlightenedMode] Tap sequence started (1/${requiredTaps})`);
       return;
     }
 
@@ -140,7 +149,7 @@ export const EnlightenedModeProvider: React.FC<EnlightenedModeProviderProps> = (
       
       // Save state
       storage.saveData(ENLIGHTENED_MODE_KEY, newEnlightenedState).catch(error => {
-        console.error('[EnlightenedMode] Failed to save:', error);
+        console.error('[EnlightenedMode] ✗ Failed to save:', error);
       });
       
       // Success haptic - special celebration pattern!
@@ -170,11 +179,18 @@ export const EnlightenedModeProvider: React.FC<EnlightenedModeProviderProps> = (
    */
   const setEnlightenedMode = useCallback(async (enabled: boolean) => {
     if (typeof enabled !== 'boolean') {
-      console.warn('[EnlightenedMode] Invalid value, expected boolean');
+      console.warn('[EnlightenedMode] ⚠️ Invalid value, expected boolean');
+      return;
+    }
+
+    if (enabled === isEnlightened) {
+      console.log(`[EnlightenedMode] Already ${enabled ? 'enlightened' : 'normal'}`);
       return;
     }
 
     try {
+      console.log(`[EnlightenedMode] Setting to: ${enabled ? '✨ Enlightened' : 'Normal'}`);
+      
       setIsEnlightened(enabled);
       await storage.saveData(ENLIGHTENED_MODE_KEY, enabled);
       
@@ -187,12 +203,14 @@ export const EnlightenedModeProvider: React.FC<EnlightenedModeProviderProps> = (
         }
       }
       
-      console.log(`✨ [EnlightenedMode] Set to: ${enabled}`);
+      console.log(`✨ [EnlightenedMode] ✓ Set to: ${enabled ? 'Enlightened' : 'Normal'}`);
     } catch (error) {
-      console.error('[EnlightenedMode] Failed to set:', error);
+      console.error('[EnlightenedMode] ✗ Failed to set:', error);
+      // Revert on error
+      setIsEnlightened(prevState => prevState);
       throw error;
     }
-  }, [enableHaptics]);
+  }, [isEnlightened, enableHaptics]);
 
   /**
    * Toggles enlightened mode state
@@ -210,6 +228,7 @@ export const EnlightenedModeProvider: React.FC<EnlightenedModeProviderProps> = (
         if (Date.now() - lastTapTime > tapTimeout) {
           console.log('[EnlightenedMode] Tap sequence timed out');
           setTapCount(0);
+          setLastTapTime(0);
         }
       }, tapTimeout + 100); // Add small buffer
 
@@ -230,6 +249,7 @@ export const EnlightenedModeProvider: React.FC<EnlightenedModeProviderProps> = (
     setEnlightenedMode,
     toggleEnlightenedMode,
     isLoading,
+    progress,
   }), [
     isEnlightened,
     tapCount,
@@ -239,6 +259,7 @@ export const EnlightenedModeProvider: React.FC<EnlightenedModeProviderProps> = (
     setEnlightenedMode,
     toggleEnlightenedMode,
     isLoading,
+    progress,
   ]);
 
   return (
@@ -300,8 +321,8 @@ export const useIsEnlightened = (): boolean => {
  * <ProgressBar value={progress} />
  */
 export const useEnlightenedProgress = (): number => {
-  const { tapCount, requiredTaps } = useEnlightenedMode();
-  return Math.min(100, (tapCount / requiredTaps) * 100);
+  const { progress } = useEnlightenedMode();
+  return progress;
 };
 
 /**
@@ -331,6 +352,66 @@ export const useIsEnlightenedActivating = (): boolean => {
 export const useEnlightenedTapsRemaining = (): number => {
   const { tapCount, requiredTaps } = useEnlightenedMode();
   return tapCount > 0 ? Math.max(0, requiredTaps - tapCount) : 0;
+};
+
+/**
+ * Hook to get the crystal ball tap handler
+ * Convenience hook for just the tap function
+ * 
+ * @returns Tap handler function
+ * 
+ * @example
+ * const handleTap = useEnlightenedTap();
+ * <Pressable onPress={handleTap}>
+ *   <CrystalBall />
+ * </Pressable>
+ */
+export const useEnlightenedTap = () => {
+  const { handleCrystalBallTap } = useEnlightenedMode();
+  return handleCrystalBallTap;
+};
+
+/**
+ * Hook to get the toggle function
+ * Convenience hook for toggling enlightened mode
+ * 
+ * @returns Toggle function
+ * 
+ * @example
+ * const toggleEnlightened = useEnlightenedToggle();
+ * <Button onPress={toggleEnlightened}>Toggle Secret Mode</Button>
+ */
+export const useEnlightenedToggle = () => {
+  const { toggleEnlightenedMode } = useEnlightenedMode();
+  return toggleEnlightenedMode;
+};
+
+/**
+ * Hook to check if enlightened mode is loading
+ * 
+ * @returns True if loading
+ * 
+ * @example
+ * const isLoading = useEnlightenedLoading();
+ * if (isLoading) return <LoadingScreen />;
+ */
+export const useEnlightenedLoading = (): boolean => {
+  const { isLoading } = useEnlightenedMode();
+  return isLoading;
+};
+
+/**
+ * Hook to get current tap count
+ * 
+ * @returns Current tap count
+ * 
+ * @example
+ * const tapCount = useEnlightenedTapCount();
+ * <Text>Taps: {tapCount}</Text>
+ */
+export const useEnlightenedTapCount = (): number => {
+  const { tapCount } = useEnlightenedMode();
+  return tapCount;
 };
 
 /**

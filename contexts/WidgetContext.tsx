@@ -1,4 +1,3 @@
-
 // contexts/WidgetContext.tsx
 import React, { 
   createContext, 
@@ -51,10 +50,10 @@ const initializeStorage = (groupId: string): ExtensionStorage | null => {
     if (Platform.OS === 'ios') {
       return new ExtensionStorage(groupId);
     }
-    console.warn('[Widget] Only supported on iOS');
+    console.log('[Widget] ⚠️ Only supported on iOS');
     return null;
   } catch (error) {
-    console.error('[Widget] Failed to initialize storage:', error);
+    console.error('[Widget] ✗ Failed to initialize storage:', error);
     return null;
   }
 };
@@ -90,16 +89,21 @@ export const WidgetProvider: React.FC<WidgetProviderProps> = ({
    */
   const refreshWidget = useCallback(() => {
     if (!isWidgetSupported) {
-      console.warn('[Widget] Refresh called on unsupported platform');
+      console.warn('[Widget] ⚠️ Refresh called on unsupported platform');
+      return;
+    }
+
+    if (!storage) {
+      console.warn('[Widget] ⚠️ Storage not initialized, cannot refresh');
       return;
     }
 
     try {
       ExtensionStorage.reloadWidget();
       setLastRefresh(new Date());
-      console.log('[Widget] Refreshed successfully');
+      console.log('[Widget] ✓ Refreshed successfully');
     } catch (error) {
-      console.error('[Widget] Failed to refresh:', error);
+      console.error('[Widget] ✗ Failed to refresh:', error);
     }
   }, [isWidgetSupported]);
 
@@ -108,15 +112,27 @@ export const WidgetProvider: React.FC<WidgetProviderProps> = ({
    */
   useEffect(() => {
     if (isWidgetSupported) {
+      console.log('[Widget] Initializing storage...');
       storage = initializeStorage(groupId);
       
-      if (autoRefreshOnMount && storage) {
-        console.log('[Widget] Auto-refreshing on mount');
-        refreshWidget();
+      if (storage) {
+        console.log('[Widget] ✓ Storage initialized');
+        
+        if (autoRefreshOnMount) {
+          console.log('[Widget] Auto-refreshing on mount');
+          refreshWidget();
+        }
+      } else {
+        console.warn('[Widget] ⚠️ Storage initialization failed');
       }
     } else {
       console.log('[Widget] Platform not supported (iOS only)');
     }
+
+    // Cleanup
+    return () => {
+      storage = null;
+    };
   }, [groupId, autoRefreshOnMount, isWidgetSupported, refreshWidget]);
 
   /**
@@ -129,23 +145,28 @@ export const WidgetProvider: React.FC<WidgetProviderProps> = ({
    */
   const updateWidgetData = useCallback(async <T,>(key: string, data: T): Promise<void> => {
     if (!storage) {
-      console.warn('[Widget] Storage not initialized');
+      console.warn('[Widget] ⚠️ Storage not initialized');
       return;
     }
 
     if (!key || typeof key !== 'string') {
-      console.warn('[Widget] Invalid key provided');
+      console.warn('[Widget] ⚠️ Invalid key provided');
+      return;
+    }
+
+    if (data === null || data === undefined) {
+      console.warn('[Widget] ⚠️ Null/undefined data provided');
       return;
     }
 
     try {
       await storage.set(key, data);
-      console.log(`[Widget] Data updated for key: ${key}`);
+      console.log(`[Widget] ✓ Data updated for key: ${key}`);
       
       // Automatically refresh widget after updating data
       refreshWidget();
     } catch (error) {
-      console.error(`[Widget] Failed to update data for key: ${key}`, error);
+      console.error(`[Widget] ✗ Failed to update data for key: ${key}`, error);
       throw error;
     }
   }, [refreshWidget]);
@@ -158,21 +179,27 @@ export const WidgetProvider: React.FC<WidgetProviderProps> = ({
    */
   const getWidgetData = useCallback(async <T,>(key: string): Promise<T | null> => {
     if (!storage) {
-      console.warn('[Widget] Storage not initialized');
+      console.warn('[Widget] ⚠️ Storage not initialized');
       return null;
     }
 
     if (!key || typeof key !== 'string') {
-      console.warn('[Widget] Invalid key provided');
+      console.warn('[Widget] ⚠️ Invalid key provided');
       return null;
     }
 
     try {
       const data = await storage.get(key);
-      console.log(`[Widget] Data retrieved for key: ${key}`);
+      
+      if (data === null || data === undefined) {
+        console.log(`[Widget] Key not found: ${key}`);
+        return null;
+      }
+      
+      console.log(`[Widget] ✓ Data retrieved for key: ${key}`);
       return data as T;
     } catch (error) {
-      console.error(`[Widget] Failed to get data for key: ${key}`, error);
+      console.error(`[Widget] ✗ Failed to get data for key: ${key}`, error);
       return null;
     }
   }, []);
@@ -185,16 +212,16 @@ export const WidgetProvider: React.FC<WidgetProviderProps> = ({
    */
   const clearWidgetData = useCallback(async (): Promise<void> => {
     if (!storage) {
-      console.warn('[Widget] Storage not initialized');
+      console.warn('[Widget] ⚠️ Storage not initialized');
       return;
     }
 
     try {
       await storage.set(WIDGET_STATE_KEY, null);
-      console.log('[Widget] Data cleared');
+      console.log('[Widget] ✓ Data cleared');
       refreshWidget();
     } catch (error) {
-      console.error('[Widget] Failed to clear data:', error);
+      console.error('[Widget] ✗ Failed to clear data:', error);
       throw error;
     }
   }, [refreshWidget]);
@@ -306,6 +333,34 @@ export const useWidgetLastRefresh = (): Date | null => {
   return lastRefresh;
 };
 
+/**
+ * Hook to get widget data retrieval function
+ * 
+ * @returns Function to get widget data
+ * 
+ * @example
+ * const getWidgetData = useWidgetData();
+ * const mystery = await getWidgetData<Mystery>('daily-mystery');
+ */
+export const useWidgetData = () => {
+  const { getWidgetData } = useWidget();
+  return getWidgetData;
+};
+
+/**
+ * Hook to get widget clear function
+ * 
+ * @returns Function to clear widget data
+ * 
+ * @example
+ * const clearWidget = useWidgetClear();
+ * <Button onPress={clearWidget}>Clear Widget</Button>
+ */
+export const useWidgetClear = () => {
+  const { clearWidgetData } = useWidget();
+  return clearWidgetData;
+};
+
 // ──────────────────────────────────────────────────────────────
 // Utility Functions (for non-React contexts)
 // ──────────────────────────────────────────────────────────────
@@ -316,24 +371,40 @@ export const useWidgetLastRefresh = (): Date | null => {
  * 
  * @param key - Storage key
  * @param data - Data to store
+ * @param groupId - Optional custom group ID
  * 
  * @example
  * // In a background service
  * await updateWidgetDataDirect('daily-mystery', todaysMystery);
  */
-export const updateWidgetDataDirect = async <T,>(key: string, data: T): Promise<void> => {
+export const updateWidgetDataDirect = async <T,>(
+  key: string, 
+  data: T,
+  groupId: string = WIDGET_GROUP_ID
+): Promise<void> => {
   if (Platform.OS !== 'ios') {
-    console.warn('[Widget] Direct update only supported on iOS');
+    console.warn('[Widget] ⚠️ Direct update only supported on iOS');
+    return;
+  }
+
+  if (!key || typeof key !== 'string') {
+    console.warn('[Widget] ⚠️ Invalid key provided');
+    return;
+  }
+
+  if (data === null || data === undefined) {
+    console.warn('[Widget] ⚠️ Null/undefined data provided');
     return;
   }
 
   try {
-    const directStorage = new ExtensionStorage(WIDGET_GROUP_ID);
+    const directStorage = new ExtensionStorage(groupId);
     await directStorage.set(key, data);
     ExtensionStorage.reloadWidget();
-    console.log(`[Widget] Data updated directly for key: ${key}`);
+    console.log(`[Widget] ✓ Data updated directly for key: ${key}`);
   } catch (error) {
-    console.error('[Widget] Failed to update directly:', error);
+    console.error('[Widget] ✗ Failed to update directly:', error);
+    throw error;
   }
 };
 
@@ -347,15 +418,50 @@ export const updateWidgetDataDirect = async <T,>(key: string, data: T): Promise<
  */
 export const refreshWidgetDirect = (): void => {
   if (Platform.OS !== 'ios') {
-    console.warn('[Widget] Direct refresh only supported on iOS');
+    console.warn('[Widget] ⚠️ Direct refresh only supported on iOS');
     return;
   }
 
   try {
     ExtensionStorage.reloadWidget();
-    console.log('[Widget] Refreshed directly');
+    console.log('[Widget] ✓ Refreshed directly');
   } catch (error) {
-    console.error('[Widget] Failed to refresh directly:', error);
+    console.error('[Widget] ✗ Failed to refresh directly:', error);
+  }
+};
+
+/**
+ * Gets widget data outside of React context
+ * 
+ * @param key - Storage key
+ * @param groupId - Optional custom group ID
+ * @returns The stored data or null
+ * 
+ * @example
+ * const mystery = await getWidgetDataDirect<Mystery>('daily-mystery');
+ */
+export const getWidgetDataDirect = async <T,>(
+  key: string,
+  groupId: string = WIDGET_GROUP_ID
+): Promise<T | null> => {
+  if (Platform.OS !== 'ios') {
+    console.warn('[Widget] ⚠️ Direct get only supported on iOS');
+    return null;
+  }
+
+  if (!key || typeof key !== 'string') {
+    console.warn('[Widget] ⚠️ Invalid key provided');
+    return null;
+  }
+
+  try {
+    const directStorage = new ExtensionStorage(groupId);
+    const data = await directStorage.get(key);
+    console.log(`[Widget] ✓ Data retrieved directly for key: ${key}`);
+    return data as T;
+  } catch (error) {
+    console.error('[Widget] ✗ Failed to get data directly:', error);
+    return null;
   }
 };
 
