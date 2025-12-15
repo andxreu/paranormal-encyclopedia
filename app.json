@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "Paranormal Encyclopedia",
@@ -6,34 +7,34 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d44c888.png",
+    "icon": "./assets/images/92329e0a-b13b-4bf6-9151-c5899a5497d1.png",
     "splash": {
-      "image": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d44c888.png",
+      "image": "./assets/images/92329e0a-b13b-4bf6-9151-c5899a5497d1.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.stormlightfoundry.paranormalencyclopedia",
-      "buildNumber": "1",
-      "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d44c888.png",
+      "buildNumber": "2",
+      "icon": "./assets/images/92329e0a-b13b-4bf6-9151-c5899a5497d1.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.stormlightfoundry.paranormalencyclopedia",
-      "versionCode": 1,
+      "versionCode": 2,
       "edgeToEdgeEnabled": true,
-      "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d44c888.png",
+      "icon": "./assets/images/92329e0a-b13b-4bf6-9151-c5899a5497d1.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d44c888.png",
+        "foregroundImage": "./assets/images/92329e0a-b13b-4bf6-9151-c5899a5497d1.png",
         "backgroundColor": "#000000"
       },
       "permissions": []
     },
     "web": {
-      "favicon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d44c888.png",
+      "favicon": "./assets/images/92329e0a-b13b-4bf6-9151-c5899a5497d1.png",
       "bundler": "metro"
     },
     "plugins": [
