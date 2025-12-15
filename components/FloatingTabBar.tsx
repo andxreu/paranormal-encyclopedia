@@ -1,3 +1,4 @@
+
 // components/FloatingTabBar.tsx
 import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
@@ -10,7 +11,6 @@ import Animated, {
   withTiming,
   withRepeat,
   Easing,
-  interpolate,
 } from 'react-native-reanimated';
 import { HapticFeedback } from '@/utils/haptics';
 import { useAppTheme } from '@/contexts/ThemeContext';
@@ -193,6 +193,7 @@ const TabButton: React.FC<TabButtonProps> = React.memo(({ item, isActive, onPres
               styles.tabLabel,
               isActive && styles.tabLabelActive,
             ]}
+            numberOfLines={1}
           >
             {item.label}
           </Text>

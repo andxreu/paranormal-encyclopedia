@@ -1,21 +1,17 @@
-
 {
   "expo": {
     "name": "Paranormal Encyclopedia",
-    "slug": "paranormal-encyclopedia",
+    "slug": "Paranormal Encyclopedia",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d44c888.png",
-
     "splash": {
       "image": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d44c888.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.stormlightfoundry.paranormalencyclopedia",
@@ -25,7 +21,6 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-
     "android": {
       "package": "com.stormlightfoundry.paranormalencyclopedia",
       "versionCode": 1,
@@ -37,21 +32,22 @@
       },
       "permissions": []
     },
-
     "web": {
       "favicon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d44c888.png",
       "bundler": "metro"
     },
-
-    "plugins": ["expo-font", "expo-router", "expo-web-browser"],
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      "expo-web-browser"
+    ],
     "scheme": "paranormalencyclopedia",
-
     "experiments": {
       "typedRoutes": true
     },
-
     "extra": {
       "router": {}
     }
-  }
+  },
+  "scheme": "Paranormal Encyclopedia"
 }

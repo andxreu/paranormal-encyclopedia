@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Linking, Alert, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
@@ -21,7 +22,7 @@ const TEXT_SIZE_OPTIONS = [
   { label: 'Small', value: 0.85, key: 'small' },
   { label: 'Default', value: 1, key: 'default' },
   { label: 'Large', value: 1.15, key: 'large' },
-  { label: 'Extra Large', value: 1.3, key: 'extra-large' },
+  { label: 'XL', value: 1.3, key: 'extra-large' },
 ];
 
 const LINKS = {
@@ -45,9 +46,13 @@ export default function SettingsScreen() {
   const [showClearModal, setShowClearModal] = useState(false);
   const [showFactModal, setShowFactModal] = useState(false);
   const [currentFact, setCurrentFact] = useState<ParanormalFact | null>(null);
+  const { width } = useWindowDimensions();
 
   const fadeOpacity = useSharedValue(0);
   const toggleScale = useSharedValue(1);
+
+  // Responsive card max width for iPad
+  const cardMaxWidth = width >= 768 ? 600 : undefined;
 
   useEffect(() => {
     loadSettings();
@@ -234,205 +239,210 @@ export default function SettingsScreen() {
           <Animated.View style={[styles.animatedContainer, animatedStyle]}>
             <ScrollView
               style={styles.scrollView}
-              contentContainerStyle={styles.contentContainer}
+              contentContainerStyle={[styles.contentContainer, { alignItems: width >= 768 ? 'center' : 'stretch' }]}
               showsVerticalScrollIndicator={false}
             >
-              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
-                Preferences
-              </Text>
-
-              <Animated.View style={[styles.settingCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }, toggleAnimatedStyle]}>
-                <View style={styles.settingRow}>
-                  <View style={styles.settingInfo}>
-                    <Text style={styles.settingIcon}>🌓</Text>
-                    <View style={styles.settingTextContainer}>
-                      <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
-                        Theme
-                      </Text>
-                      <Text style={[styles.settingDescription, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
-                        {getThemeName()}
-                      </Text>
-                    </View>
-                  </View>
-                  <Switch
-                    value={colorScheme === 'dark'}
-                    onValueChange={handleThemeToggle}
-                    trackColor={{ false: theme.colors.border, true: theme.colors.violet }}
-                    thumbColor={colorScheme === 'dark' ? '#FFFFFF' : '#f4f3f4'}
-                  />
-                </View>
-
-                <View style={[styles.settingDivider, { backgroundColor: theme.colors.border }]} />
-
-                <View style={styles.settingRow}>
-                  <View style={styles.settingInfo}>
-                    <Text style={styles.settingIcon}>📳</Text>
-                    <View style={styles.settingTextContainer}>
-                      <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
-                        Haptic Feedback
-                      </Text>
-                      <Text style={[styles.settingDescription, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
-                        Feel vibrations on interactions
-                      </Text>
-                    </View>
-                  </View>
-                  <Switch
-                    value={settings.hapticsEnabled}
-                    onValueChange={() => handleToggleSetting('hapticsEnabled')}
-                    trackColor={{ false: theme.colors.border, true: theme.colors.violet }}
-                    thumbColor={settings.hapticsEnabled ? '#FFFFFF' : '#f4f3f4'}
-                  />
-                </View>
-              </Animated.View>
-
-              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
-                Accessibility
-              </Text>
-
-              <View style={[styles.settingCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
-                <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale, marginBottom: 16 }]}>
-                  Text Size
+              <View style={[styles.contentWrapper, { maxWidth: cardMaxWidth, width: '100%' }]}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
+                  Preferences
                 </Text>
-                <View style={styles.textSizeContainer}>
-                  {TEXT_SIZE_OPTIONS.map((option, index) => (
-                    <React.Fragment key={index}>
-                      <TouchableOpacity
-                        style={[
-                          styles.textSizeButton,
-                          { borderColor: theme.colors.border },
-                          textScale === option.value && {
-                            backgroundColor: theme.colors.violet,
-                            borderColor: theme.colors.violet,
-                          },
-                        ]}
-                        onPress={() => handleTextSizeChange(option.value)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[
-                          styles.textSizeLabel,
-                          { color: theme.colors.textPrimary, fontSize: 12 * option.value },
-                          textScale === option.value && { color: '#FFFFFF', fontWeight: '700' },
-                        ]}>
-                          {option.label}
+
+                <Animated.View style={[styles.settingCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }, toggleAnimatedStyle]}>
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingInfo}>
+                      <Text style={styles.settingIcon}>🌓</Text>
+                      <View style={styles.settingTextContainer}>
+                        <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
+                          Theme
                         </Text>
-                      </TouchableOpacity>
-                    </React.Fragment>
-                  ))}
-                </View>
-              </View>
+                        <Text style={[styles.settingDescription, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
+                          {getThemeName()}
+                        </Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={colorScheme === 'dark'}
+                      onValueChange={handleThemeToggle}
+                      trackColor={{ false: theme.colors.border, true: theme.colors.violet }}
+                      thumbColor={colorScheme === 'dark' ? '#FFFFFF' : '#f4f3f4'}
+                    />
+                  </View>
 
-              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
-                Data & Storage
-              </Text>
+                  <View style={[styles.settingDivider, { backgroundColor: theme.colors.border }]} />
 
-              <View style={[styles.infoCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                    Cache Size
-                  </Text>
-                  <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
-                    {cacheSize}
-                  </Text>
-                </View>
-                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                    Last Sync
-                  </Text>
-                  <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
-                    {formatDate(lastSync)}
-                  </Text>
-                </View>
-              </View>
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingInfo}>
+                      <Text style={styles.settingIcon}>📳</Text>
+                      <View style={styles.settingTextContainer}>
+                        <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
+                          Haptic Feedback
+                        </Text>
+                        <Text style={[styles.settingDescription, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
+                          Feel vibrations on interactions
+                        </Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={settings.hapticsEnabled}
+                      onValueChange={() => handleToggleSetting('hapticsEnabled')}
+                      trackColor={{ false: theme.colors.border, true: theme.colors.violet }}
+                      thumbColor={settings.hapticsEnabled ? '#FFFFFF' : '#f4f3f4'}
+                    />
+                  </View>
+                </Animated.View>
 
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
-                onPress={() => {
-                  if (settings.hapticsEnabled) {
-                    HapticFeedback.light();
-                  }
-                  setShowClearModal(true);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.actionButtonEmoji}>🗑️</Text>
-                <View style={styles.actionButtonTextContainer}>
-                  <Text style={[styles.actionButtonTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
-                    Clear cache and app data
-                  </Text>
-                  <Text style={[styles.actionButtonSubtitle, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
-                    Remove all cached data
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
-                About
-              </Text>
-
-              <View style={[styles.infoCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
-                <Text style={[styles.aboutText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                  Paranormal Encyclopedia is your gateway to exploring the mysteries of the unknown.
-                  Discover cryptids, UFOs, ghosts, ancient mysteries, and more.
+                <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
+                  Accessibility
                 </Text>
 
-                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
-
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                    Version
+                <View style={[styles.settingCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
+                  <Text style={[styles.settingLabel, { color: theme.colors.textPrimary, fontSize: 15 * textScale, marginBottom: 20 }]}>
+                    Text Size
                   </Text>
-                  <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
-                    1.0.0
-                  </Text>
+                  <View style={styles.textSizeContainer}>
+                    {TEXT_SIZE_OPTIONS.map((option, index) => (
+                      <React.Fragment key={index}>
+                        <TouchableOpacity
+                          style={[
+                            styles.textSizeButton,
+                            { borderColor: theme.colors.border },
+                            textScale === option.value && {
+                              backgroundColor: theme.colors.violet,
+                              borderColor: theme.colors.violet,
+                            },
+                          ]}
+                          onPress={() => handleTextSizeChange(option.value)}
+                          activeOpacity={0.7}
+                        >
+                          <Text 
+                            style={[
+                              styles.textSizeLabel,
+                              { color: theme.colors.textPrimary, fontSize: 11 },
+                              textScale === option.value && { color: '#FFFFFF', fontWeight: '700' },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      </React.Fragment>
+                    ))}
+                  </View>
                 </View>
 
-                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+                <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
+                  Data & Storage
+                </Text>
 
-                <TouchableOpacity onPress={handleOpenWebsite} style={styles.infoRow} activeOpacity={0.7}>
-                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                    Developer
-                  </Text>
-                  <Text style={[styles.infoValue, { color: theme.colors.violet, fontSize: 14 * textScale }]}>
-                    StormLight Foundry →
-                  </Text>
-                </TouchableOpacity>
-
-                {/* NEW: Privacy Policy */}
-                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
-                <TouchableOpacity onPress={handleOpenPrivacyPolicy} style={styles.infoRow} activeOpacity={0.7}>
-                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                    Privacy Policy
-                  </Text>
-                  <Text style={[styles.infoValue, { color: theme.colors.violet, fontSize: 14 * textScale }]}>
-                    View →
-                  </Text>
-                </TouchableOpacity>
-
-                {/* NEW: Changelog */}
-                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
-                <TouchableOpacity onPress={handleOpenChangelog} style={styles.infoRow} activeOpacity={0.7}>
-                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                    Changelog
-                  </Text>
-                  <Text style={[styles.infoValue, { color: theme.colors.violet, fontSize: 14 * textScale }]}>
-                    View →
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
-
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                    Copyright
-                  </Text>
-                  <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
-                    © 2025 StormLight Foundry
-                  </Text>
+                <View style={[styles.infoCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                      Cache Size
+                    </Text>
+                    <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+                      {cacheSize}
+                    </Text>
+                  </View>
+                  <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                      Last Sync
+                    </Text>
+                    <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+                      {formatDate(lastSync)}
+                    </Text>
+                  </View>
                 </View>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
+                  onPress={() => {
+                    if (settings.hapticsEnabled) {
+                      HapticFeedback.light();
+                    }
+                    setShowClearModal(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.actionButtonEmoji}>🗑️</Text>
+                  <View style={styles.actionButtonTextContainer}>
+                    <Text style={[styles.actionButtonTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
+                      Clear cache and app data
+                    </Text>
+                    <Text style={[styles.actionButtonSubtitle, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
+                      Remove all cached data
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
+                  About
+                </Text>
+
+                <View style={[styles.infoCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
+                  <Text style={[styles.aboutText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    Paranormal Encyclopedia is your gateway to exploring the mysteries of the unknown.
+                    Discover cryptids, UFOs, ghosts, ancient mysteries, and more.
+                  </Text>
+
+                  <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                      Version
+                    </Text>
+                    <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+                      1.0.0
+                    </Text>
+                  </View>
+
+                  <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+
+                  <TouchableOpacity onPress={handleOpenWebsite} style={styles.infoRow} activeOpacity={0.7}>
+                    <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                      Developer
+                    </Text>
+                    <Text style={[styles.infoValue, { color: theme.colors.violet, fontSize: 14 * textScale }]}>
+                      StormLight Foundry →
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+                  
+                  <TouchableOpacity onPress={handleOpenPrivacyPolicy} style={styles.infoRow} activeOpacity={0.7}>
+                    <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                      Privacy Policy
+                    </Text>
+                    <Text style={[styles.infoValue, { color: theme.colors.violet, fontSize: 14 * textScale }]}>
+                      View →
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+                  
+                  <TouchableOpacity onPress={handleOpenChangelog} style={styles.infoRow} activeOpacity={0.7}>
+                    <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                      Changelog
+                    </Text>
+                    <Text style={[styles.infoValue, { color: theme.colors.violet, fontSize: 14 * textScale }]}>
+                      View →
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                      Copyright
+                    </Text>
+                    <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 13 * textScale }]} numberOfLines={1}>
+                      © 2025 StormLight Foundry
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.bottomSpacer} />
               </View>
-
-              <View style={styles.bottomSpacer} />
             </ScrollView>
           </Animated.View>
 
@@ -498,20 +508,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 120,
   },
+  contentWrapper: {
+    width: '100%',
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     fontFamily: 'SpaceMono',
     marginBottom: 16,
-    marginTop: 8,
+    marginTop: 12,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   settingCard: {
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
     borderWidth: 1,
-    marginBottom: 24,
+    marginBottom: 28,
     boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.3)',
     elevation: 4,
   },
@@ -545,30 +558,32 @@ const styles = StyleSheet.create({
   },
   settingDivider: {
     height: 1,
-    marginVertical: 12,
+    marginVertical: 16,
   },
   textSizeContainer: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   textSizeButton: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
     borderRadius: 12,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 48,
   },
   textSizeLabel: {
     fontFamily: 'SpaceMono',
     fontWeight: '600',
+    textAlign: 'center',
   },
   infoCard: {
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 16,
     boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.3)',
     elevation: 4,
   },
@@ -576,28 +591,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   infoLabel: {
     fontSize: 14,
     fontFamily: 'SpaceMono',
+    flex: 1,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'SpaceMono',
+    textAlign: 'right',
+    flex: 1,
   },
   infoDivider: {
     height: 1,
-    marginVertical: 8,
+    marginVertical: 12,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 16,
     boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.3)',
     elevation: 4,
   },

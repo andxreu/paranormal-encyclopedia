@@ -18,16 +18,12 @@ export default function TabLayout() {
         <Label>Explore</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger key="arcana" name="arcana">
-        <Icon sf="eye.trianglebadge.exclamationmark.fill" />
-        <Label>Arcana</Label>
+        <Icon sf="crystal.wand.magic" />
+        <Label>Path</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger key="favorites" name="favorites">
         <Icon sf="heart.fill" />
         <Label>Favorites</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger key="search" name="search">
-        <Icon sf="magnifyingglass" />
-        <Label>Search</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger key="settings" name="settings">
         <Icon sf="gearshape.fill" />

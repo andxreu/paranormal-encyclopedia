@@ -29,19 +29,13 @@ export default function TabLayout() {
       name: 'arcana',
       route: '/(tabs)/arcana',
       icon: 'arcana',
-      label: 'Arcana',
+      label: 'Path',
     },
     {
       name: 'favorites',
       route: '/(tabs)/favorites',
       icon: 'favorite',
       label: 'Favorites',
-    },
-    {
-      name: 'search',
-      route: '/(tabs)/search',
-      icon: 'search',
-      label: 'Search',
     },
     {
       name: 'settings',
@@ -64,7 +58,6 @@ export default function TabLayout() {
         <Stack.Screen key="explore" name="explore" />
         <Stack.Screen key="arcana" name="arcana" />
         <Stack.Screen key="favorites" name="favorites" />
-        <Stack.Screen key="search" name="search" />
         <Stack.Screen key="settings" name="settings" />
       </Stack>
       {!isCheckingOnboarding && isOnboardingComplete && (

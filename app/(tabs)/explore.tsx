@@ -1,6 +1,7 @@
+
 // app/(tabs)/explore.tsx
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,8 +19,6 @@ import { HapticFeedback } from '@/utils/haptics';
 // ──────────────────────────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────────────────────────
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 48) / 2;
 const REFRESH_DELAY = 1500;
 const SPRING_CONFIG = {
   damping: 15,
@@ -32,12 +31,13 @@ const SPRING_CONFIG = {
 interface CategoryGridCardProps {
   category: Category;
   onPress: () => void;
+  cardWidth: number;
 }
 
 // ──────────────────────────────────────────────────────────────
 // Category Card Component
 // ──────────────────────────────────────────────────────────────
-const CategoryGridCard: React.FC<CategoryGridCardProps> = React.memo(({ category, onPress }) => {
+const CategoryGridCard: React.FC<CategoryGridCardProps> = React.memo(({ category, onPress, cardWidth }) => {
   const { theme, textScale } = useAppTheme();
   const scale = useSharedValue(1);
 
@@ -73,7 +73,7 @@ const CategoryGridCard: React.FC<CategoryGridCardProps> = React.memo(({ category
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
-      style={styles.cardWrapper}
+      style={[styles.cardWrapper, { width: cardWidth }]}
       accessibilityLabel={`${category.name} category`}
       accessibilityHint={category.description}
       accessibilityRole="button"
@@ -118,6 +118,18 @@ export default function ExploreScreen() {
   const { theme, textScale } = useAppTheme();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const { width } = useWindowDimensions();
+
+  /**
+   * Calculate responsive card width
+   */
+  const cardWidth = useMemo(() => {
+    const isTablet = width >= 768;
+    const columns = isTablet ? 3 : 2;
+    const horizontalPadding = 32;
+    const gap = 12;
+    return (width - horizontalPadding - (gap * (columns - 1))) / columns;
+  }, [width]);
 
   /**
    * Memoize total topics count
@@ -136,6 +148,20 @@ export default function ExploreScreen() {
       router.push(`/explore/${category.id}` as any);
     } catch (error) {
       console.error('[Explore] ✗ Error navigating to category:', error);
+      // Fail gracefully
+    }
+  }, [router]);
+
+  /**
+   * Handles search button press
+   */
+  const handleSearchPress = useCallback(() => {
+    try {
+      HapticFeedback.light();
+      console.log('[Explore] Search pressed');
+      router.push('/search' as any);
+    } catch (error) {
+      console.error('[Explore] ✗ Error navigating to search:', error);
       // Fail gracefully
     }
   }, [router]);
@@ -170,14 +196,27 @@ export default function ExploreScreen() {
         end={{ x: 0, y: 1 }}
       >
         <SafeAreaView style={styles.safeArea} edges={['top']}>
-          {/* Header */}
+          {/* Header with Search Button */}
           <View style={styles.header}>
-            <Text style={[styles.headerTitle, { color: theme.colors.textPrimary, fontSize: 36 * textScale }]}>
-              Explore
-            </Text>
-            <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-              {totalTopics} topics
-            </Text>
+            <View style={styles.headerContent}>
+              <View>
+                <Text style={[styles.headerTitle, { color: theme.colors.textPrimary, fontSize: 36 * textScale }]}>
+                  Explore
+                </Text>
+                <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                  {totalTopics} topics
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleSearchPress}
+                style={[styles.searchButton, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
+                activeOpacity={0.7}
+                accessibilityLabel="Search"
+                accessibilityRole="button"
+              >
+                <Text style={styles.searchIcon}>🔍</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Categories Grid */}
@@ -201,6 +240,7 @@ export default function ExploreScreen() {
                   key={category.id}
                   category={category}
                   onPress={() => handleCategoryPress(category)}
+                  cardWidth={cardWidth}
                 />
               ))}
             </View>
@@ -231,6 +271,11 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 20,
   },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 36,
     fontWeight: '900',
@@ -244,6 +289,22 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     marginTop: 6,
   },
+  searchButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  searchIcon: {
+    fontSize: 22,
+  },
   scrollView: {
     flex: 1,
   },
@@ -254,10 +315,9 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: 12,
   },
   cardWrapper: {
-    width: CARD_WIDTH,
     marginBottom: 12,
   },
   card: {
