@@ -1,3 +1,4 @@
+// components/button.tsx
 import React from "react";
 import {
   ActivityIndicator,
@@ -8,6 +9,12 @@ import {
   useColorScheme,
   ViewStyle,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { appleBlue, zincColors } from "@/constants/Colors";
 
 type ButtonVariant = "filled" | "outline" | "ghost";
@@ -24,6 +31,11 @@ interface ButtonProps {
   textStyle?: TextStyle;
 }
 
+const SPRING_CONFIG = {
+  damping: 15,
+  stiffness: 300,
+} as const;
+
 export const Button: React.FC<ButtonProps> = ({
   onPress,
   variant = "filled",
@@ -36,6 +48,15 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
+
+  // ✅ FIX: Add animation for smooth interactions
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
 
   const sizeStyles: Record<
     ButtonSize,
@@ -89,38 +110,56 @@ export const Button: React.FC<ButtonProps> = ({
     }
   };
 
+  const handlePressIn = () => {
+    if (!disabled && !loading) {
+      scale.value = withSpring(0.96, SPRING_CONFIG);
+    }
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, SPRING_CONFIG);
+  };
+
+  // ✅ FIX: Update opacity when disabled/loading changes
+  React.useEffect(() => {
+    opacity.value = withTiming(disabled ? 0.5 : 1, { duration: 200 });
+  }, [disabled, opacity]);
+
   return (
     <Pressable
       onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       disabled={disabled || loading}
       style={[
         getVariantStyle(),
         {
           height: sizeStyles[size].height,
           paddingHorizontal: sizeStyles[size].padding,
-          opacity: disabled ? 0.5 : 1,
         },
         style,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator color={getTextColor()} />
-      ) : (
-        <Text
-          style={StyleSheet.flatten([
-            {
-              fontSize: sizeStyles[size].fontSize,
-              color: getTextColor(),
-              textAlign: "center",
-              marginBottom: 0,
-              fontWeight: "700",
-            },
-            textStyle,
-          ])}
-        >
-          {children}
-        </Text>
-      )}
+      <Animated.View style={[animatedStyle, { flex: 1, alignItems: 'center', justifyContent: 'center' }]}>
+        {loading ? (
+          <ActivityIndicator color={getTextColor()} />
+        ) : (
+          <Text
+            style={StyleSheet.flatten([
+              {
+                fontSize: sizeStyles[size].fontSize,
+                color: getTextColor(),
+                textAlign: "center",
+                marginBottom: 0,
+                fontWeight: "700",
+              },
+              textStyle,
+            ])}
+          >
+            {children}
+          </Text>
+        )}
+      </Animated.View>
     </Pressable>
   );
 };
