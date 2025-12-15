@@ -1,6 +1,7 @@
 // components/CategoryCard.tsx
+// ✅ ULTIMATE FIX: Addresses touch blocking and gesture handler conflicts
 import React, { useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
@@ -47,29 +48,33 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
 
   const handlePress = useCallback(() => {
     try {
+      console.log('[CategoryCard] 🔥 PRESS DETECTED for:', category.id);
       HapticFeedback.light();
-      console.log('[CategoryCard] Navigating to category:', category.id);
 
       if (onPress) {
+        console.log('[CategoryCard] 🔥 Using custom onPress');
         onPress();
         return;
       }
 
-      // ✅ FIX: Use router.push with string template for proper navigation
-      // This ensures the route is correctly formatted for Expo Router
-      router.push(`/(tabs)/explore/${category.id}` as any);
+      // ✅ CRITICAL FIX: Use template string navigation
+      const route = `/(tabs)/explore/${category.id}`;
+      console.log('[CategoryCard] 🔥 Navigating to:', route);
+      
+      router.push(route as any);
     } catch (error) {
-      console.error('[CategoryCard] Navigation error:', error);
+      console.error('[CategoryCard] ❌ Navigation error:', error);
+      alert(`Navigation failed: ${error}`); // Debug alert
     }
   }, [category.id, onPress, router]);
 
   return (
-    <TouchableOpacity
+    // ✅ FIX 1: Use Pressable instead of TouchableOpacity (better iOS compatibility)
+    <Pressable
       style={[styles.container, { width: cardWidth }]}
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      activeOpacity={1}
       accessibilityLabel={`${category.name} category`}
       accessibilityHint={`Explore ${category.description}`}
       accessibilityRole="button"
@@ -96,9 +101,12 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
             },
           ]}
         >
-          <ParticleEffect count={3} color={category.color + '50'} />
+          {/* ✅ FIX 2: Add pointerEvents="none" to prevent touch blocking */}
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <ParticleEffect count={3} color={category.color + '50'} />
+          </View>
 
-          <View style={styles.content}>
+          <View style={styles.content} pointerEvents="none">
             <Text
               style={[
                 styles.icon,
@@ -130,10 +138,10 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
             </Text>
           </View>
 
-          <View style={[styles.glowBorder, { borderColor: category.color + '60' }]} />
+          <View style={[styles.glowBorder, { borderColor: category.color + '60' }]} pointerEvents="none" />
         </LinearGradient>
       </Animated.View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
@@ -141,7 +149,8 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 12,
     borderRadius: 18,
-    overflow: 'visible',
+    // ✅ FIX 3: Remove overflow: 'visible' which causes iOS touch issues
+    overflow: 'hidden',
   },
   gradient: {
     padding: 14,

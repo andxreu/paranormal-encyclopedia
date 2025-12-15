@@ -1,51 +1,49 @@
 // components/SearchBar.tsx
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+// ✅ ULTIMATE FIX: Simplified and removes all touch blocking
+import React, { useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
-import { fuzzySearch, SearchResult } from '@/utils/fuzzySearch';
 import { HapticFeedback } from '@/utils/haptics';
 
 interface SearchBarProps {
-  onResultPress?: (result: SearchResult) => void;
+  onResultPress?: (result: any) => void;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
   const { theme } = useAppTheme();
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
 
-  // ✅ FIX: Simplified to just navigate to search screen on press
+  // ✅ CRITICAL FIX: Simplified navigation
   const handleSearchBarPress = useCallback(() => {
     try {
+      console.log('[SearchBar] 🔥 PRESS DETECTED - Navigating to search');
       HapticFeedback.light();
-      console.log('[SearchBar] Navigating to search screen');
       
-      // ✅ FIX: Use string template for navigation
-      router.push('/(tabs)/search' as any);
+      // ✅ Use template string
+      const route = '/(tabs)/search';
+      console.log('[SearchBar] 🔥 Pushing route:', route);
+      
+      router.push(route as any);
     } catch (error) {
-      console.error('[SearchBar] Navigation error:', error);
+      console.error('[SearchBar] ❌ Navigation error:', error);
+      alert(`Search navigation failed: ${error}`); // Debug alert
     }
   }, [router]);
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        style={[
+      {/* ✅ FIX: Use Pressable instead of TouchableOpacity */}
+      <Pressable 
+        style={({ pressed }) => [
           styles.searchInputContainer,
           {
             backgroundColor: theme.colors.cardBg || 'rgba(42, 27, 78, 0.8)',
             borderColor: theme.colors.border || 'rgba(139, 92, 246, 0.4)',
+            opacity: pressed ? 0.7 : 1,
           }
         ]}
         onPress={handleSearchBarPress}
-        activeOpacity={0.7}
         accessibilityLabel="Search"
         accessibilityHint="Open search screen"
         accessibilityRole="button"
@@ -54,7 +52,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
         <Text style={[styles.searchPlaceholder, { color: theme.colors.textSecondary || '#808080' }]}>
           Search mysteries, facts, topics...
         </Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 };
