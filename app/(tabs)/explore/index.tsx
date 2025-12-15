@@ -1,3 +1,4 @@
+
 // app/(tabs)/explore/index.tsx
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
@@ -33,7 +34,6 @@ export default function ExploreScreen() {
   const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
 
   const fadeOpacity = useSharedValue(0);
   const searchScale = useSharedValue(0);
@@ -89,13 +89,12 @@ export default function ExploreScreen() {
         searchScale.value = withSpring(1, { damping: 15, stiffness: 300 });
       }, 100);
 
-      // Navigate to search
-      const route = '/(tabs)/search';
-      console.log('[Explore] 🔥 Navigating to:', route);
-      router.push(route as any);
+      // ✅ CRITICAL FIX: Use explicit route path
+      const pathname = '/(tabs)/search' as const;
+      console.log('[Explore] 🔥 Navigating to:', pathname);
+      router.push(pathname);
     } catch (error) {
       console.error('[Explore] ❌ Search navigation error:', error);
-      alert(`Search navigation failed: ${error}`);
     }
   }, [router, searchScale]);
 

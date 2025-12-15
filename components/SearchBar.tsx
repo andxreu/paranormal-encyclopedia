@@ -1,5 +1,5 @@
+
 // components/SearchBar.tsx
-// ✅ ULTIMATE FIX: Simplified and removes all touch blocking
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -14,26 +14,23 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
   const { theme } = useAppTheme();
   const router = useRouter();
 
-  // ✅ CRITICAL FIX: Simplified navigation
   const handleSearchBarPress = useCallback(() => {
     try {
       console.log('[SearchBar] 🔥 PRESS DETECTED - Navigating to search');
       HapticFeedback.light();
       
-      // ✅ Use template string
-      const route = '/(tabs)/search';
-      console.log('[SearchBar] 🔥 Pushing route:', route);
+      // ✅ CRITICAL FIX: Use explicit route path
+      const pathname = '/(tabs)/search' as const;
+      console.log('[SearchBar] 🔥 Pushing route:', pathname);
       
-      router.push(route as any);
+      router.push(pathname);
     } catch (error) {
       console.error('[SearchBar] ❌ Navigation error:', error);
-      alert(`Search navigation failed: ${error}`); // Debug alert
     }
   }, [router]);
 
   return (
     <View style={styles.container}>
-      {/* ✅ FIX: Use Pressable instead of TouchableOpacity */}
       <Pressable 
         style={({ pressed }) => [
           styles.searchInputContainer,

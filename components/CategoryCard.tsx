@@ -1,5 +1,5 @@
+
 // components/CategoryCard.tsx
-// ✅ ULTIMATE FIX: Addresses touch blocking and gesture handler conflicts
 import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -57,19 +57,19 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
         return;
       }
 
-      // ✅ CRITICAL FIX: Use template string navigation
-      const route = `/(tabs)/explore/${category.id}`;
-      console.log('[CategoryCard] 🔥 Navigating to:', route);
+      // ✅ CRITICAL FIX: Use proper route path with explicit params
+      const pathname = '/(tabs)/explore/[category]/index' as const;
+      const params = { category: String(category.id) };
       
-      router.push(route as any);
+      console.log('[CategoryCard] 🔥 Navigating to:', pathname, 'with params:', params);
+      
+      router.push({ pathname, params });
     } catch (error) {
       console.error('[CategoryCard] ❌ Navigation error:', error);
-      alert(`Navigation failed: ${error}`); // Debug alert
     }
   }, [category.id, onPress, router]);
 
   return (
-    // ✅ FIX 1: Use Pressable instead of TouchableOpacity (better iOS compatibility)
     <Pressable
       style={[styles.container, { width: cardWidth }]}
       onPress={handlePress}
@@ -101,7 +101,6 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
             },
           ]}
         >
-          {/* ✅ FIX 2: Add pointerEvents="none" to prevent touch blocking */}
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
             <ParticleEffect count={3} color={category.color + '50'} />
           </View>
@@ -149,7 +148,6 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 12,
     borderRadius: 18,
-    // ✅ FIX 3: Remove overflow: 'visible' which causes iOS touch issues
     overflow: 'hidden',
   },
   gradient: {

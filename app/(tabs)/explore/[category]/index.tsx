@@ -1,5 +1,5 @@
+
 // app/(tabs)/explore/[category]/index.tsx
-// This file handles the category detail screen with topics list
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -182,17 +182,18 @@ export default function CategoryScreen() {
         console.log('[Category] 🔥 Topic pressed:', topic.id);
         HapticFeedback.light();
 
-        const c = String(categoryId);
-        const t = String(topic.id);
+        // ✅ CRITICAL FIX: Use explicit pathname with params
+        const pathname = '/(tabs)/explore/[category]/[topic]' as const;
+        const params = {
+          category: String(categoryId),
+          topic: String(topic.id),
+        };
 
-        // ✅ Use template string navigation
-        const route = `/(tabs)/explore/${c}/${t}`;
-        console.log('[Category] 🔥 Navigating to:', route);
+        console.log('[Category] 🔥 Navigating to:', pathname, 'with params:', params);
 
-        router.push(route as any);
+        router.push({ pathname, params });
       } catch (error) {
         console.error('[Category] ❌ Navigation error:', error);
-        alert(`Navigation failed: ${error}`);
       }
     },
     [categoryId, router]
