@@ -7,10 +7,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
 
-    "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
+    "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c888.png",
 
     "splash": {
-      "image": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
+      "image": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c888.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
@@ -19,7 +19,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.stormlightfoundry.paranormalencyclopedia",
       "buildNumber": "1",
-      "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
+      "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c888.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -29,16 +29,16 @@
       "package": "com.stormlightfoundry.paranormalencyclopedia",
       "versionCode": 1,
       "edgeToEdgeEnabled": true,
-      "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
+      "icon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c888.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
+        "foregroundImage": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c888.png",
         "backgroundColor": "#000000"
       },
       "permissions": []
     },
 
     "web": {
-      "favicon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c4888.png",
+      "favicon": "./assets/images/12be16cc-b236-4f33-9aa9-2e2b4d4c888.png",
       "bundler": "metro"
     },
 
