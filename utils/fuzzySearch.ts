@@ -1,218 +1,608 @@
-// utils/storage.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ──────────────────────────────────────────────────────────────
-// Storage Keys – Central source of truth
-// ──────────────────────────────────────────────────────────────
-const KEYS = {
-  CATEGORIES: '@paranormal_categories',
-  FACTS: '@paranormal_facts',
-  FAVORITES: '@paranormal_favorites',
-  LAST_SYNC: '@paranormal_last_sync',
-  ONBOARDING_COMPLETE: '@paranormal_onboarding_complete',
-  SETTINGS: '@paranormal_settings',
-  SEARCH_HISTORY: '@paranormal_search_history',
-  THEME_PREFERENCE: '@theme_preference',
-  TEXT_SCALE: '@text_scale',
-} as const;
+// utils/fuzzySearch.ts
+// Robust fuzzy search implementation for paranormal encyclopedia
+// Handles topics, codex, glossary, haunted locations, and documented accounts
+
+import Fuse from 'fuse.js';
+import {
+  getAllTopics,
+  getTotalTopicsCount,
+  type AnyTopicType,
+} from '@/data/paranormal/index';
+import {
+  getAllCodexEntries,
+  type CodexEntry,
+} from '@/data/paranormal/codex';
+import {
+  getAllGlossaryTerms,
+  type GlossaryTerm,
+} from '@/data/paranormal/glossary';
+import {
+  getAllHauntedLocations,
+  type HauntedLocation,
+} from '@/data/paranormal/hauntedLocations';
+import {
+  getAllDocumentedAccounts,
+  type DocumentedAccount,
+} from '@/data/paranormal/documentedAccounts';
+import { categories } from '@/data/paranormal/categories';
 
 // ──────────────────────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────────────────────
-export interface AppSettings {
-  notificationsEnabled: boolean;
-  soundsEnabled: boolean;
-  hapticsEnabled: boolean;
-  themeVariant: 'default' | 'dark' | 'cosmic';
-  ambientSoundEnabled: boolean;
-  dailyNotificationsEnabled: boolean;
-}
 
-export interface FavoriteItem {
+export interface SearchResult {
   id: string;
-  type: 'topic' | 'codex' | 'haunted-location' | 'documented-account';
   title: string;
   description: string;
+  type: 'topic' | 'codex' | 'glossary' | 'location' | 'documented' | 'category';
+  route: string;
+  icon?: string;
+  color?: string;
   categoryId?: string;
   categoryName?: string;
-  categoryColor?: string;
-  categoryIcon?: string;
-  timestamp: number;
+  score?: number;
 }
 
-const defaultSettings: AppSettings = {
-  notificationsEnabled: true,
-  soundsEnabled: true,
-  hapticsEnabled: true,
-  themeVariant: 'default',
-  ambientSoundEnabled: false,
-  dailyNotificationsEnabled: false,
+export interface CategorizedResults {
+  topics: SearchResult[];
+  locations: SearchResult[];
+  codex: SearchResult[];
+  glossary: SearchResult[];
+  documented: SearchResult[];
+  categories: SearchResult[];
+}
+
+// ──────────────────────────────────────────────────────────────
+// Search Configuration
+// ──────────────────────────────────────────────────────────────
+
+const FUSE_OPTIONS = {
+  includeScore: true,
+  threshold: 0.4, // 0 = perfect match, 1 = match anything
+  distance: 100,
+  minMatchCharLength: 2,
+  ignoreLocation: true,
+  useExtendedSearch: false,
+  keys: [
+    { name: 'name', weight: 2 },
+    { name: 'title', weight: 2 },
+    { name: 'description', weight: 1 },
+    { name: 'location', weight: 1 },
+    { name: 'definition', weight: 1 },
+  ],
 };
 
 // ──────────────────────────────────────────────────────────────
-// Core Generic Helpers (private)
+// Search Indexes
 // ──────────────────────────────────────────────────────────────
-const Storage = {
-  async set<T>(key: string, value: T): Promise<void> {
+
+let topicsIndex: Fuse<AnyTopicType> | null = null;
+let codexIndex: Fuse<CodexEntry> | null = null;
+let glossaryIndex: Fuse<GlossaryTerm> | null = null;
+let locationsIndex: Fuse<HauntedLocation> | null = null;
+let documentedIndex: Fuse<DocumentedAccount> | null = null;
+let categoriesIndex: Fuse<any> | null = null;
+
+let isInitialized = false;
+
+// ──────────────────────────────────────────────────────────────
+// Utility Functions
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Safely extracts text from a value, handling undefined/null
+ */
+function safeString(value: any): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    return String(value);
+  }
+  return '';
+}
+
+/**
+ * Sanitizes search query to prevent regex errors
+ */
+function sanitizeQuery(query: string): string {
+  if (!query || typeof query !== 'string') {
+    return '';
+  }
+  
+  // Remove or escape special regex characters
+  return query
+    .trim()
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Validates search query
+ */
+function isValidQuery(query: string): boolean {
+  if (!query || typeof query !== 'string') {
+    return false;
+  }
+  
+  const trimmed = query.trim();
+  return trimmed.length >= 1 && trimmed.length <= 100;
+}
+
+/**
+ * Gets category info by ID safely
+ */
+function getCategoryInfo(categoryId?: string): { name: string; color: string; icon: string } {
+  if (!categoryId) {
+    return { name: '', color: '#8B5CF6', icon: '📄' };
+  }
+  
+  const category = categories.find(c => c.id === categoryId);
+  if (!category) {
+    return { name: '', color: '#8B5CF6', icon: '📄' };
+  }
+  
+  return {
+    name: category.name,
+    color: category.color,
+    icon: category.icon,
+  };
+}
+
+// ──────────────────────────────────────────────────────────────
+// Index Initialization
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Initializes all search indexes
+ * Safe to call multiple times - will only initialize once
+ */
+function initialize(): void {
+  if (isInitialized) {
+    console.log('[FuzzySearch] Already initialized');
+    return;
+  }
+
+  try {
+    console.log('[FuzzySearch] Initializing search indexes...');
+
+    // Initialize topics index
     try {
-      if (value === null || value === undefined) {
-        console.warn(`[Storage] Attempted to save null/undefined for key: ${key}`);
-        return;
+      const topics = getAllTopics();
+      if (Array.isArray(topics) && topics.length > 0) {
+        topicsIndex = new Fuse(topics, FUSE_OPTIONS);
+        console.log(`[FuzzySearch] ✓ Topics index: ${topics.length} items`);
+      } else {
+        console.warn('[FuzzySearch] No topics found');
       }
-      await AsyncStorage.setItem(key, JSON.stringify(value));
-    } catch (err) {
-      console.error(`[Storage] Failed to set ${key}:`, err);
+    } catch (error) {
+      console.error('[FuzzySearch] Error initializing topics index:', error);
     }
-  },
 
-  async get<T>(key: string): Promise<T | null> {
+    // Initialize codex index
     try {
-      const raw = await AsyncStorage.getItem(key);
-      if (!raw) return null;
-      return JSON.parse(raw) as T;
-    } catch (err) {
-      console.error(`[Storage] Failed to get/parse ${key}:`, err);
-      return null;
+      const codex = getAllCodexEntries();
+      if (Array.isArray(codex) && codex.length > 0) {
+        codexIndex = new Fuse(codex, FUSE_OPTIONS);
+        console.log(`[FuzzySearch] ✓ Codex index: ${codex.length} items`);
+      } else {
+        console.warn('[FuzzySearch] No codex entries found');
+      }
+    } catch (error) {
+      console.error('[FuzzySearch] Error initializing codex index:', error);
     }
-  },
 
-  async remove(key: string): Promise<void> {
+    // Initialize glossary index
     try {
-      await AsyncStorage.removeItem(key);
-    } catch (err) {
-      console.error(`[Storage] Failed to remove ${key}:`, err);
+      const glossary = getAllGlossaryTerms();
+      if (Array.isArray(glossary) && glossary.length > 0) {
+        glossaryIndex = new Fuse(glossary, FUSE_OPTIONS);
+        console.log(`[FuzzySearch] ✓ Glossary index: ${glossary.length} items`);
+      } else {
+        console.warn('[FuzzySearch] No glossary terms found');
+      }
+    } catch (error) {
+      console.error('[FuzzySearch] Error initializing glossary index:', error);
     }
-  },
-};
+
+    // Initialize locations index
+    try {
+      const locations = getAllHauntedLocations();
+      if (Array.isArray(locations) && locations.length > 0) {
+        locationsIndex = new Fuse(locations, FUSE_OPTIONS);
+        console.log(`[FuzzySearch] ✓ Locations index: ${locations.length} items`);
+      } else {
+        console.warn('[FuzzySearch] No haunted locations found');
+      }
+    } catch (error) {
+      console.error('[FuzzySearch] Error initializing locations index:', error);
+    }
+
+    // Initialize documented accounts index
+    try {
+      const documented = getAllDocumentedAccounts();
+      if (Array.isArray(documented) && documented.length > 0) {
+        documentedIndex = new Fuse(documented, FUSE_OPTIONS);
+        console.log(`[FuzzySearch] ✓ Documented index: ${documented.length} items`);
+      } else {
+        console.warn('[FuzzySearch] No documented accounts found');
+      }
+    } catch (error) {
+      console.error('[FuzzySearch] Error initializing documented index:', error);
+    }
+
+    // Initialize categories index
+    try {
+      if (Array.isArray(categories) && categories.length > 0) {
+        categoriesIndex = new Fuse(categories, FUSE_OPTIONS);
+        console.log(`[FuzzySearch] ✓ Categories index: ${categories.length} items`);
+      } else {
+        console.warn('[FuzzySearch] No categories found');
+      }
+    } catch (error) {
+      console.error('[FuzzySearch] Error initializing categories index:', error);
+    }
+
+    isInitialized = true;
+    console.log('[FuzzySearch] ✓ Initialization complete');
+  } catch (error) {
+    console.error('[FuzzySearch] ✗ Fatal initialization error:', error);
+    isInitialized = false;
+  }
+}
 
 // ──────────────────────────────────────────────────────────────
-// Public API – Clean, typed, and bulletproof
+// Search Functions
 // ──────────────────────────────────────────────────────────────
-export const storage = {
-  // Generic
-  saveData: Storage.set,
-  getData: Storage.get,
-  removeData: Storage.remove,
 
-  // App-wide
-  async clearAll(): Promise<void> {
-    try {
-      await AsyncStorage.clear();
-      console.log('[Storage] All data cleared');
-    } catch (err) {
-      console.error('[Storage] Failed to clear all data:', err);
-    }
-  },
+/**
+ * Searches topics and returns formatted results
+ */
+function searchTopics(query: string, limit: number = 10): SearchResult[] {
+  if (!topicsIndex) {
+    console.warn('[FuzzySearch] Topics index not initialized');
+    return [];
+  }
 
-  async getCacheSize(): Promise<number> {
-    try {
-      const keys = await AsyncStorage.getAllKeys();
-      const values = await AsyncStorage.multiGet(keys);
-      return values.reduce((sum, [_key, value]) => sum + (value?.length ?? 0), 0);
-    } catch (err) {
-      console.error('[Storage] Failed to calculate cache size:', err);
-      return 0;
-    }
-  },
+  try {
+    const results = topicsIndex.search(query, { limit });
+    
+    return results.map(result => {
+      const topic = result.item;
+      const categoryInfo = getCategoryInfo(topic.categoryId);
+      
+      return {
+        id: safeString(topic.id),
+        title: safeString(topic.name),
+        description: safeString(topic.description),
+        type: 'topic' as const,
+        route: `/explore/${topic.categoryId}/${topic.id}`,
+        icon: safeString(topic.icon) || categoryInfo.icon,
+        color: categoryInfo.color,
+        categoryId: safeString(topic.categoryId),
+        categoryName: categoryInfo.name,
+        score: result.score,
+      };
+    });
+  } catch (error) {
+    console.error('[FuzzySearch] Error searching topics:', error);
+    return [];
+  }
+}
 
-  // Favorites
-  async getFavorites(): Promise<FavoriteItem[]> {
-    const favs = await Storage.get<FavoriteItem[]>(KEYS.FAVORITES);
-    return Array.isArray(favs) ? favs : [];
-  },
+/**
+ * Searches codex entries and returns formatted results
+ */
+function searchCodex(query: string, limit: number = 10): SearchResult[] {
+  if (!codexIndex) {
+    console.warn('[FuzzySearch] Codex index not initialized');
+    return [];
+  }
 
-  async saveFavorites(favorites: FavoriteItem[]): Promise<void> {
-    await Storage.set(KEYS.FAVORITES, favorites);
-  },
+  try {
+    const results = codexIndex.search(query, { limit });
+    
+    return results.map(result => {
+      const entry = result.item;
+      
+      return {
+        id: safeString(entry.id),
+        title: safeString(entry.title),
+        description: safeString(entry.description),
+        type: 'codex' as const,
+        route: `/resources/codex/${entry.id}`,
+        icon: '📕',
+        color: '#D946EF',
+        score: result.score,
+      };
+    });
+  } catch (error) {
+    console.error('[FuzzySearch] Error searching codex:', error);
+    return [];
+  }
+}
 
-  async addFavorite(item: FavoriteItem): Promise<void> {
-    if (!item?.id) return console.warn('[Storage] Cannot add favorite without id');
-    const favorites = await storage.getFavorites();
-    if (favorites.some(f => f.id === item.id)) return;
-    favorites.unshift({ ...item, timestamp: Date.now() });
-    await storage.saveFavorites(favorites);
-  },
+/**
+ * Searches glossary terms and returns formatted results
+ */
+function searchGlossary(query: string, limit: number = 10): SearchResult[] {
+  if (!glossaryIndex) {
+    console.warn('[FuzzySearch] Glossary index not initialized');
+    return [];
+  }
 
-  async removeFavorite(id: string): Promise<void> {
-    if (!id) return;
-    const favorites = await storage.getFavorites();
-    await storage.saveFavorites(favorites.filter(f => f.id !== id));
-  },
+  try {
+    const results = glossaryIndex.search(query, { limit });
+    
+    return results.map(result => {
+      const term = result.item;
+      
+      return {
+        id: safeString(term.id),
+        title: safeString(term.term),
+        description: safeString(term.definition),
+        type: 'glossary' as const,
+        route: `/resources/glossary/${term.id}`,
+        icon: '📖',
+        color: '#8B5CF6',
+        score: result.score,
+      };
+    });
+  } catch (error) {
+    console.error('[FuzzySearch] Error searching glossary:', error);
+    return [];
+  }
+}
 
-  async isFavorite(id: string): Promise<boolean> {
-    if (!id) return false;
-    const favorites = await storage.getFavorites();
-    return favorites.some(f => f.id === id);
-  },
+/**
+ * Searches haunted locations and returns formatted results
+ */
+function searchLocations(query: string, limit: number = 10): SearchResult[] {
+  if (!locationsIndex) {
+    console.warn('[FuzzySearch] Locations index not initialized');
+    return [];
+  }
 
-  // Onboarding
-  async setOnboardingComplete(complete: boolean): Promise<void> {
-    await Storage.set(KEYS.ONBOARDING_COMPLETE, complete);
-  },
+  try {
+    const results = locationsIndex.search(query, { limit });
+    
+    return results.map(result => {
+      const location = result.item;
+      
+      return {
+        id: safeString(location.id),
+        title: safeString(location.name),
+        description: safeString(location.description),
+        type: 'location' as const,
+        route: `/resources/haunted-locations/${location.id}`,
+        icon: '🏚️',
+        color: '#6366F1',
+        score: result.score,
+      };
+    });
+  } catch (error) {
+    console.error('[FuzzySearch] Error searching locations:', error);
+    return [];
+  }
+}
 
-  async isOnboardingComplete(): Promise<boolean> {
-    const value = await Storage.get<boolean>(KEYS.ONBOARDING_COMPLETE);
-    return value === true;
-  },
+/**
+ * Searches documented accounts and returns formatted results
+ */
+function searchDocumented(query: string, limit: number = 10): SearchResult[] {
+  if (!documentedIndex) {
+    console.warn('[FuzzySearch] Documented index not initialized');
+    return [];
+  }
 
-  // Settings
-  async getSettings(): Promise<AppSettings> {
-    const saved = await Storage.get<AppSettings>(KEYS.SETTINGS);
-    if (!saved || typeof saved !== 'object') return { ...defaultSettings };
-    return { ...defaultSettings, ...saved };
-  },
+  try {
+    const results = documentedIndex.search(query, { limit });
+    
+    return results.map(result => {
+      const account = result.item;
+      
+      return {
+        id: safeString(account.id),
+        title: safeString(account.title),
+        description: safeString(account.description),
+        type: 'documented' as const,
+        route: `/resources/documented-accounts/${account.id}`,
+        icon: '🖋️',
+        color: '#A855F7',
+        score: result.score,
+      };
+    });
+  } catch (error) {
+    console.error('[FuzzySearch] Error searching documented accounts:', error);
+    return [];
+  }
+}
 
-  async saveSettings(settings: AppSettings): Promise<void> {
-    await Storage.set(KEYS.SETTINGS, settings);
-  },
+/**
+ * Searches categories and returns formatted results
+ */
+function searchCategories(query: string, limit: number = 10): SearchResult[] {
+  if (!categoriesIndex) {
+    console.warn('[FuzzySearch] Categories index not initialized');
+    return [];
+  }
 
-  async updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): Promise<void> {
-    const settings = await storage.getSettings();
-    settings[key] = value;
-    await storage.saveSettings(settings);
-  },
+  try {
+    const results = categoriesIndex.search(query, { limit });
+    
+    return results.map(result => {
+      const category = result.item;
+      
+      return {
+        id: safeString(category.id),
+        title: safeString(category.name),
+        description: safeString(category.description),
+        type: 'category' as const,
+        route: `/explore/${category.id}`,
+        icon: safeString(category.icon),
+        color: safeString(category.color),
+        score: result.score,
+      };
+    });
+  } catch (error) {
+    console.error('[FuzzySearch] Error searching categories:', error);
+    return [];
+  }
+}
 
-  // Search History
-  async saveSearchHistory(query: string): Promise<void> {
-    if (!query?.trim()) return;
-    const history = await storage.getSearchHistory();
-    const filtered = history.filter(q => q !== query);
-    const updated = [query, ...filtered].slice(0, 20);
-    await Storage.set(KEYS.SEARCH_HISTORY, updated);
-  },
+/**
+ * Searches all content types and returns combined results
+ */
+function search(query: string, limit: number = 20): SearchResult[] {
+  // Validate query
+  if (!isValidQuery(query)) {
+    console.warn('[FuzzySearch] Invalid query:', query);
+    return [];
+  }
 
-  async getSearchHistory(): Promise<string[]> {
-    const history = await Storage.get<string[]>(KEYS.SEARCH_HISTORY);
-    return Array.isArray(history) ? history : [];
-  },
+  // Ensure indexes are initialized
+  if (!isInitialized) {
+    console.log('[FuzzySearch] Auto-initializing on first search');
+    initialize();
+  }
 
-  async clearSearchHistory(): Promise<void> {
-    await Storage.remove(KEYS.SEARCH_HISTORY);
-  },
+  // Sanitize query
+  const sanitized = sanitizeQuery(query);
+  if (!sanitized) {
+    return [];
+  }
 
-  // Misc (used by other systems)
-  async saveLastSync(): Promise<void> {
-    await Storage.set(KEYS.LAST_SYNC, new Date().toISOString());
-  },
+  try {
+    // Search all indexes
+    const topicResults = searchTopics(sanitized, Math.ceil(limit * 0.4));
+    const codexResults = searchCodex(sanitized, Math.ceil(limit * 0.15));
+    const glossaryResults = searchGlossary(sanitized, Math.ceil(limit * 0.15));
+    const locationResults = searchLocations(sanitized, Math.ceil(limit * 0.15));
+    const documentedResults = searchDocumented(sanitized, Math.ceil(limit * 0.15));
+    const categoryResults = searchCategories(sanitized, Math.ceil(limit * 0.1));
 
-  async getLastSync(): Promise<string | null> {
-    return await Storage.get<string>(KEYS.LAST_SYNC);
-  },
+    // Combine and sort by score
+    const allResults = [
+      ...topicResults,
+      ...codexResults,
+      ...glossaryResults,
+      ...locationResults,
+      ...documentedResults,
+      ...categoryResults,
+    ];
 
-  // Legacy helpers (kept for backward compatibility - can be removed later)
-  async saveCategories(data: any[]): Promise<void> { 
-    await Storage.set(KEYS.CATEGORIES, data); 
-  },
+    // Sort by score (lower is better in Fuse.js)
+    allResults.sort((a, b) => (a.score || 1) - (b.score || 1));
+
+    // Return limited results
+    return allResults.slice(0, limit);
+  } catch (error) {
+    console.error('[FuzzySearch] Error during search:', error);
+    return [];
+  }
+}
+
+/**
+ * Searches all content types and returns categorized results
+ */
+function getCategorizedResults(query: string): CategorizedResults {
+  // Validate query
+  if (!isValidQuery(query)) {
+    console.warn('[FuzzySearch] Invalid query for categorized search:', query);
+    return {
+      topics: [],
+      locations: [],
+      codex: [],
+      glossary: [],
+      documented: [],
+      categories: [],
+    };
+  }
+
+  // Ensure indexes are initialized
+  if (!isInitialized) {
+    console.log('[FuzzySearch] Auto-initializing on first categorized search');
+    initialize();
+  }
+
+  // Sanitize query
+  const sanitized = sanitizeQuery(query);
+  if (!sanitized) {
+    return {
+      topics: [],
+      locations: [],
+      codex: [],
+      glossary: [],
+      documented: [],
+      categories: [],
+    };
+  }
+
+  try {
+    return {
+      topics: searchTopics(sanitized, 10),
+      locations: searchLocations(sanitized, 5),
+      codex: searchCodex(sanitized, 5),
+      glossary: searchGlossary(sanitized, 5),
+      documented: searchDocumented(sanitized, 5),
+      categories: searchCategories(sanitized, 3),
+    };
+  } catch (error) {
+    console.error('[FuzzySearch] Error during categorized search:', error);
+    return {
+      topics: [],
+      locations: [],
+      codex: [],
+      glossary: [],
+      documented: [],
+      categories: [],
+    };
+  }
+}
+
+/**
+ * Resets all search indexes (useful for testing or data refresh)
+ */
+function reset(): void {
+  console.log('[FuzzySearch] Resetting search indexes...');
   
-  async getCategories(): Promise<any[] | null> { 
-    return await Storage.get(KEYS.CATEGORIES); 
-  },
+  topicsIndex = null;
+  codexIndex = null;
+  glossaryIndex = null;
+  locationsIndex = null;
+  documentedIndex = null;
+  categoriesIndex = null;
+  isInitialized = false;
   
-  async saveFacts(data: any[]): Promise<void> { 
-    await Storage.set(KEYS.FACTS, data); 
-  },
+  console.log('[FuzzySearch] ✓ Reset complete');
+}
+
+// ──────────────────────────────────────────────────────────────
+// Public API
+// ──────────────────────────────────────────────────────────────
+
+export const fuzzySearch = {
+  initialize,
+  search,
+  getCategorizedResults,
+  reset,
   
-  async getFacts(): Promise<any[] | null> { 
-    return await Storage.get(KEYS.FACTS); 
-  },
+  // Individual search functions (exposed for advanced use)
+  searchTopics,
+  searchCodex,
+  searchGlossary,
+  searchLocations,
+  searchDocumented,
+  searchCategories,
+  
+  // Utility functions
+  isInitialized: () => isInitialized,
+  sanitizeQuery,
+  isValidQuery,
 } as const;
+
+// Auto-initialize on module load (optional - can be removed if causing issues)
+// initialize();

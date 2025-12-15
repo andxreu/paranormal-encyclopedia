@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Linking, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +23,12 @@ const TEXT_SIZE_OPTIONS = [
   { label: 'Large', value: 1.15, key: 'large' },
   { label: 'Extra Large', value: 1.3, key: 'extra-large' },
 ];
+
+const LINKS = {
+  website: 'https://stormlightfoundry.com',
+  privacyPolicy: 'https://stormlightfoundry.com/privacy-policy-paranormal-encyclopedia-stormlight-foundry/',
+  changelog: 'https://stormlightfoundry.com/changelog-paranormal-encyclopedia-stormlight-foundry/',
+};
 
 export default function SettingsScreen() {
   const { theme, colorScheme, toggleTheme, textScale, setTextScale } = useAppTheme();
@@ -56,7 +61,7 @@ export default function SettingsScreen() {
     try {
       const syncTime = await storage.getLastSync();
       setLastSync(syncTime);
-      
+
       const size = await storage.getCacheSize();
       const sizeInKB = (size / 1024).toFixed(2);
       setCacheSize(`${sizeInKB} KB`);
@@ -73,7 +78,7 @@ export default function SettingsScreen() {
       const newValue = !settings[key];
       setSettings({ ...settings, [key]: newValue });
       await storage.updateSetting(key, newValue);
-      
+
       if (settings.hapticsEnabled) {
         HapticFeedback.light();
       }
@@ -120,12 +125,12 @@ export default function SettingsScreen() {
       if (settings.hapticsEnabled) {
         HapticFeedback.medium();
       }
-      
+
       await storage.clearAll();
       setLastSync(null);
       setCacheSize('0 KB');
       setShowClearModal(false);
-      
+
       if (settings.hapticsEnabled) {
         HapticFeedback.success();
       }
@@ -137,24 +142,35 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleOpenWebsite = async () => {
+  const handleOpenLink = async (url: string, fallbackMessage?: string) => {
     try {
       if (settings.hapticsEnabled) {
         HapticFeedback.light();
       }
-      
-      const url = 'https://stormlightfoundry.com';
+
       const supported = await Linking.canOpenURL(url);
-      
       if (supported) {
         await Linking.openURL(url);
-      } else {
-        Alert.alert('Error', 'Unable to open website');
+        return;
       }
+
+      Alert.alert('Error', fallbackMessage || 'Unable to open link');
     } catch (error) {
-      console.error('Error opening website:', error);
-      Alert.alert('Error', 'Unable to open website');
+      console.error('Error opening link:', error);
+      Alert.alert('Error', fallbackMessage || 'Unable to open link');
     }
+  };
+
+  const handleOpenWebsite = async () => {
+    await handleOpenLink(LINKS.website, 'Unable to open website');
+  };
+
+  const handleOpenPrivacyPolicy = async () => {
+    await handleOpenLink(LINKS.privacyPolicy, 'Unable to open Privacy Policy');
+  };
+
+  const handleOpenChangelog = async () => {
+    await handleOpenLink(LINKS.changelog, 'Unable to open Changelog');
   };
 
   const handleLightningPress = () => {
@@ -224,7 +240,7 @@ export default function SettingsScreen() {
               <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
                 Preferences
               </Text>
-              
+
               <Animated.View style={[styles.settingCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }, toggleAnimatedStyle]}>
                 <View style={styles.settingRow}>
                   <View style={styles.settingInfo}>
@@ -284,7 +300,7 @@ export default function SettingsScreen() {
                         style={[
                           styles.textSizeButton,
                           { borderColor: theme.colors.border },
-                          textScale === option.value && { 
+                          textScale === option.value && {
                             backgroundColor: theme.colors.violet,
                             borderColor: theme.colors.violet,
                           },
@@ -308,7 +324,7 @@ export default function SettingsScreen() {
               <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
                 Data & Storage
               </Text>
-              
+
               <View style={[styles.infoCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
                 <View style={styles.infoRow}>
                   <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
@@ -353,13 +369,15 @@ export default function SettingsScreen() {
               <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
                 About
               </Text>
-              
+
               <View style={[styles.infoCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
                 <Text style={[styles.aboutText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                  Paranormal Encyclopedia is your gateway to exploring the mysteries of the unknown. 
+                  Paranormal Encyclopedia is your gateway to exploring the mysteries of the unknown.
                   Discover cryptids, UFOs, ghosts, ancient mysteries, and more.
                 </Text>
+
                 <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+
                 <View style={styles.infoRow}>
                   <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
                     Version
@@ -368,8 +386,10 @@ export default function SettingsScreen() {
                     1.0.0
                   </Text>
                 </View>
+
                 <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
-                <TouchableOpacity onPress={handleOpenWebsite} style={styles.infoRow}>
+
+                <TouchableOpacity onPress={handleOpenWebsite} style={styles.infoRow} activeOpacity={0.7}>
                   <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
                     Developer
                   </Text>
@@ -377,13 +397,37 @@ export default function SettingsScreen() {
                     StormLight Foundry →
                   </Text>
                 </TouchableOpacity>
+
+                {/* NEW: Privacy Policy */}
                 <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+                <TouchableOpacity onPress={handleOpenPrivacyPolicy} style={styles.infoRow} activeOpacity={0.7}>
+                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    Privacy Policy
+                  </Text>
+                  <Text style={[styles.infoValue, { color: theme.colors.violet, fontSize: 14 * textScale }]}>
+                    View →
+                  </Text>
+                </TouchableOpacity>
+
+                {/* NEW: Changelog */}
+                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+                <TouchableOpacity onPress={handleOpenChangelog} style={styles.infoRow} activeOpacity={0.7}>
+                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    Changelog
+                  </Text>
+                  <Text style={[styles.infoValue, { color: theme.colors.violet, fontSize: 14 * textScale }]}>
+                    View →
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
+
                 <View style={styles.infoRow}>
                   <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
                     Copyright
                   </Text>
                   <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
-                    © 2025
+                    © 2025 StormLight Foundry
                   </Text>
                 </View>
               </View>

@@ -1,7 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -126,62 +127,71 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
       >
         <ParticleEffect count={20} color="rgba(139, 92, 246, 0.4)" />
 
-        <Animated.View style={[styles.content, animatedContentStyle]}>
-          <View style={styles.header}>
-            <Text style={styles.logo}>🔮</Text>
-            <Text style={styles.title}>PARANORMAL</Text>
-            <Text style={styles.subtitle}>ENCYCLOPEDIA</Text>
-          </View>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <Animated.View style={[styles.content, animatedContentStyle]}>
+              <View style={styles.header}>
+                <Text style={styles.logo}>🔮</Text>
+                <Text style={styles.title}>PARANORMAL</Text>
+                <Text style={styles.subtitle}>ENCYCLOPEDIA</Text>
+              </View>
 
-          <View style={styles.featureContainer}>
-            <Text style={styles.featureIcon}>{currentFeature.icon}</Text>
-            <Text style={styles.featureTitle}>{currentFeature.title}</Text>
-            <Text style={styles.featureDescription}>{currentFeature.description}</Text>
-          </View>
+              <View style={styles.featureContainer}>
+                <Text style={styles.featureIcon}>{currentFeature.icon}</Text>
+                <Text style={styles.featureTitle}>{currentFeature.title}</Text>
+                <Text style={styles.featureDescription}>{currentFeature.description}</Text>
+              </View>
 
-          <View style={styles.pagination}>
-            {features.map((_, index) => (
-              <View
-                key={`pagination-dot-${index}`}
-                style={[
-                  styles.paginationDot,
-                  index === currentStep && styles.paginationDotActive,
-                ]}
-              />
-            ))}
-          </View>
+              <View style={styles.pagination}>
+                {features.map((_, index) => (
+                  <View
+                    key={`pagination-dot-${index}`}
+                    style={[
+                      styles.paginationDot,
+                      index === currentStep && styles.paginationDotActive,
+                    ]}
+                  />
+                ))}
+              </View>
 
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.skipButton}
-              onPress={handleSkip}
-              activeOpacity={0.7}
-              accessibilityLabel="Skip onboarding"
-              accessibilityRole="button"
-            >
-              <Text style={styles.skipButtonText}>Skip</Text>
-            </TouchableOpacity>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.skipButton}
+                  onPress={handleSkip}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Skip onboarding"
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.skipButtonText}>Skip</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.nextButton}
-              onPress={handleNext}
-              activeOpacity={0.8}
-              accessibilityLabel={currentStep === features.length - 1 ? 'Get started' : 'Next'}
-              accessibilityRole="button"
-            >
-              <LinearGradient
-                colors={['#8B5CF6', '#6366F1', '#D4AF37']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.nextButtonGradient}
-              >
-                <Text style={styles.nextButtonText}>
-                  {currentStep === features.length - 1 ? 'Get Started' : 'Next'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
+                <TouchableOpacity
+                  style={styles.nextButton}
+                  onPress={handleNext}
+                  activeOpacity={0.8}
+                  accessibilityLabel={currentStep === features.length - 1 ? 'Get started' : 'Next'}
+                  accessibilityRole="button"
+                >
+                  <LinearGradient
+                    colors={['#8B5CF6', '#6366F1', '#D4AF37']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.nextButtonGradient}
+                  >
+                    <Text style={styles.nextButtonText}>
+                      {currentStep === features.length - 1 ? 'Get Started' : 'Next'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </ScrollView>
+        </SafeAreaView>
       </LinearGradient>
     </Animated.View>
   );
@@ -194,13 +204,24 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 40,
+    minHeight: height,
   },
   content: {
     width: width * 0.85,
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 20,
   },
   header: {
     alignItems: 'center',
@@ -209,7 +230,9 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 80,
     marginBottom: 20,
-    textShadow: '0px 0px 20px rgba(139, 92, 246, 0.8)',
+    textShadowColor: 'rgba(139, 92, 246, 0.8)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
   },
   title: {
     fontSize: 32,
@@ -217,7 +240,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 4,
     fontFamily: 'SpaceMono',
-    textShadow: '0px 2px 8px rgba(0, 0, 0, 0.5)',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   subtitle: {
     fontSize: 16,
@@ -236,7 +261,9 @@ const styles = StyleSheet.create({
   featureIcon: {
     fontSize: 100,
     marginBottom: 24,
-    textShadow: '0px 0px 16px rgba(139, 92, 246, 0.6)',
+    textShadowColor: 'rgba(139, 92, 246, 0.6)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 16,
   },
   featureTitle: {
     fontSize: 28,
@@ -245,7 +272,9 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     marginBottom: 16,
     textAlign: 'center',
-    textShadow: '0px 2px 4px rgba(0, 0, 0, 0.5)',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   featureDescription: {
     fontSize: 16,
@@ -275,6 +304,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     width: '100%',
+    paddingBottom: 20,
   },
   skipButton: {
     flex: 1,
