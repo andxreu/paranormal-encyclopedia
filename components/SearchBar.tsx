@@ -85,13 +85,18 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
 
   const handleResultPress = (result: SearchResult) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    console.log('[SearchBar] NAV', result.route, { result });
     setShowSuggestions(false);
     setSearchQuery('');
     
     if (onResultPress) {
       onResultPress(result);
     } else if (result.route && result.route !== '/') {
-      router.push(result.route as any);
+      try {
+        router.push(result.route as any);
+      } catch (error) {
+        console.error('[SearchBar] Navigation error:', error);
+      }
     }
   };
 

@@ -18,7 +18,7 @@ export default function TabLayout() {
         <Label>Explore</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger key="arcana" name="arcana">
-        <Icon sf="crystal.wand.magic" />
+        <Icon sf="sparkles" />
         <Label>Path</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger key="favorites" name="favorites">

@@ -20,7 +20,7 @@ import { HapticFeedback } from '@/utils/haptics';
 
 const TEXT_SIZE_OPTIONS = [
   { label: 'Small', value: 0.85, key: 'small' },
-  { label: 'Default', value: 1, key: 'default' },
+  { label: 'Med', value: 1, key: 'default' },
   { label: 'Large', value: 1.15, key: 'large' },
   { label: 'XL', value: 1.3, key: 'extra-large' },
 ];
@@ -317,7 +317,7 @@ export default function SettingsScreen() {
                           <Text 
                             style={[
                               styles.textSizeLabel,
-                              { color: theme.colors.textPrimary, fontSize: 11 },
+                              { color: theme.colors.textPrimary, fontSize: 12 },
                               textScale === option.value && { color: '#FFFFFF', fontWeight: '700' },
                             ]}
                             numberOfLines={1}
@@ -432,10 +432,10 @@ export default function SettingsScreen() {
                   <View style={[styles.infoDivider, { backgroundColor: theme.colors.border }]} />
 
                   <View style={styles.infoRow}>
-                    <Text style={[styles.infoLabel, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                    <Text style={[styles.copyrightLabel, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]}>
                       Copyright
                     </Text>
-                    <Text style={[styles.infoValue, { color: theme.colors.textPrimary, fontSize: 13 * textScale }]} numberOfLines={1}>
+                    <Text style={[styles.copyrightValue, { color: theme.colors.textPrimary, fontSize: 12 * textScale }]} numberOfLines={1} adjustsFontSizeToFit>
                       © 2025 StormLight Foundry
                     </Text>
                   </View>
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
   textSizeButton: {
     flex: 1,
     paddingVertical: 14,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 2,
     alignItems: 'center',
@@ -604,6 +604,18 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     textAlign: 'right',
     flex: 1,
+  },
+  copyrightLabel: {
+    fontSize: 13,
+    fontFamily: 'SpaceMono',
+    flex: 0.4,
+  },
+  copyrightValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: 'SpaceMono',
+    textAlign: 'right',
+    flex: 0.6,
   },
   infoDivider: {
     height: 1,
