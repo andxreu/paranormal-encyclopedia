@@ -1,6 +1,6 @@
-
+// components/CategoryCard.tsx
 import React, { useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
@@ -22,9 +22,9 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
   const router = useRouter();
   const { width } = useWindowDimensions();
 
-  // Responsive width (and rotates correctly)
+  // Responsive width calculation
   const cardWidth = useMemo(() => {
-    const horizontalPadding = 16 * 2; // matches common screens
+    const horizontalPadding = 16 * 2;
     const gap = 12;
     const available = width - horizontalPadding - gap;
     return Math.max(140, available / 2);
@@ -48,17 +48,16 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
   const handlePress = useCallback(() => {
     try {
       HapticFeedback.light();
+      console.log('[CategoryCard] Navigating to category:', category.id);
 
       if (onPress) {
         onPress();
         return;
       }
 
-      // ✅ Always use group-qualified route so iOS never "guesses wrong"
-      router.push({
-        pathname: '/(tabs)/explore/[category]',
-        params: { category: String(category.id) },
-      });
+      // ✅ FIX: Use router.push with string template for proper navigation
+      // This ensures the route is correctly formatted for Expo Router
+      router.push(`/(tabs)/explore/${category.id}` as any);
     } catch (error) {
       console.error('[CategoryCard] Navigation error:', error);
     }
