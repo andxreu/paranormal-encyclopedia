@@ -1,9 +1,16 @@
-
 // app/(tabs)/explore.tsx
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl, useWindowDimensions } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  useWindowDimensions,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
@@ -11,7 +18,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
-import { categories, Category } from '@/data/paranormal/categories';
+import { categories, type Category } from '@/data/paranormal/categories';
 import { getTotalTopicsCount, getCategoryTopicsCount } from '@/data/paranormal/index';
 import { ParticleEffect } from '@/components/ParticleEffect';
 import { HapticFeedback } from '@/utils/haptics';
@@ -37,77 +44,102 @@ interface CategoryGridCardProps {
 // ──────────────────────────────────────────────────────────────
 // Category Card Component
 // ──────────────────────────────────────────────────────────────
-const CategoryGridCard: React.FC<CategoryGridCardProps> = React.memo(({ category, onPress, cardWidth }) => {
-  const { theme, textScale } = useAppTheme();
-  const scale = useSharedValue(1);
+const CategoryGridCard: React.FC<CategoryGridCardProps> = React.memo(
+  ({ category, onPress, cardWidth }) => {
+    const { theme, textScale } = useAppTheme();
+    const scale = useSharedValue(1);
 
-  /**
-   * Memoize topic count to prevent recalculation
-   */
-  const categoryTopicCount = useMemo(() => {
-    return getCategoryTopicsCount(category.id);
-  }, [category.id]);
+    const categoryTopicCount = useMemo(() => {
+      try {
+        return getCategoryTopicsCount(category.id);
+      } catch {
+        return 0;
+      }
+    }, [category.id]);
 
-  /**
-   * Animated style for press effect
-   */
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: scale.value }],
+    }));
 
-  /**
-   * Press handlers with haptic feedback
-   */
-  const handlePressIn = useCallback(() => {
-    HapticFeedback.soft();
-    scale.value = withSpring(0.95, SPRING_CONFIG);
-  }, [scale]);
+    const handlePressIn = useCallback(() => {
+      HapticFeedback.soft();
+      scale.value = withSpring(0.95, SPRING_CONFIG);
+    }, [scale]);
 
-  const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, SPRING_CONFIG);
-  }, [scale]);
+    const handlePressOut = useCallback(() => {
+      scale.value = withSpring(1, SPRING_CONFIG);
+    }, [scale]);
 
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      activeOpacity={1}
-      style={[styles.cardWrapper, { width: cardWidth }]}
-      accessibilityLabel={`${category.name} category`}
-      accessibilityHint={category.description}
-      accessibilityRole="button"
-    >
-      <Animated.View style={animatedStyle}>
-        <LinearGradient
-          colors={[category.color + '80', category.color + '40', theme.colors.cardBg]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.card, { borderColor: theme.colors.border }]}
-        >
-          <ParticleEffect count={4} color={category.color + '60'} />
-          
-          <View style={styles.cardContent}>
-            <Text style={styles.cardIcon}>{category.icon}</Text>
-            <Text style={[styles.cardName, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
-              {category.name}
-            </Text>
-            <Text style={[styles.cardDescription, { color: theme.colors.textSecondary, fontSize: 11 * textScale }]} numberOfLines={2}>
-              {category.description}
-            </Text>
-            <View style={[styles.topicCount, { backgroundColor: theme.colors.cardBgTranslucent, borderColor: theme.colors.border }]}>
-              <Text style={[styles.topicCountText, { color: theme.colors.textPrimary, fontSize: 10 * textScale }]}>
-                {categoryTopicCount} topics
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+        style={[styles.cardWrapper, { width: cardWidth }]}
+        accessibilityLabel={`${category.name} category`}
+        accessibilityHint={category.description}
+        accessibilityRole="button"
+      >
+        <Animated.View style={animatedStyle}>
+          <LinearGradient
+            colors={[category.color + '80', category.color + '40', theme.colors.cardBg]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.card, { borderColor: theme.colors.border }]}
+          >
+            <ParticleEffect count={4} color={category.color + '60'} />
+
+            <View style={styles.cardContent}>
+              <Text style={styles.cardIcon}>{category.icon}</Text>
+
+              <Text
+                style={[
+                  styles.cardName,
+                  { color: theme.colors.textPrimary, fontSize: 15 * textScale },
+                ]}
+              >
+                {category.name}
               </Text>
+
+              <Text
+                style={[
+                  styles.cardDescription,
+                  { color: theme.colors.textSecondary, fontSize: 11 * textScale },
+                ]}
+                numberOfLines={2}
+              >
+                {category.description}
+              </Text>
+
+              <View
+                style={[
+                  styles.topicCount,
+                  {
+                    backgroundColor: theme.colors.cardBgTranslucent,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.topicCountText,
+                    { color: theme.colors.textPrimary, fontSize: 10 * textScale },
+                  ]}
+                >
+                  {categoryTopicCount} topics
+                </Text>
+              </View>
             </View>
-          </View>
-          <View style={[styles.cardBorder, { borderColor: category.color + '60' }]} />
-          <View style={[styles.cardGlow, { backgroundColor: category.color }]} />
-        </LinearGradient>
-      </Animated.View>
-    </TouchableOpacity>
-  );
-});
+
+            <View style={[styles.cardBorder, { borderColor: category.color + '60' }]} />
+            <View style={[styles.cardGlow, { backgroundColor: category.color }]} />
+          </LinearGradient>
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  }
+);
 
 CategoryGridCard.displayName = 'CategoryGridCard';
 
@@ -117,67 +149,68 @@ CategoryGridCard.displayName = 'CategoryGridCard';
 export default function ExploreScreen() {
   const { theme, textScale } = useAppTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+
   const [refreshing, setRefreshing] = useState(false);
   const { width } = useWindowDimensions();
 
-  /**
-   * Calculate responsive card width
-   */
   const cardWidth = useMemo(() => {
     const isTablet = width >= 768;
     const columns = isTablet ? 3 : 2;
-    const horizontalPadding = 32;
+
+    const horizontalPadding = 32; // matches contentContainer padding (16 + 16)
     const gap = 12;
-    return (width - horizontalPadding - (gap * (columns - 1))) / columns;
+
+    const computed = (width - horizontalPadding - gap * (columns - 1)) / columns;
+    return Math.max(140, Math.floor(computed)); // guard against tiny widths / split-screen
   }, [width]);
 
-  /**
-   * Memoize total topics count
-   */
   const totalTopics = useMemo(() => {
-    return getTotalTopicsCount();
+    try {
+      return getTotalTopicsCount();
+    } catch {
+      return 0;
+    }
   }, []);
 
-  /**
-   * Handles category card press
-   */
-  const handleCategoryPress = useCallback((category: Category) => {
-    try {
-      HapticFeedback.light();
-      console.log('NAV', `/explore/${category.id}`, { category: category.id });
-      router.push({
-        pathname: `/explore/[category]`,
-        params: { category: category.id }
-      });
-    } catch (error) {
-      console.error('[Explore] Navigation error:', error);
-    }
-  }, [router]);
+  const handleCategoryPress = useCallback(
+    (category: Category) => {
+      try {
+        HapticFeedback.light();
 
-  /**
-   * Handles search button press
-   */
+        const categoryParam = String(category.id);
+
+        // Use group-qualified path to avoid route ambiguity on iOS
+        router.push({
+          pathname: '/(tabs)/explore/[category]',
+          params: { category: categoryParam },
+        });
+      } catch (error) {
+        console.error('[Explore] Navigation error:', error);
+      }
+    },
+    [router]
+  );
+
   const handleSearchPress = useCallback(() => {
     try {
       HapticFeedback.light();
-      console.log('NAV', '/search', {});
-      router.push('/search');
+
+      // You have BOTH app/search.tsx and app/(tabs)/search.tsx.
+      // This forces the tabs version.
+      router.push('/(tabs)/search');
     } catch (error) {
       console.error('[Explore] Navigation error:', error);
     }
   }, [router]);
 
-  /**
-   * Handles pull-to-refresh
-   */
   const onRefresh = useCallback(async () => {
     try {
       HapticFeedback.medium();
       setRefreshing(true);
-      
-      // Simulate data refresh
-      await new Promise(resolve => setTimeout(resolve, REFRESH_DELAY));
-      
+
+      await new Promise((resolve) => setTimeout(resolve, REFRESH_DELAY));
+
       HapticFeedback.success();
       console.log('[Explore] ✓ Refresh completed');
     } catch (error) {
@@ -201,16 +234,30 @@ export default function ExploreScreen() {
           <View style={styles.header}>
             <View style={styles.headerContent}>
               <View>
-                <Text style={[styles.headerTitle, { color: theme.colors.textPrimary, fontSize: 36 * textScale }]}>
+                <Text
+                  style={[
+                    styles.headerTitle,
+                    { color: theme.colors.textPrimary, fontSize: 36 * textScale },
+                  ]}
+                >
                   Explore
                 </Text>
-                <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                <Text
+                  style={[
+                    styles.headerSubtitle,
+                    { color: theme.colors.textSecondary, fontSize: 14 * textScale },
+                  ]}
+                >
                   {totalTopics} topics
                 </Text>
               </View>
+
               <TouchableOpacity
                 onPress={handleSearchPress}
-                style={[styles.searchButton, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
+                style={[
+                  styles.searchButton,
+                  { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border },
+                ]}
                 activeOpacity={0.7}
                 accessibilityLabel="Search"
                 accessibilityRole="button"
@@ -223,7 +270,13 @@ export default function ExploreScreen() {
           {/* Categories Grid */}
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={styles.contentContainer}
+            contentContainerStyle={[
+              styles.contentContainer,
+              {
+                // Keep content clear of floating tab bar / home indicator
+                paddingBottom: Math.max(120, 80 + insets.bottom),
+              },
+            ]}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -258,15 +311,10 @@ export default function ExploreScreen() {
 // Styles
 // ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  gradient: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  gradient: { flex: 1 },
+  safeArea: { flex: 1 },
+
   header: {
     paddingHorizontal: 20,
     paddingTop: 20,
@@ -290,6 +338,7 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono',
     marginTop: 6,
   },
+
   searchButton: {
     width: 48,
     height: 48,
@@ -303,24 +352,21 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  searchIcon: {
-    fontSize: 22,
-  },
-  scrollView: {
-    flex: 1,
-  },
+  searchIcon: { fontSize: 22 },
+
+  scrollView: { flex: 1 },
   contentContainer: {
     paddingHorizontal: 16,
     paddingBottom: 120,
   },
+
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
-  cardWrapper: {
-    marginBottom: 12,
-  },
+
+  cardWrapper: { marginBottom: 12 },
   card: {
     borderRadius: 18,
     padding: 16,
@@ -333,6 +379,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     overflow: 'hidden',
   },
+
   cardContent: {
     alignItems: 'center',
     zIndex: 2,
@@ -361,6 +408,7 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     marginBottom: 10,
   },
+
   topicCount: {
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -372,6 +420,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'SpaceMono',
   },
+
   cardBorder: {
     position: 'absolute',
     top: 0,
@@ -391,7 +440,6 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     opacity: 0.15,
   },
-  bottomSpacer: {
-    height: 20,
-  },
+
+  bottomSpacer: { height: 20 },
 });

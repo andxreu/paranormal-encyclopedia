@@ -1,8 +1,15 @@
-
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
@@ -11,24 +18,23 @@ import Animated, {
   withTiming,
   Easing,
   FadeIn,
-  runOnJS,
 } from 'react-native-reanimated';
+
 import { useAppTheme } from '@/contexts/ThemeContext';
-import { getCategoryById, Category } from '@/data/paranormal/categories';
-import { getCategoryTopics } from '@/data/paranormal';
+import { getCategoryById, type Category } from '@/data/paranormal/categories';
+import { getCategoryTopics } from '@/data/paranormal/index';
 import { ParticleEffect } from '@/components/ParticleEffect';
 import { GothicConfetti } from '@/components/GothicConfetti';
 import { RankUpModal } from '@/components/RankUpModal';
 import { HapticFeedback } from '@/utils/haptics';
-import { storage, FavoriteItem } from '@/utils/storage';
+import { storage, type FavoriteItem } from '@/utils/storage';
 import { recentTopicsService } from '@/utils/recentTopics';
-import { gamificationService, VeilRank } from '@/utils/gamification';
+import { gamificationService, type VeilRank } from '@/utils/gamification';
 
 // ──────────────────────────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────────────────────────
-const { width } = Dimensions.get('window');
-const SCROLL_THRESHOLD_PERCENTAGE = 70; // Percentage scrolled before marking as read
+const SCROLL_THRESHOLD_PERCENTAGE = 70;
 const FADE_IN_DURATION = 600;
 const SECTION_STAGGER_DELAY = 100;
 
@@ -56,7 +62,15 @@ interface SectionCardProps {
 }
 
 // ──────────────────────────────────────────────────────────────
-// Section Card Component
+// Helpers
+// ──────────────────────────────────────────────────────────────
+function asStringParam(value: string | string[] | undefined): string {
+  if (!value) return '';
+  return Array.isArray(value) ? String(value[0] ?? '') : String(value);
+}
+
+// ──────────────────────────────────────────────────────────────
+// Section Card
 // ──────────────────────────────────────────────────────────────
 const SectionCard: React.FC<SectionCardProps> = React.memo(({ section, categoryColor, index }) => {
   const { theme, textScale } = useAppTheme();
@@ -69,26 +83,18 @@ const SectionCard: React.FC<SectionCardProps> = React.memo(({ section, categoryC
 
   const handlePress = useCallback(() => {
     HapticFeedback.soft();
-    setExpanded(prev => !prev);
+    setExpanded((prev) => !prev);
   }, []);
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.98, {
-      damping: 15,
-      stiffness: 300,
-    });
+    scale.value = withSpring(0.98, { damping: 15, stiffness: 300 });
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
   }, [scale]);
 
-  if (!section?.title) {
-    return null;
-  }
+  if (!section?.title) return null;
 
   return (
     <Animated.View
@@ -113,22 +119,32 @@ const SectionCard: React.FC<SectionCardProps> = React.memo(({ section, categoryC
             style={[styles.sectionCard, { borderColor: categoryColor + '60' }]}
           >
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  { color: theme.colors.textPrimary, fontSize: 16 * textScale },
+                ]}
+              >
                 {section.title}
               </Text>
               <Text style={[styles.expandIcon, { color: categoryColor }]}>
                 {expanded ? '▼' : '▶'}
               </Text>
             </View>
-            
-            {expanded && section.content && (
+
+            {expanded && !!section.content && (
               <Animated.View entering={FadeIn.duration(300)}>
-                <Text style={[styles.sectionContent, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                <Text
+                  style={[
+                    styles.sectionContent,
+                    { color: theme.colors.textSecondary, fontSize: 14 * textScale },
+                  ]}
+                >
                   {section.content}
                 </Text>
               </Animated.View>
             )}
-            
+
             <View style={[styles.sectionCardBorder, { borderColor: categoryColor + '40' }]} />
           </LinearGradient>
         </Animated.View>
@@ -140,45 +156,47 @@ const SectionCard: React.FC<SectionCardProps> = React.memo(({ section, categoryC
 SectionCard.displayName = 'SectionCard';
 
 // ──────────────────────────────────────────────────────────────
-// Main Component
+// Main
 // ──────────────────────────────────────────────────────────────
 export default function TopicDetailScreen() {
-  const { category: categoryId, topic: topicId } = useLocalSearchParams<{ category: string; topic: string }>();
+  const params = useLocalSearchParams();
+  const categoryId = asStringParam(params.category as any);
+  const topicId = asStringParam(params.topic as any);
+
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { theme, textScale } = useAppTheme();
-  
-  // State
+
   const [category, setCategory] = useState<Category | null>(null);
   const [topic, setTopic] = useState<Topic | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showRankUpModal, setShowRankUpModal] = useState(false);
   const [newRank, setNewRank] = useState<VeilRank | null>(null);
-  const [hasTrackedReading, setHasTrackedReading] = useState(false);
-  
-  // Refs
-  const scrollViewRef = useRef<ScrollView>(null);
 
-  // Animation values
+  // Use a ref so scroll-trigger never double-fires due to rerenders
+  const hasTrackedReadingRef = useRef(false);
+
   const fadeOpacity = useSharedValue(0);
   const scale = useSharedValue(0.95);
 
-  /**
-   * Loads topic and category data
-   */
   const loadTopicData = useCallback(async () => {
     if (!categoryId || !topicId) {
-      console.warn('⚠️ Missing categoryId or topicId');
+      console.warn('[Topic] Missing category/topic params', { categoryId, topicId });
+      setCategory(null);
+      setTopic(null);
       return;
     }
 
     try {
-      const categoryData = getCategoryById(categoryId as string);
-      const categoryTopics = getCategoryTopics(categoryId as string);
-      const topicData = categoryTopics?.find((t: any) => t?.id === topicId) as Topic | undefined;
+      const categoryData = getCategoryById(String(categoryId));
+      const categoryTopics = getCategoryTopics(String(categoryId));
+      const topicData = (categoryTopics || []).find((t: any) => String(t?.id) === String(topicId)) as
+        | Topic
+        | undefined;
 
       if (!categoryData || !topicData) {
-        console.warn('⚠️ Category or topic not found:', { categoryId, topicId });
+        console.warn('[Topic] Not found', { categoryId, topicId });
         setCategory(null);
         setTopic(null);
         return;
@@ -187,15 +205,15 @@ export default function TopicDetailScreen() {
       setCategory(categoryData);
       setTopic(topicData);
 
-      // Check favorite status
+      // Favorite state
       const favoriteId = `${categoryId}-${topicId}`;
       const favoriteStatus = await storage.isFavorite(favoriteId);
       setIsFavorite(favoriteStatus);
 
-      // Add to recent topics
+      // Recent topics
       await recentTopicsService.addRecentTopic({
-        categoryId: categoryId as string,
-        topicId: topicId as string,
+        categoryId: String(categoryId),
+        topicId: String(topicId),
         title: topicData.name || 'Untitled',
         categoryName: categoryData.name || 'Unknown',
         categoryIcon: categoryData.icon || '❓',
@@ -214,100 +232,91 @@ export default function TopicDetailScreen() {
         easing: Easing.out(Easing.ease),
       });
 
-      console.log('✅ Topic loaded:', topicData.name);
+      console.log('[Topic] Loaded:', topicData.name);
     } catch (error) {
-      console.error('❌ Error loading topic data:', error);
+      console.error('[Topic] Error loading:', error);
       setCategory(null);
       setTopic(null);
     }
   }, [categoryId, topicId, fadeOpacity, scale, theme.colors.violet]);
 
   useEffect(() => {
+    hasTrackedReadingRef.current = false;
     loadTopicData();
   }, [loadTopicData]);
 
-  /**
-   * Tracks reading progress and awards points
-   */
   const trackReadingProgress = useCallback(async () => {
-    if (!categoryId || !topicId || hasTrackedReading) return;
+    if (!categoryId || !topicId) return;
+    if (hasTrackedReadingRef.current) return;
+
+    hasTrackedReadingRef.current = true;
 
     try {
-      setHasTrackedReading(true);
       const articleId = `${categoryId}-${topicId}`;
-      const result = await gamificationService.markArticleRead(articleId, 'topic', categoryId as string);
+      const result = await gamificationService.markArticleRead(articleId, 'topic', String(categoryId));
 
       if (result?.newRank) {
         setNewRank(result.newRank);
         setShowRankUpModal(true);
       }
 
-      if (result && (result.achievements?.length > 0 || result.newRank)) {
+      if (result && ((result.achievements?.length ?? 0) > 0 || result.newRank)) {
         setShowConfetti(true);
         HapticFeedback.success();
       }
 
-      console.log('✅ Reading progress tracked');
+      console.log('[Topic] Reading progress tracked');
     } catch (error) {
-      console.error('❌ Error tracking reading:', error);
+      console.error('[Topic] Error tracking reading:', error);
     }
-  }, [categoryId, topicId, hasTrackedReading]);
+  }, [categoryId, topicId]);
 
-  /**
-   * Handles scroll events to track reading progress
-   */
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    try {
-      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-      
-      if (!contentOffset || !contentSize || !layoutMeasurement) return;
-      
-      const scrollHeight = contentSize.height - layoutMeasurement.height;
-      if (scrollHeight <= 0) return;
-      
-      const scrollPercentage = (contentOffset.y / scrollHeight) * 100;
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      try {
+        if (hasTrackedReadingRef.current) return;
 
-      if (scrollPercentage > SCROLL_THRESHOLD_PERCENTAGE && !hasTrackedReading) {
-        runOnJS(trackReadingProgress)();
+        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+        const scrollHeight = contentSize.height - layoutMeasurement.height;
+        if (scrollHeight <= 0) return;
+
+        const scrollPercentage = (contentOffset.y / scrollHeight) * 100;
+        if (scrollPercentage >= SCROLL_THRESHOLD_PERCENTAGE) {
+          trackReadingProgress();
+        }
+      } catch (error) {
+        console.error('[Topic] Scroll error:', error);
       }
-    } catch (error) {
-      console.error('❌ Error handling scroll:', error);
-    }
-  }, [hasTrackedReading, trackReadingProgress]);
+    },
+    [trackReadingProgress]
+  );
 
-  /**
-   * Navigates back to previous screen
-   */
   const handleBackPress = useCallback(() => {
     HapticFeedback.light();
     router.back();
   }, [router]);
 
-  /**
-   * Toggles favorite status
-   */
   const handleToggleFavorite = useCallback(async () => {
     try {
       HapticFeedback.medium();
-      
+
       if (!category || !topic || !categoryId || !topicId) {
-        console.warn('⚠️ Missing category or topic data');
+        console.warn('[Topic] Missing data for favorite toggle');
         return;
       }
 
       const favoriteId = `${categoryId}-${topicId}`;
-      
+
       if (isFavorite) {
         await storage.removeFavorite(favoriteId);
         setIsFavorite(false);
-        console.log('🗑️ Removed from favorites');
       } else {
         const favoriteItem: FavoriteItem = {
           id: favoriteId,
           type: 'topic',
           title: topic.name || 'Untitled',
           description: topic.description || 'No description',
-          categoryId: categoryId as string,
+          categoryId: String(categoryId),
           categoryName: category.name || 'Unknown',
           categoryColor: category.color || theme.colors.violet,
           categoryIcon: category.icon || '❓',
@@ -315,24 +324,17 @@ export default function TopicDetailScreen() {
         };
         await storage.addFavorite(favoriteItem);
         setIsFavorite(true);
-        console.log('⭐ Added to favorites');
       }
     } catch (error) {
-      console.error('❌ Error toggling favorite:', error);
+      console.error('[Topic] Error toggling favorite:', error);
     }
   }, [category, topic, categoryId, topicId, isFavorite, theme.colors.violet]);
 
-  /**
-   * Animated style for container
-   */
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: fadeOpacity.value,
     transform: [{ scale: scale.value }],
   }));
 
-  /**
-   * Memoized gradient colors
-   */
   const gradientColors = useMemo(() => {
     if (!category?.color) return theme.colors.backgroundGradient;
     return [category.color + '25', ...theme.colors.backgroundGradient.slice(1)];
@@ -351,19 +353,10 @@ export default function TopicDetailScreen() {
           end={{ x: 0, y: 1 }}
         >
           <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <Animated.View 
-              entering={FadeIn.duration(300)}
-              style={styles.errorContainer}
-            >
+            <Animated.View entering={FadeIn.duration(300)} style={styles.errorContainer}>
               <Text style={styles.errorEmoji}>❌</Text>
-              <Text style={[styles.errorText, { color: theme.colors.textPrimary }]}>
-                Topic not found
-              </Text>
-              <TouchableOpacity 
-                onPress={handleBackPress} 
-                style={styles.errorButton}
-                activeOpacity={0.8}
-              >
+              <Text style={[styles.errorText, { color: theme.colors.textPrimary }]}>Topic not found</Text>
+              <TouchableOpacity onPress={handleBackPress} style={styles.errorButton} activeOpacity={0.8}>
                 <Text style={styles.errorButtonText}>Go Back</Text>
               </TouchableOpacity>
             </Animated.View>
@@ -374,37 +367,25 @@ export default function TopicDetailScreen() {
   }
 
   // ──────────────────────────────────────────────────────────────
-  // Main Content
+  // Main
   // ──────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={gradientColors}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-      >
+      <LinearGradient colors={gradientColors} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <Animated.View style={[styles.animatedContainer, animatedStyle]}>
-            {/* Particle Effect */}
             <ParticleEffect count={12} color={category.color + '25'} />
-            
-            {/* Header */}
+
             <View style={styles.header}>
               <View style={styles.headerTop}>
-                <TouchableOpacity 
-                  onPress={handleBackPress} 
-                  style={styles.backButton}
-                  accessibilityLabel="Go back"
-                  accessibilityRole="button"
-                >
+                <TouchableOpacity onPress={handleBackPress} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button">
                   <Text style={[styles.backButtonText, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
                     ← Back
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  onPress={handleToggleFavorite} 
+                <TouchableOpacity
+                  onPress={handleToggleFavorite}
                   style={styles.iconButton}
                   accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                   accessibilityRole="button"
@@ -413,7 +394,7 @@ export default function TopicDetailScreen() {
                   <Text style={styles.iconButtonText}>{isFavorite ? '⭐' : '☆'}</Text>
                 </TouchableOpacity>
               </View>
-              
+
               <View style={styles.headerContent}>
                 <Text style={[styles.topicTitle, { color: theme.colors.textPrimary, fontSize: 28 * textScale }]}>
                   {topic.name}
@@ -421,7 +402,12 @@ export default function TopicDetailScreen() {
                 <Text style={[styles.topicDescription, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
                   {topic.description}
                 </Text>
-                <View style={[styles.categoryBadge, { backgroundColor: category.color + '30', borderColor: category.color + '60' }]}>
+                <View
+                  style={[
+                    styles.categoryBadge,
+                    { backgroundColor: category.color + '30', borderColor: category.color + '60' },
+                  ]}
+                >
                   <Text style={[styles.categoryBadgeText, { color: theme.colors.textPrimary, fontSize: 11 * textScale }]}>
                     {category.name}
                   </Text>
@@ -429,11 +415,12 @@ export default function TopicDetailScreen() {
               </View>
             </View>
 
-            {/* Sections */}
             <ScrollView
-              ref={scrollViewRef}
               style={styles.scrollView}
-              contentContainerStyle={styles.contentContainer}
+              contentContainerStyle={[
+                styles.contentContainer,
+                { paddingBottom: Math.max(120, 80 + insets.bottom) },
+              ]}
               showsVerticalScrollIndicator={false}
               onScroll={handleScroll}
               scrollEventThrottle={16}
@@ -441,10 +428,10 @@ export default function TopicDetailScreen() {
               <Text style={[styles.sectionsHeader, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
                 Explore Sections
               </Text>
-              
-              {topic.sections?.map((section, index) => (
+
+              {(topic.sections || []).map((section, index) => (
                 <SectionCard
-                  key={`section-${section.title}-${index}`}
+                  key={`section-${index}`}
                   section={section}
                   categoryColor={category.color}
                   index={index}
@@ -454,17 +441,9 @@ export default function TopicDetailScreen() {
               <View style={styles.bottomSpacer} />
             </ScrollView>
 
-            {/* Confetti & Modals */}
-            <GothicConfetti
-              visible={showConfetti}
-              onComplete={() => setShowConfetti(false)}
-            />
+            <GothicConfetti visible={showConfetti} onComplete={() => setShowConfetti(false)} />
 
-            <RankUpModal
-              visible={showRankUpModal}
-              rank={newRank}
-              onClose={() => setShowRankUpModal(false)}
-            />
+            <RankUpModal visible={showRankUpModal} rank={newRank} onClose={() => setShowRankUpModal(false)} />
           </Animated.View>
         </SafeAreaView>
       </LinearGradient>
@@ -476,18 +455,11 @@ export default function TopicDetailScreen() {
 // Styles
 // ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  gradient: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  animatedContainer: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  gradient: { flex: 1 },
+  safeArea: { flex: 1 },
+  animatedContainer: { flex: 1 },
+
   header: {
     paddingHorizontal: 20,
     paddingTop: 10,
@@ -500,15 +472,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'SpaceMono',
-  },
+  backButton: { paddingVertical: 8, paddingHorizontal: 4 },
+  backButtonText: { fontSize: 16, fontWeight: '600', fontFamily: 'SpaceMono' },
+
   iconButton: {
     width: 36,
     height: 36,
@@ -519,12 +485,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconButtonText: {
-    fontSize: 18,
-  },
-  headerContent: {
-    alignItems: 'center',
-  },
+  iconButtonText: { fontSize: 18 },
+
+  headerContent: { alignItems: 'center' },
+
   topicTitle: {
     fontSize: 28,
     fontWeight: '900',
@@ -541,33 +505,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     lineHeight: 20,
   },
+
   categoryBadge: {
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 14,
     borderWidth: 1,
   },
-  categoryBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: 'SpaceMono',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 120,
-  },
+  categoryBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: 'SpaceMono' },
+
+  scrollView: { flex: 1 },
+  contentContainer: { paddingHorizontal: 16, paddingBottom: 120 },
+
   sectionsHeader: {
     fontSize: 18,
     fontWeight: '800',
     fontFamily: 'SpaceMono',
     marginBottom: 16,
   },
-  sectionCardWrapper: {
-    marginBottom: 12,
-  },
+
+  sectionCardWrapper: { marginBottom: 12 },
   sectionCard: {
     borderRadius: 16,
     padding: 18,
@@ -579,11 +536,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     overflow: 'hidden',
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -591,16 +544,9 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
-  expandIcon: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  sectionContent: {
-    fontSize: 14,
-    fontFamily: 'SpaceMono',
-    lineHeight: 22,
-    marginTop: 12,
-  },
+  expandIcon: { fontSize: 14, fontWeight: '700' },
+  sectionContent: { fontSize: 14, fontFamily: 'SpaceMono', lineHeight: 22, marginTop: 12 },
+
   sectionCardBorder: {
     position: 'absolute',
     top: 0,
@@ -611,26 +557,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     opacity: 0.3,
   },
-  bottomSpacer: {
-    height: 20,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  errorEmoji: {
-    fontSize: 64,
-    marginBottom: 20,
-  },
-  errorText: {
-    fontSize: 18,
-    fontFamily: 'SpaceMono',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 26,
-  },
+
+  bottomSpacer: { height: 20 },
+
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  errorEmoji: { fontSize: 64, marginBottom: 20 },
+  errorText: { fontSize: 18, fontFamily: 'SpaceMono', textAlign: 'center', marginBottom: 24, lineHeight: 26 },
   errorButton: {
     backgroundColor: 'rgba(139, 92, 246, 0.8)',
     paddingHorizontal: 32,
@@ -644,10 +576,5 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  errorButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    fontFamily: 'SpaceMono',
-  },
+  errorButtonText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF', fontFamily: 'SpaceMono' },
 });

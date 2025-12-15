@@ -1,14 +1,11 @@
 
-import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
-import { Category } from '@/data/paranormal/categories';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+
+import type { Category } from '@/data/paranormal/categories';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { ParticleEffect } from './ParticleEffect';
 import { HapticFeedback } from '@/utils/haptics';
@@ -18,50 +15,50 @@ interface CategoryCardProps {
   onPress?: () => void;
 }
 
-const { width } = Dimensions.get('window');
-const cardWidth = (width - 48) / 2;
+const SPRING_CONFIG = { damping: 15, stiffness: 300 } as const;
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress }) => {
-  const { theme } = useAppTheme();
+  const { theme, textScale } = useAppTheme();
   const router = useRouter();
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
+  const { width } = useWindowDimensions();
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-      opacity: opacity.value,
-    };
-  });
+  // Responsive width (and rotates correctly)
+  const cardWidth = useMemo(() => {
+    const horizontalPadding = 16 * 2; // matches common screens
+    const gap = 12;
+    const available = width - horizontalPadding - gap;
+    return Math.max(140, available / 2);
+  }, [width]);
+
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   const handlePressIn = useCallback(() => {
     HapticFeedback.soft();
-    scale.value = withSpring(0.95, {
-      damping: 15,
-      stiffness: 300,
-    });
+    scale.value = withSpring(0.95, SPRING_CONFIG);
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
+    scale.value = withSpring(1, SPRING_CONFIG);
   }, [scale]);
 
   const handlePress = useCallback(() => {
     try {
       HapticFeedback.light();
-      console.log('NAV', `/explore/${category.id}`, { categoryId: category.id });
-      
+
       if (onPress) {
         onPress();
-      } else {
-        router.push({
-          pathname: `/explore/[category]`,
-          params: { category: category.id }
-        });
+        return;
       }
+
+      // ✅ Always use group-qualified route so iOS never "guesses wrong"
+      router.push({
+        pathname: '/(tabs)/explore/[category]',
+        params: { category: String(category.id) },
+      });
     } catch (error) {
       console.error('[CategoryCard] Navigation error:', error);
     }
@@ -69,7 +66,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, { width: cardWidth }]}
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
@@ -80,19 +77,60 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
     >
       <Animated.View style={animatedStyle}>
         <LinearGradient
-          colors={[category.color + '60', category.color + '20', 'rgba(42, 27, 78, 0.4)']}
+          colors={[
+            category.color + '60',
+            category.color + '20',
+            theme.colors.cardBgTranslucent || 'rgba(42, 27, 78, 0.4)',
+          ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.gradient, { 
-            boxShadow: `0px 0px 20px ${category.color}40`,
-          }]}
+          style={[
+            styles.gradient,
+            {
+              height: cardWidth,
+              borderColor: theme.colors.border,
+              shadowColor: category.color,
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.25,
+              shadowRadius: 18,
+              elevation: 8,
+            },
+          ]}
         >
           <ParticleEffect count={3} color={category.color + '50'} />
-          
+
           <View style={styles.content}>
-            <Text style={styles.icon}>{category.icon}</Text>
-            <Text style={styles.name}>{category.name}</Text>
+            <Text
+              style={[
+                styles.icon,
+                {
+                  fontSize: 48 * textScale,
+                  textShadowColor: 'rgba(0,0,0,0.5)',
+                  textShadowOffset: { width: 0, height: 2 },
+                  textShadowRadius: 4,
+                },
+              ]}
+            >
+              {category.icon}
+            </Text>
+
+            <Text
+              style={[
+                styles.name,
+                {
+                  fontSize: 14 * textScale,
+                  color: theme.colors.textPrimary,
+                  textShadowColor: 'rgba(0,0,0,0.5)',
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 3,
+                },
+              ]}
+              numberOfLines={2}
+            >
+              {category.name}
+            </Text>
           </View>
+
           <View style={[styles.glowBorder, { borderColor: category.color + '60' }]} />
         </LinearGradient>
       </Animated.View>
@@ -102,20 +140,16 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
 
 const styles = StyleSheet.create({
   container: {
-    width: cardWidth,
     marginBottom: 12,
     borderRadius: 18,
     overflow: 'visible',
   },
   gradient: {
-    height: cardWidth * 1.0,
     padding: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
     borderRadius: 18,
-    elevation: 8,
     overflow: 'hidden',
   },
   content: {
@@ -124,17 +158,12 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   icon: {
-    fontSize: 48,
     marginBottom: 10,
-    textShadow: '0px 2px 4px rgba(0, 0, 0, 0.5)',
   },
   name: {
-    fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
     textAlign: 'center',
     fontFamily: 'SpaceMono',
-    textShadow: '0px 1px 3px rgba(0, 0, 0, 0.5)',
   },
   glowBorder: {
     position: 'absolute',

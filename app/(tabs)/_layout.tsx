@@ -1,49 +1,26 @@
-
-import React, { useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { Stack } from 'expo-router';
+import { useWindowDimensions } from 'react-native';
+
 import FloatingTabBar, { TabBarItem } from '@/components/FloatingTabBar';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 
 export default function TabLayout() {
   const { isOnboardingComplete, isCheckingOnboarding } = useOnboarding();
+  const { width } = useWindowDimensions();
 
-  useEffect(() => {
-    console.log('TabLayout - Onboarding complete:', isOnboardingComplete);
-    console.log('TabLayout - Checking onboarding:', isCheckingOnboarding);
-  }, [isOnboardingComplete, isCheckingOnboarding]);
+  const tabs: TabBarItem[] = useMemo(
+    () => [
+      { name: '(home)', route: '/(tabs)/(home)/', icon: 'home', label: 'Home' },
+      { name: 'explore', route: '/(tabs)/explore', icon: 'explore', label: 'Explore' },
+      { name: 'arcana', route: '/(tabs)/arcana', icon: 'arcana', label: 'Path' },
+      { name: 'favorites', route: '/(tabs)/favorites', icon: 'favorite', label: 'Favorites' },
+      { name: 'settings', route: '/(tabs)/settings', icon: 'settings', label: 'Settings' },
+    ],
+    []
+  );
 
-  const tabs: TabBarItem[] = [
-    {
-      name: '(home)',
-      route: '/(tabs)/(home)/',
-      icon: 'home',
-      label: 'Home',
-    },
-    {
-      name: 'explore',
-      route: '/(tabs)/explore',
-      icon: 'explore',
-      label: 'Explore',
-    },
-    {
-      name: 'arcana',
-      route: '/(tabs)/arcana',
-      icon: 'arcana',
-      label: 'Path',
-    },
-    {
-      name: 'favorites',
-      route: '/(tabs)/favorites',
-      icon: 'favorite',
-      label: 'Favorites',
-    },
-    {
-      name: 'settings',
-      route: '/(tabs)/settings',
-      icon: 'settings',
-      label: 'Settings',
-    },
-  ];
+  const showTabs = !isCheckingOnboarding && isOnboardingComplete;
 
   return (
     <>
@@ -54,14 +31,19 @@ export default function TabLayout() {
           contentStyle: { backgroundColor: '#08080B' },
         }}
       >
-        <Stack.Screen key="home" name="(home)" />
-        <Stack.Screen key="explore" name="explore" />
-        <Stack.Screen key="arcana" name="arcana" />
-        <Stack.Screen key="favorites" name="favorites" />
-        <Stack.Screen key="settings" name="settings" />
+        <Stack.Screen name="(home)" />
+        <Stack.Screen name="explore" />
+        <Stack.Screen name="arcana" />
+        <Stack.Screen name="favorites" />
+        <Stack.Screen name="settings" />
       </Stack>
-      {!isCheckingOnboarding && isOnboardingComplete && (
-        <FloatingTabBar tabs={tabs} containerWidth={380} />
+
+      {showTabs && (
+        <FloatingTabBar
+          tabs={tabs}
+          // ✅ avoid hard-coded iPhone width; clamp a bit so it doesn’t go goofy on iPad
+          containerWidth={Math.min(420, Math.max(320, width - 32))}
+        />
       )}
     </>
   );

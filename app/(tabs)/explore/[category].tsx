@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
@@ -12,16 +11,16 @@ import Animated, {
   Easing,
   FadeIn,
 } from 'react-native-reanimated';
+
 import { useAppTheme } from '@/contexts/ThemeContext';
-import { getCategoryById, Category } from '@/data/paranormal/categories';
-import { getCategoryTopics } from '@/data/paranormal';
+import { getCategoryById, type Category } from '@/data/paranormal/categories';
+import { getCategoryTopics } from '@/data/paranormal/index';
 import { ParticleEffect } from '@/components/ParticleEffect';
 import { HapticFeedback } from '@/utils/haptics';
 
 // ──────────────────────────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────────────────────────
-const { width } = Dimensions.get('window');
 const CARD_STAGGER_DELAY = 80;
 const FADE_IN_DURATION = 600;
 const REFRESH_DELAY = 1000;
@@ -39,16 +38,23 @@ interface Topic {
 
 interface TopicCardProps {
   topic: Topic;
-  categoryId: string;
   categoryColor: string;
   onPress: () => void;
   index: number;
 }
 
 // ──────────────────────────────────────────────────────────────
-// Topic Card Component
+// Helpers
 // ──────────────────────────────────────────────────────────────
-const TopicCard: React.FC<TopicCardProps> = React.memo(({ topic, categoryId, categoryColor, onPress, index }) => {
+function asStringParam(value: string | string[] | undefined): string {
+  if (!value) return '';
+  return Array.isArray(value) ? String(value[0] ?? '') : String(value);
+}
+
+// ──────────────────────────────────────────────────────────────
+// Topic Card
+// ──────────────────────────────────────────────────────────────
+const TopicCard: React.FC<TopicCardProps> = React.memo(({ topic, categoryColor, onPress, index }) => {
   const { theme, textScale } = useAppTheme();
   const scale = useSharedValue(1);
 
@@ -58,24 +64,15 @@ const TopicCard: React.FC<TopicCardProps> = React.memo(({ topic, categoryId, cat
 
   const handlePressIn = useCallback(() => {
     HapticFeedback.soft();
-    scale.value = withSpring(0.98, {
-      damping: 15,
-      stiffness: 300,
-    });
+    scale.value = withSpring(0.98, { damping: 15, stiffness: 300 });
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
   }, [scale]);
 
   return (
-    <Animated.View 
-      entering={FadeIn.delay(index * CARD_STAGGER_DELAY).duration(400)} 
-      style={styles.topicCardWrapper}
-    >
+    <Animated.View entering={FadeIn.delay(index * CARD_STAGGER_DELAY).duration(400)} style={styles.topicCardWrapper}>
       <TouchableOpacity
         onPress={onPress}
         onPressIn={handlePressIn}
@@ -93,21 +90,22 @@ const TopicCard: React.FC<TopicCardProps> = React.memo(({ topic, categoryId, cat
             style={[styles.topicCard, { borderColor: categoryColor + '60' }]}
           >
             <ParticleEffect count={3} color={categoryColor + '40'} />
-            
+
             <View style={styles.topicCardContent}>
               <View style={styles.topicTextContainer}>
                 <Text style={[styles.topicName, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
                   {topic.name}
                 </Text>
-                <Text 
-                  style={[styles.topicDescription, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]} 
+
+                <Text
+                  style={[styles.topicDescription, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]}
                   numberOfLines={2}
                 >
                   {topic.description}
                 </Text>
               </View>
             </View>
-            
+
             <View style={[styles.topicCardBorder, { borderColor: categoryColor + '60' }]} />
           </LinearGradient>
         </Animated.View>
@@ -119,37 +117,37 @@ const TopicCard: React.FC<TopicCardProps> = React.memo(({ topic, categoryId, cat
 TopicCard.displayName = 'TopicCard';
 
 // ──────────────────────────────────────────────────────────────
-// Main Component
+// Main
 // ──────────────────────────────────────────────────────────────
 export default function CategoryScreen() {
-  const { category: categoryId } = useLocalSearchParams<{ category: string }>();
+  const params = useLocalSearchParams();
+  const categoryId = asStringParam(params.category as any);
+
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { theme, textScale } = useAppTheme();
-  
-  // State
+
   const [refreshing, setRefreshing] = useState(false);
   const [category, setCategory] = useState<Category | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
 
-  // Animation values
   const fadeOpacity = useSharedValue(0);
   const scale = useSharedValue(0.95);
 
-  /**
-   * Loads category and its topics
-   */
   const loadCategoryData = useCallback(() => {
     if (!categoryId) {
-      console.warn('⚠️ No category ID provided');
+      console.warn('[Category] No category param');
+      setCategory(null);
+      setTopics([]);
       return;
     }
 
     try {
-      const categoryData = getCategoryById(categoryId as string);
-      const categoryTopics = getCategoryTopics(categoryId as string);
+      const categoryData = getCategoryById(String(categoryId));
+      const categoryTopics = getCategoryTopics(String(categoryId)) as Topic[] | undefined;
 
       if (!categoryData) {
-        console.warn('⚠️ Category not found:', categoryId);
+        console.warn('[Category] Not found:', categoryId);
         setCategory(null);
         setTopics([]);
         return;
@@ -158,20 +156,12 @@ export default function CategoryScreen() {
       setCategory(categoryData);
       setTopics(categoryTopics || []);
 
-      // Animate in
-      fadeOpacity.value = withTiming(1, {
-        duration: FADE_IN_DURATION,
-        easing: Easing.inOut(Easing.ease),
-      });
+      fadeOpacity.value = withTiming(1, { duration: FADE_IN_DURATION, easing: Easing.inOut(Easing.ease) });
+      scale.value = withTiming(1, { duration: FADE_IN_DURATION, easing: Easing.out(Easing.ease) });
 
-      scale.value = withTiming(1, {
-        duration: FADE_IN_DURATION,
-        easing: Easing.out(Easing.ease),
-      });
-
-      console.log('✅ Category loaded:', categoryData.name, `(${categoryTopics?.length || 0} topics)`);
+      console.log('[Category] Loaded:', categoryData.name, `(${categoryTopics?.length || 0} topics)`);
     } catch (error) {
-      console.error('❌ Error loading category:', error);
+      console.error('[Category] Error loading:', error);
       setCategory(null);
       setTopics([]);
     }
@@ -181,94 +171,70 @@ export default function CategoryScreen() {
     loadCategoryData();
   }, [loadCategoryData]);
 
-  /**
-   * Handles topic selection
-   */
-  const handleTopicPress = useCallback((topic: Topic) => {
-    try {
-      HapticFeedback.light();
-      console.log('NAV', `/explore/${categoryId}/${topic.id}`, { category: categoryId, topic: topic.id });
-      router.push({
-        pathname: `/explore/[category]/[topic]`,
-        params: { category: categoryId as string, topic: topic.id }
-      });
-    } catch (error) {
-      console.error('[CategoryScreen] Navigation error:', error);
-    }
-  }, [categoryId, router]);
+  const handleTopicPress = useCallback(
+    (topic: Topic) => {
+      try {
+        HapticFeedback.light();
 
-  /**
-   * Navigates back to previous screen
-   */
+        const c = String(categoryId);
+        const t = String(topic.id);
+
+        router.push({
+          pathname: '/(tabs)/explore/[category]/[topic]',
+          params: { category: c, topic: t },
+        });
+      } catch (error) {
+        console.error('[Category] Navigation error:', error);
+      }
+    },
+    [categoryId, router]
+  );
+
   const handleBackPress = useCallback(() => {
     HapticFeedback.light();
     router.back();
   }, [router]);
 
-  /**
-   * Handles pull-to-refresh
-   */
   const onRefresh = useCallback(async () => {
     try {
       HapticFeedback.medium();
       setRefreshing(true);
-      
-      // Simulate network delay for better UX
-      await new Promise(resolve => setTimeout(resolve, REFRESH_DELAY));
-      
+
+      await new Promise((resolve) => setTimeout(resolve, REFRESH_DELAY));
+
       loadCategoryData();
+
       HapticFeedback.success();
-      console.log('🔄 Category refreshed');
     } catch (error) {
-      console.error('❌ Error refreshing:', error);
+      console.error('[Category] Refresh error:', error);
       HapticFeedback.error();
     } finally {
       setRefreshing(false);
     }
   }, [loadCategoryData]);
 
-  /**
-   * Animated style for container
-   */
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: fadeOpacity.value,
     transform: [{ scale: scale.value }],
   }));
 
-  /**
-   * Memoized gradient colors
-   */
   const gradientColors = useMemo(() => {
     if (!category?.color) return theme.colors.backgroundGradient;
     return [category.color + '20', ...theme.colors.backgroundGradient.slice(1)];
   }, [category?.color, theme.colors.backgroundGradient]);
 
   // ──────────────────────────────────────────────────────────────
-  // Error State
+  // Error
   // ──────────────────────────────────────────────────────────────
   if (!category) {
     return (
       <View style={styles.container}>
-        <LinearGradient
-          colors={theme.colors.backgroundGradient}
-          style={styles.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        >
+        <LinearGradient colors={theme.colors.backgroundGradient} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
           <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <Animated.View 
-              entering={FadeIn.duration(300)}
-              style={styles.errorContainer}
-            >
+            <Animated.View entering={FadeIn.duration(300)} style={styles.errorContainer}>
               <Text style={styles.errorEmoji}>❌</Text>
-              <Text style={[styles.errorText, { color: theme.colors.textPrimary }]}>
-                Category not found
-              </Text>
-              <TouchableOpacity 
-                onPress={handleBackPress} 
-                style={styles.errorButton}
-                activeOpacity={0.8}
-              >
+              <Text style={[styles.errorText, { color: theme.colors.textPrimary }]}>Category not found</Text>
+              <TouchableOpacity onPress={handleBackPress} style={styles.errorButton} activeOpacity={0.8}>
                 <Text style={styles.errorButtonText}>Go Back</Text>
               </TouchableOpacity>
             </Animated.View>
@@ -279,31 +245,20 @@ export default function CategoryScreen() {
   }
 
   // ──────────────────────────────────────────────────────────────
-  // Main Content
+  // Main
   // ──────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={gradientColors}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-      >
+      <LinearGradient colors={gradientColors} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <Animated.View style={[styles.animatedContainer, animatedStyle]}>
-            {/* Header */}
             <View style={styles.header}>
-              <TouchableOpacity 
-                onPress={handleBackPress} 
-                style={styles.backButton}
-                accessibilityLabel="Go back"
-                accessibilityRole="button"
-              >
+              <TouchableOpacity onPress={handleBackPress} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button">
                 <Text style={[styles.backButtonText, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
                   ← Back
                 </Text>
               </TouchableOpacity>
-              
+
               <View style={styles.headerContent}>
                 <Text style={styles.categoryIcon}>{category.icon}</Text>
                 <Text style={[styles.categoryTitle, { color: theme.colors.textPrimary, fontSize: 32 * textScale }]}>
@@ -312,6 +267,7 @@ export default function CategoryScreen() {
                 <Text style={[styles.categoryDescription, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
                   {category.description}
                 </Text>
+
                 <View style={[styles.topicCountBadge, { backgroundColor: category.color + '30', borderColor: category.color + '60' }]}>
                   <Text style={[styles.topicCountText, { color: theme.colors.textPrimary, fontSize: 12 * textScale }]}>
                     {topics.length} {topics.length === 1 ? 'Topic' : 'Topics'}
@@ -320,10 +276,12 @@ export default function CategoryScreen() {
               </View>
             </View>
 
-            {/* Topics List */}
             <ScrollView
               style={styles.scrollView}
-              contentContainerStyle={styles.contentContainer}
+              contentContainerStyle={[
+                styles.contentContainer,
+                { paddingBottom: Math.max(120, 80 + insets.bottom) },
+              ]}
               showsVerticalScrollIndicator={false}
               refreshControl={
                 <RefreshControl
@@ -336,21 +294,18 @@ export default function CategoryScreen() {
               }
             >
               <ParticleEffect count={8} color={category.color + '30'} />
-              
+
               {topics.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>
-                    No topics available yet
-                  </Text>
+                  <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>No topics available yet</Text>
                 </View>
               ) : (
-                topics.map((topic, index) => (
+                topics.map((t, index) => (
                   <TopicCard
-                    key={topic.id}
-                    topic={topic}
-                    categoryId={categoryId as string}
+                    key={`topic-${String(t.id)}-${index}`}
+                    topic={t}
                     categoryColor={category.color}
-                    onPress={() => handleTopicPress(topic)}
+                    onPress={() => handleTopicPress(t)}
                     index={index}
                   />
                 ))
@@ -369,36 +324,16 @@ export default function CategoryScreen() {
 // Styles
 // ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  gradient: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  animatedContainer: {
-    flex: 1,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    marginBottom: 16,
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'SpaceMono',
-  },
-  headerContent: {
-    alignItems: 'center',
-  },
+  container: { flex: 1 },
+  gradient: { flex: 1 },
+  safeArea: { flex: 1 },
+  animatedContainer: { flex: 1 },
+
+  header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
+  backButton: { paddingVertical: 8, paddingHorizontal: 4, marginBottom: 16 },
+  backButtonText: { fontSize: 16, fontWeight: '600', fontFamily: 'SpaceMono' },
+
+  headerContent: { alignItems: 'center' },
   categoryIcon: {
     fontSize: 64,
     marginBottom: 12,
@@ -424,27 +359,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     lineHeight: 20,
   },
-  topicCountBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  topicCountText: {
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: 'SpaceMono',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
-  },
-  topicCardWrapper: {
-    marginBottom: 12,
-  },
+
+  topicCountBadge: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, borderWidth: 1 },
+  topicCountText: { fontSize: 12, fontWeight: '700', fontFamily: 'SpaceMono' },
+
+  scrollView: { flex: 1 },
+  contentContainer: { paddingHorizontal: 16, paddingBottom: 100 },
+
+  topicCardWrapper: { marginBottom: 12 },
   topicCard: {
     borderRadius: 18,
     padding: 18,
@@ -456,12 +378,8 @@ const styles = StyleSheet.create({
     elevation: 8,
     overflow: 'hidden',
   },
-  topicCardContent: {
-    zIndex: 2,
-  },
-  topicTextContainer: {
-    marginBottom: 0,
-  },
+  topicCardContent: { zIndex: 2 },
+  topicTextContainer: { marginBottom: 0 },
   topicName: {
     fontSize: 18,
     fontWeight: '800',
@@ -471,11 +389,8 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  topicDescription: {
-    fontSize: 13,
-    fontFamily: 'SpaceMono',
-    lineHeight: 18,
-  },
+  topicDescription: { fontSize: 13, fontFamily: 'SpaceMono', lineHeight: 18 },
+
   topicCardBorder: {
     position: 'absolute',
     top: 0,
@@ -486,35 +401,15 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     opacity: 0.3,
   },
-  bottomSpacer: {
-    height: 20,
-  },
-  emptyState: {
-    paddingVertical: 60,
-    alignItems: 'center',
-  },
-  emptyStateText: {
-    fontSize: 16,
-    fontFamily: 'SpaceMono',
-    textAlign: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  errorEmoji: {
-    fontSize: 64,
-    marginBottom: 20,
-  },
-  errorText: {
-    fontSize: 18,
-    fontFamily: 'SpaceMono',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 26,
-  },
+
+  bottomSpacer: { height: 20 },
+
+  emptyState: { paddingVertical: 60, alignItems: 'center' },
+  emptyStateText: { fontSize: 16, fontFamily: 'SpaceMono', textAlign: 'center' },
+
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  errorEmoji: { fontSize: 64, marginBottom: 20 },
+  errorText: { fontSize: 18, fontFamily: 'SpaceMono', textAlign: 'center', marginBottom: 24, lineHeight: 26 },
   errorButton: {
     backgroundColor: 'rgba(139, 92, 246, 0.8)',
     paddingHorizontal: 32,
@@ -528,10 +423,5 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  errorButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    fontFamily: 'SpaceMono',
-  },
+  errorButtonText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF', fontFamily: 'SpaceMono' },
 });
