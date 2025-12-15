@@ -57,20 +57,12 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
         return;
       }
 
-<<<<<<< Updated upstream
-      // ✅ CRITICAL FIX: Use proper route path with explicit params
-      const pathname = '/(tabs)/explore/[category]/index' as const;
-      const params = { category: String(category.id) };
-      
-      console.log('[CategoryCard] 🔥 Navigating to:', pathname, 'with params:', params);
-      
-=======
-      // ✅ FIX: navigate to the category screen (DO NOT include /index)
+      // ✅ CRITICAL FIX: Navigate to category screen (DO NOT include /index)
+      // Use explicit pathname with params object
       const pathname = '/(tabs)/explore/[category]' as const;
       const params = { category: String(category.id) };
 
       console.log('[CategoryCard] 🔥 Navigating to:', pathname, 'with params:', params);
->>>>>>> Stashed changes
       router.push({ pathname, params });
     } catch (error) {
       console.error('[CategoryCard] ❌ Navigation error:', error);
