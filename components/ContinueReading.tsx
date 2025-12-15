@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -27,10 +27,18 @@ export const ContinueReading: React.FC = () => {
     setRecentTopics(topics.slice(0, 3));
   };
 
-  const handleTopicPress = (topic: RecentTopic) => {
-    HapticFeedback.light();
-    router.push(`/explore/${topic.categoryId}/${topic.topicId}` as any);
-  };
+  const handleTopicPress = useCallback((topic: RecentTopic) => {
+    try {
+      HapticFeedback.light();
+      console.log('NAV', `/explore/${topic.categoryId}/${topic.topicId}`, { category: topic.categoryId, topic: topic.topicId });
+      router.push({
+        pathname: `/explore/[category]/[topic]`,
+        params: { category: topic.categoryId, topic: topic.topicId }
+      });
+    } catch (error) {
+      console.error('[ContinueReading] Navigation error:', error);
+    }
+  }, [router]);
 
   if (recentTopics.length === 0) {
     return null;

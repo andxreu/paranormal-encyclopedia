@@ -99,7 +99,7 @@ export default function FavoritesScreen() {
     }
   };
 
-  const handleFavoritePress = (favorite: FavoriteItem) => {
+  const handleFavoritePress = useCallback((favorite: FavoriteItem) => {
     try {
       HapticFeedback.light();
       
@@ -112,34 +112,50 @@ export default function FavoritesScreen() {
         case 'topic':
           if (favorite.categoryId && favorite.id) {
             const topicId = favorite.id.replace(`${favorite.categoryId}-`, '');
-            router.push(`/explore/${favorite.categoryId}/${topicId}` as any);
+            console.log('NAV', `/explore/${favorite.categoryId}/${topicId}`, { category: favorite.categoryId, topic: topicId });
+            router.push({
+              pathname: `/explore/[category]/[topic]`,
+              params: { category: favorite.categoryId, topic: topicId }
+            });
           }
           break;
         case 'codex':
           if (favorite.id) {
             const codexId = favorite.id.replace('codex-', '');
-            router.push(`/resources/codex/${codexId}` as any);
+            console.log('NAV', `/resources/codex/${codexId}`, { id: codexId });
+            router.push({
+              pathname: `/resources/codex/[id]`,
+              params: { id: codexId }
+            });
           }
           break;
         case 'haunted-location':
           if (favorite.id) {
             const locationId = favorite.id.replace('haunted-location-', '');
-            router.push(`/resources/haunted-locations/${locationId}` as any);
+            console.log('NAV', `/resources/haunted-locations/${locationId}`, { id: locationId });
+            router.push({
+              pathname: `/resources/haunted-locations/[id]`,
+              params: { id: locationId }
+            });
           }
           break;
         case 'documented-account':
           if (favorite.id) {
             const accountId = favorite.id.replace('documented-account-', '');
-            router.push(`/resources/documented-accounts/${accountId}` as any);
+            console.log('NAV', `/resources/documented-accounts/${accountId}`, { id: accountId });
+            router.push({
+              pathname: `/resources/documented-accounts/[id]`,
+              params: { id: accountId }
+            });
           }
           break;
         default:
           console.warn('Unknown favorite type:', favorite.type);
       }
     } catch (error) {
-      console.error('Error navigating to favorite:', error);
+      console.error('[Favorites] Navigation error:', error);
     }
-  };
+  }, [router]);
 
   const handleLightningPress = () => {
     try {

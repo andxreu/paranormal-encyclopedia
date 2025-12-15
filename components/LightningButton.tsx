@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
@@ -9,7 +9,7 @@ import Animated, {
   withSequence,
   withTiming,
   Easing,
-  runOnUI,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { usePathname } from 'expo-router';
@@ -25,58 +25,61 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
   const glowOpacity = useSharedValue(0.5);
 
   useEffect(() => {
-    runOnUI(() => {
-      'worklet';
-      scale.value = withRepeat(
-        withSequence(
-          withTiming(1.1, {
-            duration: 1500,
-            easing: Easing.inOut(Easing.ease),
-          }),
-          withTiming(1, {
-            duration: 1500,
-            easing: Easing.inOut(Easing.ease),
-          })
-        ),
-        -1,
-        false
-      );
-
-      rotate.value = withRepeat(
-        withTiming(360, {
-          duration: 20000,
-          easing: Easing.linear,
+    // Start animations
+    scale.value = withRepeat(
+      withSequence(
+        withTiming(1.1, {
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
         }),
-        -1,
-        false
-      );
+        withTiming(1, {
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+        })
+      ),
+      -1,
+      false
+    );
 
-      glowOpacity.value = withRepeat(
-        withSequence(
-          withTiming(0.9, {
-            duration: 1200,
-            easing: Easing.inOut(Easing.ease),
-          }),
-          withTiming(0.5, {
-            duration: 1200,
-            easing: Easing.inOut(Easing.ease),
-          })
-        ),
-        -1,
-        false
-      );
-    })();
+    rotate.value = withRepeat(
+      withTiming(360, {
+        duration: 20000,
+        easing: Easing.linear,
+      }),
+      -1,
+      false
+    );
+
+    glowOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.9, {
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        withTiming(0.5, {
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+        })
+      ),
+      -1,
+      false
+    );
+
+    // Cleanup animations on unmount
+    return () => {
+      cancelAnimation(scale);
+      cancelAnimation(rotate);
+      cancelAnimation(glowOpacity);
+    };
   }, [scale, rotate, glowOpacity]);
 
   const animatedStyle = useAnimatedStyle(() => {
-    'worklet';
     return {
       transform: [{ scale: scale.value }, { rotate: `${rotate.value}deg` }],
     };
   });
 
   const glowStyle = useAnimatedStyle(() => {
-    'worklet';
     return {
       opacity: glowOpacity.value,
     };
@@ -99,15 +102,16 @@ export const LightningButton: React.FC<LightningButtonProps> = ({ onPress }) => 
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} pointerEvents="box-none">
       <TouchableOpacity
         onPress={handlePress}
         activeOpacity={0.8}
         accessibilityLabel="Lightning button"
         accessibilityHint="Get a random paranormal fact"
         accessibilityRole="button"
+        style={styles.touchable}
       >
-        <Animated.View style={[styles.glowContainer, glowStyle]}>
+        <Animated.View style={[styles.glowContainer, glowStyle]} pointerEvents="none">
           <LinearGradient
             colors={['rgba(255, 215, 0, 0.4)', 'rgba(255, 165, 0, 0.2)']}
             start={{ x: 0, y: 0 }}
@@ -139,18 +143,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 1000,
   },
+  touchable: {
+    position: 'relative',
+  },
   glowContainer: {
     position: 'absolute',
     top: -15,
     left: -15,
     right: -15,
     bottom: -15,
+    zIndex: -1,
   },
   glow: {
     flex: 1,
     borderRadius: 35,
-    boxShadow: '0px 0px 30px rgba(255, 215, 0, 0.6)',
-    elevation: 15,
+    ...Platform.select({
+      ios: {
+        shadowColor: 'rgba(255, 215, 0, 0.6)',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 30,
+      },
+      android: {
+        elevation: 15,
+      },
+      web: {
+        boxShadow: '0px 0px 30px rgba(255, 215, 0, 0.6)',
+      },
+    }),
   },
   gradient: {
     width: 56,
@@ -160,8 +180,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
-    boxShadow: '0px 6px 24px rgba(255, 165, 0, 0.5)',
-    elevation: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: 'rgba(255, 165, 0, 0.5)',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 1,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 10,
+      },
+      web: {
+        boxShadow: '0px 6px 24px rgba(255, 165, 0, 0.5)',
+      },
+    }),
   },
   emoji: {
     fontSize: 28,

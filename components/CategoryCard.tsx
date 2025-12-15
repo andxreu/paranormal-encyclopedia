@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -34,28 +34,38 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
     };
   });
 
-  const handlePressIn = () => {
+  const handlePressIn = useCallback(() => {
     HapticFeedback.soft();
     scale.value = withSpring(0.95, {
       damping: 15,
       stiffness: 300,
     });
-  };
+  }, [scale]);
 
-  const handlePressOut = () => {
+  const handlePressOut = useCallback(() => {
     scale.value = withSpring(1, {
       damping: 15,
       stiffness: 300,
     });
-  };
+  }, [scale]);
 
-  const handlePress = () => {
-    HapticFeedback.light();
-    if (onPress) {
-      onPress();
+  const handlePress = useCallback(() => {
+    try {
+      HapticFeedback.light();
+      console.log('NAV', `/explore/${category.id}`, { categoryId: category.id });
+      
+      if (onPress) {
+        onPress();
+      } else {
+        router.push({
+          pathname: `/explore/[category]`,
+          params: { category: category.id }
+        });
+      }
+    } catch (error) {
+      console.error('[CategoryCard] Navigation error:', error);
     }
-    router.push(`/explore/${category.id}`);
-  };
+  }, [category.id, onPress, router]);
 
   return (
     <TouchableOpacity

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -30,7 +30,7 @@ export const TodaysMysteries: React.FC = () => {
   const [mysteries, setMysteries] = useState<MysteryCard[]>([]);
   const fadeOpacity = useSharedValue(1);
 
-  const generateMysteries = () => {
+  const generateMysteries = useCallback(() => {
     const allTopics = getAllTopics();
     const shuffled = [...allTopics].sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, 3);
@@ -50,13 +50,13 @@ export const TodaysMysteries: React.FC = () => {
     });
 
     setMysteries(newMysteries);
-  };
+  }, []);
 
   useEffect(() => {
     generateMysteries();
-  }, []);
+  }, [generateMysteries]);
 
-  const handleReroll = () => {
+  const handleReroll = useCallback(() => {
     HapticFeedback.medium();
     
     fadeOpacity.value = withSequence(
@@ -73,13 +73,20 @@ export const TodaysMysteries: React.FC = () => {
     setTimeout(() => {
       generateMysteries();
     }, 200);
-  };
+  }, [fadeOpacity, generateMysteries]);
 
-  const handleMysteryPress = (mystery: MysteryCard) => {
-    HapticFeedback.light();
-    console.log('Navigating to topic:', mystery.categoryId, mystery.id);
-    router.push(`/explore/${mystery.categoryId}/${mystery.id}`);
-  };
+  const handleMysteryPress = useCallback((mystery: MysteryCard) => {
+    try {
+      HapticFeedback.light();
+      console.log('NAV', `/explore/${mystery.categoryId}/${mystery.id}`, { category: mystery.categoryId, topic: mystery.id });
+      router.push({
+        pathname: `/explore/[category]/[topic]`,
+        params: { category: mystery.categoryId, topic: mystery.id }
+      });
+    } catch (error) {
+      console.error('[TodaysMysteries] Navigation error:', error);
+    }
+  }, [router]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {

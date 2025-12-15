@@ -144,11 +144,13 @@ export default function ExploreScreen() {
   const handleCategoryPress = useCallback((category: Category) => {
     try {
       HapticFeedback.light();
-      console.log('[Explore] Category pressed:', category.name);
-      router.push(`/explore/${category.id}` as any);
+      console.log('NAV', `/explore/${category.id}`, { category: category.id });
+      router.push({
+        pathname: `/explore/[category]`,
+        params: { category: category.id }
+      });
     } catch (error) {
-      console.error('[Explore] ✗ Error navigating to category:', error);
-      // Fail gracefully
+      console.error('[Explore] Navigation error:', error);
     }
   }, [router]);
 
@@ -158,11 +160,10 @@ export default function ExploreScreen() {
   const handleSearchPress = useCallback(() => {
     try {
       HapticFeedback.light();
-      console.log('[Explore] Search pressed');
-      router.push('/search' as any);
+      console.log('NAV', '/search', {});
+      router.push('/search');
     } catch (error) {
-      console.error('[Explore] ✗ Error navigating to search:', error);
-      // Fail gracefully
+      console.error('[Explore] Navigation error:', error);
     }
   }, [router]);
 

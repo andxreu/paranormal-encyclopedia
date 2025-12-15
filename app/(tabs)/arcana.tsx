@@ -1,8 +1,10 @@
+
 // app/(tabs)/arcana.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { gamificationService, VeilRank, Achievement, VEIL_RANKS } from '@/utils/gamification';
@@ -63,7 +65,7 @@ export default function ArcanaScreen() {
       console.log('[Arcana] ✓ Progress loaded:', {
         rank: rank.name,
         points: progress.totalPoints,
-        achievements: progress.achievements.length,
+        achievements: progress.achievements.filter(a => a.unlocked).length,
       });
     } catch (error) {
       console.error('[Arcana] ✗ Error loading progress:', error);
@@ -77,6 +79,16 @@ export default function ArcanaScreen() {
   useEffect(() => {
     loadProgress();
   }, [loadProgress]);
+
+  /**
+   * Reload progress when screen comes into focus
+   */
+  useFocusEffect(
+    useCallback(() => {
+      console.log('[Arcana] Screen focused, reloading progress...');
+      loadProgress();
+    }, [loadProgress])
+  );
 
   /**
    * Handles oracle button press - shows random fact

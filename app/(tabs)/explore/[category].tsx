@@ -39,6 +39,7 @@ interface Topic {
 
 interface TopicCardProps {
   topic: Topic;
+  categoryId: string;
   categoryColor: string;
   onPress: () => void;
   index: number;
@@ -47,7 +48,7 @@ interface TopicCardProps {
 // ──────────────────────────────────────────────────────────────
 // Topic Card Component
 // ──────────────────────────────────────────────────────────────
-const TopicCard: React.FC<TopicCardProps> = React.memo(({ topic, categoryColor, onPress, index }) => {
+const TopicCard: React.FC<TopicCardProps> = React.memo(({ topic, categoryId, categoryColor, onPress, index }) => {
   const { theme, textScale } = useAppTheme();
   const scale = useSharedValue(1);
 
@@ -184,9 +185,16 @@ export default function CategoryScreen() {
    * Handles topic selection
    */
   const handleTopicPress = useCallback((topic: Topic) => {
-    HapticFeedback.light();
-    console.log('📖 Topic pressed:', topic.name);
-    router.push(`/explore/${categoryId}/${topic.id}` as any);
+    try {
+      HapticFeedback.light();
+      console.log('NAV', `/explore/${categoryId}/${topic.id}`, { category: categoryId, topic: topic.id });
+      router.push({
+        pathname: `/explore/[category]/[topic]`,
+        params: { category: categoryId as string, topic: topic.id }
+      });
+    } catch (error) {
+      console.error('[CategoryScreen] Navigation error:', error);
+    }
   }, [categoryId, router]);
 
   /**
@@ -340,6 +348,7 @@ export default function CategoryScreen() {
                   <TopicCard
                     key={topic.id}
                     topic={topic}
+                    categoryId={categoryId as string}
                     categoryColor={category.color}
                     onPress={() => handleTopicPress(topic)}
                     index={index}
