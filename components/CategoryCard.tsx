@@ -57,12 +57,20 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
         return;
       }
 
+<<<<<<< Updated upstream
       // ✅ CRITICAL FIX: Use proper route path with explicit params
       const pathname = '/(tabs)/explore/[category]/index' as const;
       const params = { category: String(category.id) };
       
       console.log('[CategoryCard] 🔥 Navigating to:', pathname, 'with params:', params);
       
+=======
+      // ✅ FIX: navigate to the category screen (DO NOT include /index)
+      const pathname = '/(tabs)/explore/[category]' as const;
+      const params = { category: String(category.id) };
+
+      console.log('[CategoryCard] 🔥 Navigating to:', pathname, 'with params:', params);
+>>>>>>> Stashed changes
       router.push({ pathname, params });
     } catch (error) {
       console.error('[CategoryCard] ❌ Navigation error:', error);
@@ -137,7 +145,10 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category, onPress })
             </Text>
           </View>
 
-          <View style={[styles.glowBorder, { borderColor: category.color + '60' }]} pointerEvents="none" />
+          <View
+            style={[styles.glowBorder, { borderColor: category.color + '60' }]}
+            pointerEvents="none"
+          />
         </LinearGradient>
       </Animated.View>
     </Pressable>
