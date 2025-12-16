@@ -1,7 +1,7 @@
 
 // app/(tabs)/explore/[category]/index.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, InteractionManager } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -23,7 +23,6 @@ import { HapticFeedback } from '@/utils/haptics';
 // ──────────────────────────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────────────────────────
-const CARD_STAGGER_DELAY = 80;
 const FADE_IN_DURATION = 600;
 const REFRESH_DELAY = 1000;
 
@@ -42,7 +41,6 @@ interface TopicCardProps {
   topic: Topic;
   categoryColor: string;
   onPress: () => void;
-  index: number;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -56,7 +54,7 @@ function asStringParam(value: string | string[] | undefined): string {
 // ──────────────────────────────────────────────────────────────
 // Topic Card
 // ──────────────────────────────────────────────────────────────
-const TopicCard: React.FC<TopicCardProps> = React.memo(({ topic, categoryColor, onPress, index }) => {
+const TopicCard: React.FC<TopicCardProps> = React.memo(({ topic, categoryColor, onPress }) => {
   const { theme, textScale } = useAppTheme();
   const scale = useSharedValue(1);
 
@@ -74,47 +72,42 @@ const TopicCard: React.FC<TopicCardProps> = React.memo(({ topic, categoryColor, 
   }, [scale]);
 
   return (
-    <Animated.View entering={FadeIn.delay(index * CARD_STAGGER_DELAY).duration(400)} style={styles.topicCardWrapper}>
-      <TouchableOpacity
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        activeOpacity={1}
-        accessibilityLabel={topic.name}
-        accessibilityHint={`View details about ${topic.name}`}
-        accessibilityRole="button"
-      >
-        <Animated.View style={animatedStyle}>
-          <LinearGradient
-            colors={[categoryColor + '40', categoryColor + '20', theme.colors.cardBg]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.topicCard, { borderColor: categoryColor + '60' }]}
-          >
-            <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-              <ParticleEffect count={3} color={categoryColor + '40'} />
+    <TouchableOpacity
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
+      accessibilityLabel={topic.name}
+      accessibilityHint={`View details about ${topic.name}`}
+      accessibilityRole="button"
+      style={styles.topicCardWrapper}
+    >
+      <Animated.View style={animatedStyle}>
+        <LinearGradient
+          colors={[categoryColor + '40', categoryColor + '20', theme.colors.cardBg]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.topicCard, { borderColor: categoryColor + '60' }]}
+        >
+          <View style={styles.topicCardContent}>
+            <View style={styles.topicTextContainer}>
+              <Text style={[styles.topicName, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
+                {topic.name}
+              </Text>
+
+              <Text
+                style={[styles.topicDescription, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]}
+                numberOfLines={2}
+              >
+                {topic.description}
+              </Text>
             </View>
+          </View>
 
-            <View style={styles.topicCardContent}>
-              <View style={styles.topicTextContainer}>
-                <Text style={[styles.topicName, { color: theme.colors.textPrimary, fontSize: 18 * textScale }]}>
-                  {topic.name}
-                </Text>
-
-                <Text
-                  style={[styles.topicDescription, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]}
-                  numberOfLines={2}
-                >
-                  {topic.description}
-                </Text>
-              </View>
-            </View>
-
-            <View style={[styles.topicCardBorder, { borderColor: categoryColor + '60' }]} pointerEvents="none" />
-          </LinearGradient>
-        </Animated.View>
-      </TouchableOpacity>
-    </Animated.View>
+          <View style={[styles.topicCardBorder, { borderColor: categoryColor + '60' }]} pointerEvents="none" />
+        </LinearGradient>
+      </Animated.View>
+    </TouchableOpacity>
   );
 });
 
@@ -134,6 +127,7 @@ export default function CategoryScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [category, setCategory] = useState<Category | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [showParticles, setShowParticles] = useState(false);
 
   const fadeOpacity = useSharedValue(0);
   const scale = useSharedValue(0.95);
@@ -149,22 +143,36 @@ export default function CategoryScreen() {
     try {
       console.log('[Category] 🔥 Loading category:', categoryId);
       const categoryData = getCategoryById(String(categoryId));
-      const categoryTopics = getCategoryTopics(String(categoryId)) as Topic[] | undefined;
+      
+      // ✅ PERFORMANCE FIX: Load topics asynchronously to not block UI
+      InteractionManager.runAfterInteractions(() => {
+        const categoryTopics = getCategoryTopics(String(categoryId)) as Topic[] | undefined;
 
-      if (!categoryData) {
-        console.warn('[Category] ❌ Not found:', categoryId);
-        setCategory(null);
-        setTopics([]);
-        return;
+        if (!categoryData) {
+          console.warn('[Category] ❌ Not found:', categoryId);
+          setCategory(null);
+          setTopics([]);
+          return;
+        }
+
+        setCategory(categoryData);
+        setTopics(categoryTopics || []);
+
+        // Defer particle effects to after content is loaded
+        setTimeout(() => {
+          setShowParticles(true);
+        }, 300);
+
+        console.log('[Category] ✓ Loaded:', categoryData.name, `(${categoryTopics?.length || 0} topics)`);
+      });
+
+      // Show category immediately (before topics load)
+      if (categoryData) {
+        setCategory(categoryData);
       }
-
-      setCategory(categoryData);
-      setTopics(categoryTopics || []);
 
       fadeOpacity.value = withTiming(1, { duration: FADE_IN_DURATION, easing: Easing.inOut(Easing.ease) });
       scale.value = withTiming(1, { duration: FADE_IN_DURATION, easing: Easing.out(Easing.ease) });
-
-      console.log('[Category] ✓ Loaded:', categoryData.name, `(${categoryTopics?.length || 0} topics)`);
     } catch (error) {
       console.error('[Category] ❌ Error loading:', error);
       setCategory(null);
@@ -173,6 +181,7 @@ export default function CategoryScreen() {
   }, [categoryId, fadeOpacity, scale]);
 
   useEffect(() => {
+    setShowParticles(false);
     loadCategoryData();
   }, [loadCategoryData]);
 
@@ -182,7 +191,6 @@ export default function CategoryScreen() {
         console.log('[Category] 🔥 Topic pressed:', topic.id);
         HapticFeedback.light();
 
-        // ✅ CRITICAL FIX: Use explicit pathname with params
         const pathname = '/(tabs)/explore/[category]/[topic]' as const;
         const params = {
           category: String(categoryId),
@@ -232,6 +240,48 @@ export default function CategoryScreen() {
     return [category.color + '20', ...theme.colors.backgroundGradient.slice(1)];
   }, [category?.color, theme.colors.backgroundGradient]);
 
+  const renderTopicItem = useCallback(({ item }: { item: Topic }) => (
+    <TopicCard
+      topic={item}
+      categoryColor={category?.color || theme.colors.violet}
+      onPress={() => handleTopicPress(item)}
+    />
+  ), [category?.color, theme.colors.violet, handleTopicPress]);
+
+  const renderListHeader = useCallback(() => (
+    <>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBackPress} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button">
+          <Text style={[styles.backButtonText, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
+            ← Back
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.headerContent}>
+          <Text style={styles.categoryIcon}>{category?.icon}</Text>
+          <Text style={[styles.categoryTitle, { color: theme.colors.textPrimary, fontSize: 32 * textScale }]}>
+            {category?.name}
+          </Text>
+          <Text style={[styles.categoryDescription, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+            {category?.description}
+          </Text>
+
+          <View style={[styles.topicCountBadge, { backgroundColor: category?.color + '30', borderColor: category?.color + '60' }]}>
+            <Text style={[styles.topicCountText, { color: theme.colors.textPrimary, fontSize: 12 * textScale }]}>
+              {topics.length} {topics.length === 1 ? 'Topic' : 'Topics'}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </>
+  ), [category, topics.length, theme, textScale, handleBackPress]);
+
+  const renderListEmpty = useCallback(() => (
+    <View style={styles.emptyState}>
+      <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>No topics available yet</Text>
+    </View>
+  ), [theme]);
+
   // ──────────────────────────────────────────────────────────────
   // Error
   // ──────────────────────────────────────────────────────────────
@@ -261,32 +311,18 @@ export default function CategoryScreen() {
       <LinearGradient colors={gradientColors} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
         <SafeAreaView style={styles.safeArea} edges={['top']}>
           <Animated.View style={[styles.animatedContainer, animatedStyle]}>
-            <View style={styles.header}>
-              <TouchableOpacity onPress={handleBackPress} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button">
-                <Text style={[styles.backButtonText, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
-                  ← Back
-                </Text>
-              </TouchableOpacity>
-
-              <View style={styles.headerContent}>
-                <Text style={styles.categoryIcon}>{category.icon}</Text>
-                <Text style={[styles.categoryTitle, { color: theme.colors.textPrimary, fontSize: 32 * textScale }]}>
-                  {category.name}
-                </Text>
-                <Text style={[styles.categoryDescription, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                  {category.description}
-                </Text>
-
-                <View style={[styles.topicCountBadge, { backgroundColor: category.color + '30', borderColor: category.color + '60' }]}>
-                  <Text style={[styles.topicCountText, { color: theme.colors.textPrimary, fontSize: 12 * textScale }]}>
-                    {topics.length} {topics.length === 1 ? 'Topic' : 'Topics'}
-                  </Text>
-                </View>
+            {showParticles && (
+              <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+                <ParticleEffect count={8} color={category.color + '30'} />
               </View>
-            </View>
+            )}
 
-            <ScrollView
-              style={styles.scrollView}
+            <FlatList
+              data={topics}
+              renderItem={renderTopicItem}
+              keyExtractor={(item) => `topic-${item.id}`}
+              ListHeaderComponent={renderListHeader}
+              ListEmptyComponent={renderListEmpty}
               contentContainerStyle={[
                 styles.contentContainer,
                 { paddingBottom: Math.max(120, 80 + insets.bottom) },
@@ -301,29 +337,7 @@ export default function CategoryScreen() {
                   progressBackgroundColor={theme.colors.cardBg}
                 />
               }
-            >
-              <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-                <ParticleEffect count={8} color={category.color + '30'} />
-              </View>
-
-              {topics.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>No topics available yet</Text>
-                </View>
-              ) : (
-                topics.map((t, index) => (
-                  <TopicCard
-                    key={`topic-${String(t.id)}-${index}`}
-                    topic={t}
-                    categoryColor={category.color}
-                    onPress={() => handleTopicPress(t)}
-                    index={index}
-                  />
-                ))
-              )}
-
-              <View style={styles.bottomSpacer} />
-            </ScrollView>
+            />
           </Animated.View>
         </SafeAreaView>
       </LinearGradient>
@@ -374,8 +388,7 @@ const styles = StyleSheet.create({
   topicCountBadge: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, borderWidth: 1 },
   topicCountText: { fontSize: 12, fontWeight: '700', fontFamily: 'SpaceMono' },
 
-  scrollView: { flex: 1 },
-  contentContainer: { paddingHorizontal: 16, paddingBottom: 100 },
+  contentContainer: { paddingHorizontal: 16 },
 
   topicCardWrapper: { marginBottom: 12 },
   topicCard: {
@@ -412,8 +425,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     opacity: 0.3,
   },
-
-  bottomSpacer: { height: 20 },
 
   emptyState: { paddingVertical: 60, alignItems: 'center' },
   emptyStateText: { fontSize: 16, fontFamily: 'SpaceMono', textAlign: 'center' },

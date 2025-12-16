@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Stack } from 'expo-router';
 import { useWindowDimensions } from 'react-native';
@@ -28,6 +29,7 @@ export default function TabLayout() {
         screenOptions={{
           headerShown: false,
           animation: 'fade',
+          animationDuration: 200,
           contentStyle: { backgroundColor: '#08080B' },
         }}
       >
@@ -41,7 +43,6 @@ export default function TabLayout() {
       {showTabs && (
         <FloatingTabBar
           tabs={tabs}
-          // ✅ avoid hard-coded iPhone width; clamp a bit so it doesn’t go goofy on iPad
           containerWidth={Math.min(420, Math.max(320, width - 32))}
         />
       )}

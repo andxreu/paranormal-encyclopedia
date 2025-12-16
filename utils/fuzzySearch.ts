@@ -1,6 +1,6 @@
 
 // utils/fuzzySearch.ts
-// Robust fuzzy search implementation for paranormal encyclopedia
+// Optimized fuzzy search with lazy initialization and debouncing
 
 import Fuse from 'fuse.js';
 import { getAllTopics, type AnyTopicType } from '@/data/paranormal/index';
@@ -58,7 +58,7 @@ const FUSE_OPTIONS = {
 };
 
 // ──────────────────────────────────────────────────────────────
-// Indexes
+// Indexes (Lazy-loaded)
 // ──────────────────────────────────────────────────────────────
 
 let topicsIndex: Fuse<AnyTopicType> | null = null;
@@ -69,6 +69,8 @@ let documentedIndex: Fuse<DocumentedAccount> | null = null;
 let categoriesIndex: Fuse<any> | null = null;
 
 let isInitialized = false;
+let isInitializing = false;
+let initPromise: Promise<void> | null = null;
 
 // ──────────────────────────────────────────────────────────────
 // Utils
@@ -107,9 +109,6 @@ function getCategoryInfo(categoryId?: string): { name: string; color: string; ic
   };
 }
 
-/**
- * ✅ IMPORTANT: All explore routes must use tab-qualified paths for iOS.
- */
 function buildExploreCategoryRoute(categoryId: any): string {
   const cat = safeString(categoryId);
   return cat ? `/(tabs)/explore/${cat}` : '/(tabs)/explore';
@@ -124,62 +123,103 @@ function buildExploreTopicRoute(categoryId: any, topicId: any): string {
 }
 
 // ──────────────────────────────────────────────────────────────
-// Init
+// Lazy Initialization (Async, runs once)
 // ──────────────────────────────────────────────────────────────
 
-function initialize(): void {
-  if (isInitialized) return;
-
-  try {
-    console.log('[FuzzySearch] Initializing...');
-
-    try {
-      const topics = getAllTopics();
-      if (Array.isArray(topics) && topics.length > 0) topicsIndex = new Fuse(topics, FUSE_OPTIONS);
-    } catch (e) {
-      console.error('[FuzzySearch] Topics init error:', e);
-    }
-
-    try {
-      const codex = getAllCodexEntries();
-      if (Array.isArray(codex) && codex.length > 0) codexIndex = new Fuse(codex, FUSE_OPTIONS);
-    } catch (e) {
-      console.error('[FuzzySearch] Codex init error:', e);
-    }
-
-    try {
-      const glossary = getAllGlossaryTerms();
-      if (Array.isArray(glossary) && glossary.length > 0) glossaryIndex = new Fuse(glossary, FUSE_OPTIONS);
-    } catch (e) {
-      console.error('[FuzzySearch] Glossary init error:', e);
-    }
-
-    try {
-      const locs = getAllHauntedLocations();
-      if (Array.isArray(locs) && locs.length > 0) locationsIndex = new Fuse(locs, FUSE_OPTIONS);
-    } catch (e) {
-      console.error('[FuzzySearch] Locations init error:', e);
-    }
-
-    try {
-      const docs = getAllDocumentedAccounts();
-      if (Array.isArray(docs) && docs.length > 0) documentedIndex = new Fuse(docs, FUSE_OPTIONS);
-    } catch (e) {
-      console.error('[FuzzySearch] Documented init error:', e);
-    }
-
-    try {
-      if (Array.isArray(categories) && categories.length > 0) categoriesIndex = new Fuse(categories as any, FUSE_OPTIONS);
-    } catch (e) {
-      console.error('[FuzzySearch] Categories init error:', e);
-    }
-
-    isInitialized = true;
-    console.log('[FuzzySearch] ✓ Ready');
-  } catch (e) {
-    console.error('[FuzzySearch] Fatal init error:', e);
-    isInitialized = false;
+async function initialize(): Promise<void> {
+  // If already initialized, return immediately
+  if (isInitialized) {
+    return Promise.resolve();
   }
+
+  // If currently initializing, return the existing promise
+  if (isInitializing && initPromise) {
+    return initPromise;
+  }
+
+  // Start initialization
+  isInitializing = true;
+  
+  initPromise = new Promise<void>((resolve) => {
+    // Use setTimeout to defer initialization and not block the UI thread
+    setTimeout(() => {
+      try {
+        console.log('[FuzzySearch] 🔄 Initializing search indexes...');
+
+        // Build indexes one at a time to avoid blocking
+        try {
+          const topics = getAllTopics();
+          if (Array.isArray(topics) && topics.length > 0) {
+            topicsIndex = new Fuse(topics, FUSE_OPTIONS);
+            console.log('[FuzzySearch] ✓ Topics index ready');
+          }
+        } catch (e) {
+          console.error('[FuzzySearch] Topics init error:', e);
+        }
+
+        try {
+          const codex = getAllCodexEntries();
+          if (Array.isArray(codex) && codex.length > 0) {
+            codexIndex = new Fuse(codex, FUSE_OPTIONS);
+            console.log('[FuzzySearch] ✓ Codex index ready');
+          }
+        } catch (e) {
+          console.error('[FuzzySearch] Codex init error:', e);
+        }
+
+        try {
+          const glossary = getAllGlossaryTerms();
+          if (Array.isArray(glossary) && glossary.length > 0) {
+            glossaryIndex = new Fuse(glossary, FUSE_OPTIONS);
+            console.log('[FuzzySearch] ✓ Glossary index ready');
+          }
+        } catch (e) {
+          console.error('[FuzzySearch] Glossary init error:', e);
+        }
+
+        try {
+          const locs = getAllHauntedLocations();
+          if (Array.isArray(locs) && locs.length > 0) {
+            locationsIndex = new Fuse(locs, FUSE_OPTIONS);
+            console.log('[FuzzySearch] ✓ Locations index ready');
+          }
+        } catch (e) {
+          console.error('[FuzzySearch] Locations init error:', e);
+        }
+
+        try {
+          const docs = getAllDocumentedAccounts();
+          if (Array.isArray(docs) && docs.length > 0) {
+            documentedIndex = new Fuse(docs, FUSE_OPTIONS);
+            console.log('[FuzzySearch] ✓ Documented index ready');
+          }
+        } catch (e) {
+          console.error('[FuzzySearch] Documented init error:', e);
+        }
+
+        try {
+          if (Array.isArray(categories) && categories.length > 0) {
+            categoriesIndex = new Fuse(categories as any, FUSE_OPTIONS);
+            console.log('[FuzzySearch] ✓ Categories index ready');
+          }
+        } catch (e) {
+          console.error('[FuzzySearch] Categories init error:', e);
+        }
+
+        isInitialized = true;
+        isInitializing = false;
+        console.log('[FuzzySearch] ✅ All indexes ready');
+        resolve();
+      } catch (e) {
+        console.error('[FuzzySearch] Fatal init error:', e);
+        isInitialized = false;
+        isInitializing = false;
+        resolve(); // Resolve anyway to not block
+      }
+    }, 0);
+  });
+
+  return initPromise;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -353,10 +393,11 @@ function searchCategories(query: string, limit: number = 10): SearchResult[] {
   }
 }
 
-function search(query: string, limit: number = 20): SearchResult[] {
+async function search(query: string, limit: number = 20): Promise<SearchResult[]> {
   if (!isValidQuery(query)) return [];
 
-  if (!isInitialized) initialize();
+  // Ensure indexes are initialized
+  await initialize();
 
   const sanitized = sanitizeQuery(query);
   if (!sanitized) return [];
@@ -386,12 +427,13 @@ function search(query: string, limit: number = 20): SearchResult[] {
   }
 }
 
-function getCategorizedResults(query: string): CategorizedResults {
+async function getCategorizedResults(query: string): Promise<CategorizedResults> {
   if (!isValidQuery(query)) {
     return { topics: [], locations: [], codex: [], glossary: [], documented: [], categories: [] };
   }
 
-  if (!isInitialized) initialize();
+  // Ensure indexes are initialized
+  await initialize();
 
   const sanitized = sanitizeQuery(query);
   if (!sanitized) {
@@ -421,6 +463,8 @@ function reset(): void {
   documentedIndex = null;
   categoriesIndex = null;
   isInitialized = false;
+  isInitializing = false;
+  initPromise = null;
 }
 
 export const fuzzySearch = {

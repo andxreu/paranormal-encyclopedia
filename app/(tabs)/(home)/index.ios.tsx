@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useCallback } from "react";
-import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text } from "react-native";
+import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text, InteractionManager } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Animated, {
@@ -82,24 +82,28 @@ export default function HomeScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      console.log('Loading data...');
+      console.log('[Home] Loading data...');
       await storage.saveCategories(categories);
       await storage.saveLastSync();
       
-      try {
-        fuzzySearch.initialize();
-        console.log('Fuzzy search initialized successfully');
-      } catch (searchError) {
-        console.error('Error initializing fuzzy search:', searchError);
-      }
-      
-      console.log('Data cached successfully');
+      console.log('[Home] Data cached successfully');
       setIsLoading(false);
       setError(null);
       
       fadeOpacity.value = withTiming(1, {
         duration: 600,
         easing: Easing.inOut(Easing.ease),
+      });
+
+      // ✅ PERFORMANCE FIX: Initialize search index AFTER screen is interactive
+      InteractionManager.runAfterInteractions(() => {
+        setTimeout(() => {
+          fuzzySearch.initialize().then(() => {
+            console.log('[Home] ✓ Search index initialized (deferred)');
+          }).catch((error) => {
+            console.error('[Home] ⚠️ Search initialization failed:', error);
+          });
+        }, 500);
       });
 
       const firstLaunchAfterOnboarding = await storage.getData<boolean>('@first_launch_after_onboarding');
@@ -109,7 +113,7 @@ export default function HomeScreen() {
         setTimeout(() => setShowConfetti(false), 3000);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('[Home] Error loading data:', error);
       setError('Failed to load data. Please try again.');
       setIsLoading(false);
     }
@@ -117,17 +121,17 @@ export default function HomeScreen() {
 
   const initializeApp = useCallback(async () => {
     try {
-      console.log('Initializing app...');
+      console.log('[Home] Initializing app...');
       
       if (!isOnboardingComplete) {
-        console.log('Onboarding not complete, showing onboarding screen');
+        console.log('[Home] Onboarding not complete, showing onboarding screen');
         setIsLoading(false);
         return;
       }
 
       await loadData();
     } catch (error) {
-      console.error('Error initializing app:', error);
+      console.error('[Home] Error initializing app:', error);
       setError('Failed to initialize app. Please restart.');
       setIsLoading(false);
     }
@@ -141,13 +145,13 @@ export default function HomeScreen() {
 
   const handleOnboardingComplete = async () => {
     try {
-      console.log('Onboarding completed');
+      console.log('[Home] Onboarding completed');
       await setOnboardingComplete(true);
       await storage.saveData('@first_launch_after_onboarding', true);
       setIsLoading(true);
       await loadData();
     } catch (error) {
-      console.error('Error completing onboarding:', error);
+      console.error('[Home] Error completing onboarding:', error);
       setError('Failed to complete onboarding. Please try again.');
     }
   };
@@ -155,34 +159,34 @@ export default function HomeScreen() {
   const handleLightningPress = () => {
     try {
       HapticFeedback.medium();
-      console.log('Lightning button pressed');
+      console.log('[Home] Lightning button pressed');
       const randomFact = getRandomFact();
       setCurrentFact(randomFact);
       setShowFactModal(true);
     } catch (error) {
-      console.error('Error showing random fact:', error);
+      console.error('[Home] Error showing random fact:', error);
     }
   };
 
   const handleSearchResultPress = (result: any) => {
     try {
       HapticFeedback.light();
-      console.log('Search result pressed:', result);
+      console.log('[Home] Search result pressed:', result);
       if (result.route && result.route !== '/') {
         router.push(result.route as any);
       }
     } catch (error) {
-      console.error('Error navigating to search result:', error);
+      console.error('[Home] Error navigating to search result:', error);
     }
   };
 
   const handleResourcePress = (resource: ResourceCard) => {
     try {
       HapticFeedback.light();
-      console.log('Resource pressed:', resource.id);
+      console.log('[Home] Resource pressed:', resource.id);
       router.push(resource.route as any);
     } catch (error) {
-      console.error('Error navigating to resource:', error);
+      console.error('[Home] Error navigating to resource:', error);
     }
   };
 
@@ -195,15 +199,9 @@ export default function HomeScreen() {
       await storage.saveCategories(categories);
       await storage.saveLastSync();
       
-      try {
-        fuzzySearch.initialize();
-      } catch (searchError) {
-        console.error('Error reinitializing search:', searchError);
-      }
-      
       HapticFeedback.success();
     } catch (error) {
-      console.error('Error refreshing:', error);
+      console.error('[Home] Error refreshing:', error);
       HapticFeedback.error();
     } finally {
       setRefreshing(false);
@@ -454,7 +452,10 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderRadius: 18,
-    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
     elevation: 8,
   },
   resourceIcon: {

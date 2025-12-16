@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Stack } from 'expo-router';
 import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
 
@@ -10,13 +10,14 @@ export default function TabLayout() {
 
   const showTabs = !isCheckingOnboarding && isOnboardingComplete;
 
-  // ✅ While onboarding is not complete, we still mount the screens,
-  // but we do NOT show the iOS native tab bar (matches Android behavior).
+  // While onboarding is not complete, use Stack without native tabs
   if (!showTabs) {
     return (
       <Stack
         screenOptions={{
           headerShown: false,
+          animation: 'fade',
+          animationDuration: 200,
           contentStyle: { backgroundColor: '#08080B' },
         }}
       >
@@ -36,6 +37,7 @@ export default function TabLayout() {
       iconColor="#A0A0A0"
       screenOptions={{
         headerShown: false,
+        animation: 'fade',
       }}
     >
       <NativeTabs.Trigger name="(home)">

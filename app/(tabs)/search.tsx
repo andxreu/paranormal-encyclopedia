@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, InteractionManager } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -25,64 +25,111 @@ const CATEGORY_LABELS: Record<string, string> = {
   categories: 'Categories',
 };
 
+const DEBOUNCE_MS = 200;
+
 export default function SearchScreen() {
   const { theme, textScale } = useAppTheme();
   const router = useRouter();
+  const inputRef = useRef<TextInput>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [categorizedResults, setCategorizedResults] = useState<Record<string, SearchResult[]>>({});
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const fadeOpacity = useSharedValue(0);
 
   useEffect(() => {
-    loadSearchHistory();
+    // Fade in animation
     fadeOpacity.value = withTiming(1, {
       duration: 600,
       easing: Easing.inOut(Easing.ease),
     });
+
+    // Load search history
+    loadSearchHistory();
+
+    // Auto-focus input after screen transition completes
+    const task = InteractionManager.runAfterInteractions(() => {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    });
+
+    return () => task.cancel();
   }, [fadeOpacity]);
 
   const loadSearchHistory = async () => {
-    const history = await storage.getSearchHistory();
-    setSearchHistory(history);
+    try {
+      const history = await storage.getSearchHistory();
+      setSearchHistory(history);
+    } catch (error) {
+      console.error('[Search] Error loading history:', error);
+    }
   };
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query);
-    
+
+    // Clear previous debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
     if (query.trim() === '') {
       setCategorizedResults({});
+      setIsSearching(false);
       return;
     }
 
-    if (query.trim().length >= 2) {
-      await storage.saveSearchHistory(query.trim());
-      await loadSearchHistory();
-    }
+    setIsSearching(true);
 
-    const results = fuzzySearch.getCategorizedResults(query);
-    setCategorizedResults(results);
-  };
+    // Debounce search
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        // Save to history if query is long enough
+        if (query.trim().length >= 2) {
+          await storage.saveSearchHistory(query.trim());
+          await loadSearchHistory();
+        }
 
-  const handleResultPress = (result: SearchResult) => {
+        // Perform search
+        const results = await fuzzySearch.getCategorizedResults(query);
+        setCategorizedResults(results);
+      } catch (error) {
+        console.error('[Search] Error searching:', error);
+        setCategorizedResults({});
+      } finally {
+        setIsSearching(false);
+      }
+    }, DEBOUNCE_MS);
+  }, []);
+
+  const handleResultPress = useCallback((result: SearchResult) => {
     HapticFeedback.light();
-    console.log('Search result pressed:', result);
+    console.log('[Search] Result pressed:', result.title);
     if (result.route && result.route !== '/') {
       router.push(result.route as any);
     }
-  };
+  }, [router]);
 
-  const handleClearHistory = async () => {
+  const handleClearHistory = useCallback(async () => {
     HapticFeedback.medium();
     await storage.clearSearchHistory();
     setSearchHistory([]);
-  };
+  }, []);
 
-  const highlightText = (text: string, query: string) => {
+  const handleHistoryItemPress = useCallback((item: string) => {
+    HapticFeedback.soft();
+    handleSearch(item);
+  }, [handleSearch]);
+
+  const highlightText = useCallback((text: string, query: string) => {
     if (!query.trim()) {
       return text;
     }
-    
+
     const parts = text.split(new RegExp(`(${query})`, 'gi'));
     return parts.map((part, index) => {
       if (part.toLowerCase() === query.toLowerCase()) {
@@ -94,15 +141,81 @@ export default function SearchScreen() {
       }
       return part;
     });
-  };
+  }, []);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: fadeOpacity.value,
-    };
-  });
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: fadeOpacity.value,
+  }));
 
   const totalResults = Object.values(categorizedResults).reduce((sum, arr) => sum + arr.length, 0);
+
+  const renderResultItem = useCallback(({ item }: { item: SearchResult }) => (
+    <TouchableOpacity
+      style={[styles.resultCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
+      onPress={() => handleResultPress(item)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.resultHeader}>
+        <View style={styles.resultIconContainer}>
+          <Text style={styles.resultIcon}>{item.icon || '📄'}</Text>
+        </View>
+        <View style={styles.resultContent}>
+          <Text style={[styles.resultTitle, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
+            {highlightText(item.title, searchQuery)}
+          </Text>
+          <Text style={[styles.resultDescription, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]} numberOfLines={2}>
+            {highlightText(item.description, searchQuery)}
+          </Text>
+        </View>
+      </View>
+      {item.color && (
+        <View style={[styles.resultAccent, { backgroundColor: item.color }]} />
+      )}
+    </TouchableOpacity>
+  ), [theme, textScale, searchQuery, highlightText, handleResultPress]);
+
+  const renderHistoryItem = useCallback(({ item }: { item: string }) => (
+    <TouchableOpacity
+      style={[styles.historyItem, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
+      onPress={() => handleHistoryItemPress(item)}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.historyIcon}>🕐</Text>
+      <Text style={[styles.historyText, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
+        {item}
+      </Text>
+    </TouchableOpacity>
+  ), [theme, textScale, handleHistoryItemPress]);
+
+  const renderCategorySection = useCallback(({ item }: { item: [string, SearchResult[]] }) => {
+    const [category, results] = item;
+    if (results.length === 0) return null;
+
+    return (
+      <Animated.View
+        entering={FadeIn.duration(400)}
+        style={styles.categorySection}
+      >
+        <View style={styles.categorySectionHeader}>
+          <Text style={[styles.categoryTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
+            {CATEGORY_LABELS[category] || category}
+          </Text>
+          <Text style={[styles.categoryCount, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
+            {results.length}
+          </Text>
+        </View>
+
+        <FlatList
+          data={results}
+          renderItem={renderResultItem}
+          keyExtractor={(item, index) => `${category}-${item.id}-${index}`}
+          scrollEnabled={false}
+        />
+      </Animated.View>
+    );
+  }, [theme, textScale, renderResultItem]);
+
+  const categoryEntries = Object.entries(categorizedResults).filter(([_, results]) => results.length > 0);
 
   return (
     <View style={styles.container}>
@@ -127,6 +240,7 @@ export default function SearchScreen() {
               <View style={[styles.searchInputContainer, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}>
                 <Text style={styles.searchIcon}>🔍</Text>
                 <TextInput
+                  ref={inputRef}
                   style={[styles.searchInput, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}
                   placeholder="Search everything..."
                   placeholderTextColor={theme.colors.textSecondary}
@@ -134,6 +248,7 @@ export default function SearchScreen() {
                   onChangeText={handleSearch}
                   autoCapitalize="none"
                   autoCorrect={false}
+                  returnKeyType="search"
                 />
                 {searchQuery.length > 0 && (
                   <TouchableOpacity
@@ -146,14 +261,13 @@ export default function SearchScreen() {
               </View>
             </View>
 
-            <ScrollView
-              style={styles.scrollView}
-              contentContainerStyle={styles.contentContainer}
-              showsVerticalScrollIndicator={false}
-            >
-              {searchQuery.trim() === '' ? (
-                <>
-                  {searchHistory.length > 0 && (
+            {searchQuery.trim() === '' ? (
+              <FlatList
+                style={styles.scrollView}
+                contentContainerStyle={styles.contentContainer}
+                showsVerticalScrollIndicator={false}
+                ListHeaderComponent={
+                  searchHistory.length > 0 ? (
                     <View style={styles.historySection}>
                       <View style={styles.historySectionHeader}>
                         <Text style={[styles.historySectionTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
@@ -165,98 +279,48 @@ export default function SearchScreen() {
                           </Text>
                         </TouchableOpacity>
                       </View>
-                      {searchHistory.map((item, index) => (
-                        <React.Fragment key={index}>
-                          <TouchableOpacity
-                            style={[styles.historyItem, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
-                            onPress={() => handleSearch(item)}
-                            activeOpacity={0.7}
-                          >
-                            <Text style={styles.historyIcon}>🕐</Text>
-                            <Text style={[styles.historyText, { color: theme.colors.textPrimary, fontSize: 14 * textScale }]}>
-                              {item}
-                            </Text>
-                          </TouchableOpacity>
-                        </React.Fragment>
-                      ))}
                     </View>
-                  )}
-                  <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyEmoji}>🔮</Text>
-                    <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary, fontSize: 24 * textScale }]}>
-                      Start Searching
-                    </Text>
-                    <Text style={[styles.emptyText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                      Search through topics, locations, codex, glossary, and more
-                    </Text>
-                  </View>
-                </>
-              ) : totalResults === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyEmoji}>👻</Text>
-                  <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary, fontSize: 24 * textScale }]}>
-                    No Results Found
-                  </Text>
-                  <Text style={[styles.emptyText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
-                    Try searching for something else
-                  </Text>
-                </View>
-              ) : (
-                <>
+                  ) : (
+                    <View style={styles.emptyContainer}>
+                      <Text style={styles.emptyEmoji}>🔮</Text>
+                      <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary, fontSize: 24 * textScale }]}>
+                        Start Searching
+                      </Text>
+                      <Text style={[styles.emptyText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                        Search through topics, locations, codex, glossary, and more
+                      </Text>
+                    </View>
+                  )
+                }
+                data={searchHistory}
+                renderItem={renderHistoryItem}
+                keyExtractor={(item, index) => `history-${index}`}
+              />
+            ) : totalResults === 0 && !isSearching ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyEmoji}>👻</Text>
+                <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary, fontSize: 24 * textScale }]}>
+                  No Results Found
+                </Text>
+                <Text style={[styles.emptyText, { color: theme.colors.textSecondary, fontSize: 14 * textScale }]}>
+                  Try searching for something else
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                style={styles.scrollView}
+                contentContainerStyle={styles.contentContainer}
+                showsVerticalScrollIndicator={false}
+                ListHeaderComponent={
                   <Text style={[styles.resultsCount, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]}>
-                    {totalResults} results found
+                    {isSearching ? 'Searching...' : `${totalResults} results found`}
                   </Text>
-
-                  {Object.entries(categorizedResults).map(([category, results]) => {
-                    if (results.length === 0) return null;
-                    
-                    return (
-                      <Animated.View
-                        key={category}
-                        entering={FadeIn.duration(400)}
-                        style={styles.categorySection}
-                      >
-                        <View style={styles.categorySectionHeader}>
-                          <Text style={[styles.categoryTitle, { color: theme.colors.textPrimary, fontSize: 16 * textScale }]}>
-                            {CATEGORY_LABELS[category] || category}
-                          </Text>
-                          <Text style={[styles.categoryCount, { color: theme.colors.textSecondary, fontSize: 12 * textScale }]}>
-                            {results.length}
-                          </Text>
-                        </View>
-
-                        {results.map((result, index) => (
-                          <React.Fragment key={index}>
-                            <TouchableOpacity
-                              style={[styles.resultCard, { backgroundColor: theme.colors.cardBg, borderColor: theme.colors.border }]}
-                              onPress={() => handleResultPress(result)}
-                              activeOpacity={0.7}
-                            >
-                              <View style={styles.resultHeader}>
-                                <View style={styles.resultIconContainer}>
-                                  <Text style={styles.resultIcon}>{result.icon || '📄'}</Text>
-                                </View>
-                                <View style={styles.resultContent}>
-                                  <Text style={[styles.resultTitle, { color: theme.colors.textPrimary, fontSize: 15 * textScale }]}>
-                                    {highlightText(result.title, searchQuery)}
-                                  </Text>
-                                  <Text style={[styles.resultDescription, { color: theme.colors.textSecondary, fontSize: 13 * textScale }]} numberOfLines={2}>
-                                    {highlightText(result.description, searchQuery)}
-                                  </Text>
-                                </View>
-                              </View>
-                              {result.color && (
-                                <View style={[styles.resultAccent, { backgroundColor: result.color }]} />
-                              )}
-                            </TouchableOpacity>
-                          </React.Fragment>
-                        ))}
-                      </Animated.View>
-                    );
-                  })}
-                </>
-              )}
-            </ScrollView>
+                }
+                data={categoryEntries}
+                renderItem={renderCategorySection}
+                keyExtractor={([category]) => category}
+              />
+            )}
           </Animated.View>
         </SafeAreaView>
       </LinearGradient>
@@ -306,7 +370,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    boxShadow: '0px 4px 16px rgba(139, 92, 246, 0.3)',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
     elevation: 6,
   },
   searchIcon: {
@@ -422,7 +489,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderLeftWidth: 3,
-    boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
     elevation: 4,
     overflow: 'hidden',
   },

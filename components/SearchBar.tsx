@@ -1,29 +1,34 @@
-
 // components/SearchBar.tsx
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { HapticFeedback } from '@/utils/haptics';
 
 interface SearchBarProps {
+  // kept for compatibility; not used in button-mode
   onResultPress?: (result: any) => void;
 }
 
-export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
-  const { theme } = useAppTheme();
+export const SearchBar: React.FC<SearchBarProps> = () => {
+  const { theme, textScale } = useAppTheme();
   const router = useRouter();
 
-  const handleSearchBarPress = useCallback(() => {
+  const colors = useMemo(
+    () => ({
+      bg: theme.colors.cardBg || 'rgba(42, 27, 78, 0.8)',
+      border: theme.colors.border || 'rgba(139, 92, 246, 0.4)',
+      placeholder: theme.colors.textSecondary || '#808080',
+    }),
+    [theme]
+  );
+
+  const handlePress = useCallback(() => {
     try {
-      console.log('[SearchBar] 🔥 PRESS DETECTED - Navigating to search');
       HapticFeedback.light();
-      
-      // ✅ CRITICAL FIX: Use explicit route path
-      const pathname = '/(tabs)/search' as const;
-      console.log('[SearchBar] 🔥 Pushing route:', pathname);
-      
-      router.push(pathname);
+
+      // Navigate to your search screen. If your route is different, update only this line.
+      router.push('/(tabs)/search' as any);
     } catch (error) {
       console.error('[SearchBar] ❌ Navigation error:', error);
     }
@@ -31,22 +36,28 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onResultPress }) => {
 
   return (
     <View style={styles.container}>
-      <Pressable 
+      <Pressable
+        onPress={handlePress}
         style={({ pressed }) => [
-          styles.searchInputContainer,
+          styles.searchButton,
           {
-            backgroundColor: theme.colors.cardBg || 'rgba(42, 27, 78, 0.8)',
-            borderColor: theme.colors.border || 'rgba(139, 92, 246, 0.4)',
-            opacity: pressed ? 0.7 : 1,
-          }
+            backgroundColor: colors.bg,
+            borderColor: colors.border,
+            opacity: pressed ? 0.85 : 1,
+          },
         ]}
-        onPress={handleSearchBarPress}
         accessibilityLabel="Search"
-        accessibilityHint="Open search screen"
+        accessibilityHint="Opens the search screen"
         accessibilityRole="button"
       >
         <Text style={styles.searchIcon}>🔍</Text>
-        <Text style={[styles.searchPlaceholder, { color: theme.colors.textSecondary || '#808080' }]}>
+        <Text
+          style={[
+            styles.searchLabel,
+            { color: colors.placeholder, fontSize: 15 * (textScale ?? 1) },
+          ]}
+          numberOfLines={1}
+        >
           Search mysteries, facts, topics...
         </Text>
       </Pressable>
@@ -59,7 +70,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     zIndex: 100,
   },
-  searchInputContainer: {
+  searchButton: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 16,
@@ -76,9 +87,8 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginRight: 12,
   },
-  searchPlaceholder: {
+  searchLabel: {
     flex: 1,
-    fontSize: 15,
     fontFamily: 'SpaceMono',
   },
 });

@@ -1,6 +1,7 @@
+
 // app/(tabs)/(home)/index.tsx
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text } from 'react-native';
+import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text, InteractionManager } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Animated, {
@@ -45,7 +46,6 @@ interface ResourceCard {
 // Constants
 // ──────────────────────────────────────────────────────────────
 const REFRESH_DELAY = 1500;
-const CONFETTI_DURATION = 3000;
 const FADE_IN_DURATION = 600;
 const SPRING_CONFIG = {
   damping: 15,
@@ -107,24 +107,15 @@ export default function HomeScreen() {
   const gradientColors = useMemo(() => theme.colors.backgroundGradient, [theme.colors.backgroundGradient]);
 
   /**
-   * Loads and caches app data
+   * Loads and caches app data (optimized - no blocking operations)
    */
   const loadData = useCallback(async () => {
     try {
       console.log('[Home] 📦 Loading app data...');
       
-      // Save categories to storage
+      // Save categories to storage (fast operation)
       await storage.saveCategories(categories);
       await storage.saveLastSync();
-      
-      // Initialize search index
-      try {
-        fuzzySearch.initialize();
-        console.log('[Home] ✓ Fuzzy search initialized');
-      } catch (searchError) {
-        console.error('[Home] ⚠️ Search initialization failed:', searchError);
-        // Non-critical error - continue loading
-      }
       
       console.log('[Home] ✓ Data cached successfully');
       setIsLoading(false);
@@ -136,12 +127,23 @@ export default function HomeScreen() {
         easing: Easing.inOut(Easing.ease),
       });
 
-      // Check for first launch after onboarding (for potential confetti animation)
+      // ✅ PERFORMANCE FIX: Initialize search index AFTER screen is interactive
+      // This prevents blocking the UI thread during navigation
+      InteractionManager.runAfterInteractions(() => {
+        setTimeout(() => {
+          fuzzySearch.initialize().then(() => {
+            console.log('[Home] ✓ Search index initialized (deferred)');
+          }).catch((error) => {
+            console.error('[Home] ⚠️ Search initialization failed:', error);
+          });
+        }, 500);
+      });
+
+      // Check for first launch after onboarding
       const firstLaunchAfterOnboarding = await storage.getData<boolean>('@first_launch_after_onboarding');
       if (firstLaunchAfterOnboarding === true) {
         await storage.saveData('@first_launch_after_onboarding', false);
         console.log('[Home] ✓ First launch after onboarding detected');
-        // Confetti feature ready for future implementation
       }
     } catch (error) {
       console.error('[Home] ✗ Error loading data:', error);
@@ -208,7 +210,6 @@ export default function HomeScreen() {
       setShowFactModal(true);
     } catch (error) {
       console.error('[Home] ✗ Error showing random fact:', error);
-      // Fail gracefully - don't show error to user
     }
   }, []);
 
@@ -224,7 +225,6 @@ export default function HomeScreen() {
       }
     } catch (error) {
       console.error('[Home] ✗ Error navigating to search result:', error);
-      // Fail gracefully
     }
   }, [router]);
 
@@ -238,7 +238,6 @@ export default function HomeScreen() {
       router.push(resource.route as any);
     } catch (error) {
       console.error('[Home] ✗ Error navigating to resource:', error);
-      // Fail gracefully
     }
   }, [router]);
 
@@ -256,14 +255,6 @@ export default function HomeScreen() {
       // Refresh data
       await storage.saveCategories(categories);
       await storage.saveLastSync();
-      
-      // Reinitialize search
-      try {
-        fuzzySearch.initialize();
-      } catch (searchError) {
-        console.error('[Home] ⚠️ Error reinitializing search:', searchError);
-        // Non-critical - continue
-      }
       
       HapticFeedback.success();
       console.log('[Home] ✓ Refresh completed');
