@@ -14,7 +14,6 @@ import Animated, {
   FadeOut,
 } from 'react-native-reanimated';
 import { SpaceHeader } from '@/components/SpaceHeader';
-import { SearchBar } from '@/components/SearchBar';
 import { TodaysMysteries } from '@/components/TodaysMysteries';
 import { ContinueReading } from '@/components/ContinueReading';
 import { SectionHeader } from '@/components/SectionHeader';
@@ -335,11 +334,6 @@ export default function HomeScreen() {
             {/* Header */}
             <SpaceHeader />
 
-            {/* Search - Navigation only */}
-            <View style={styles.searchBarContainer}>
-              <SearchBar />
-            </View>
-
             {/* Today's Mysteries */}
             <TodaysMysteries />
 
@@ -469,9 +463,6 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 16,
     paddingBottom: 120,
-  },
-  searchBarContainer: {
-    marginTop: -10,
   },
   categoriesGrid: {
     flexDirection: 'row',

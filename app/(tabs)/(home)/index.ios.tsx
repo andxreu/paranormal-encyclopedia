@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useCallback } from "react";
-import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text, InteractionManager } from "react-native";
+import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Animated, {
@@ -11,7 +11,6 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { SpaceHeader } from "@/components/SpaceHeader";
-import { SearchBar } from "@/components/SearchBar";
 import { TodaysMysteries } from "@/components/TodaysMysteries";
 import { ContinueReading } from "@/components/ContinueReading";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -23,7 +22,6 @@ import { HomeLoadingSkeleton } from "@/components/LoadingSkeleton";
 import { categories } from "@/data/paranormal/categories";
 import { getRandomFact, ParanormalFact } from "@/data/paranormal/facts";
 import { storage } from "@/utils/storage";
-import { fuzzySearch } from "@/utils/fuzzySearch";
 import { useAppTheme } from "@/contexts/ThemeContext";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { HapticFeedback } from "@/utils/haptics";
@@ -95,17 +93,6 @@ export default function HomeScreen() {
         easing: Easing.inOut(Easing.ease),
       });
 
-      // ✅ PERFORMANCE FIX: Initialize search index AFTER screen is interactive
-      InteractionManager.runAfterInteractions(() => {
-        setTimeout(() => {
-          fuzzySearch.initialize().then(() => {
-            console.log('[Home] ✓ Search index initialized (deferred)');
-          }).catch((error) => {
-            console.error('[Home] ⚠️ Search initialization failed:', error);
-          });
-        }, 500);
-      });
-
       const firstLaunchAfterOnboarding = await storage.getData<boolean>('@first_launch_after_onboarding');
       if (firstLaunchAfterOnboarding !== false) {
         setShowConfetti(true);
@@ -165,18 +152,6 @@ export default function HomeScreen() {
       setShowFactModal(true);
     } catch (error) {
       console.error('[Home] Error showing random fact:', error);
-    }
-  };
-
-  const handleSearchResultPress = (result: any) => {
-    try {
-      HapticFeedback.light();
-      console.log('[Home] Search result pressed:', result);
-      if (result.route && result.route !== '/') {
-        router.push(result.route as any);
-      }
-    } catch (error) {
-      console.error('[Home] Error navigating to search result:', error);
     }
   };
 
@@ -300,10 +275,6 @@ export default function HomeScreen() {
             }
           >
             <SpaceHeader />
-
-            <View style={styles.searchBarContainer}>
-              <SearchBar onResultPress={handleSearchResultPress} />
-            </View>
 
             <TodaysMysteries />
 
@@ -430,9 +401,6 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 16,
     paddingBottom: 120,
-  },
-  searchBarContainer: {
-    marginTop: -10,
   },
   categoriesGrid: {
     flexDirection: 'row',
