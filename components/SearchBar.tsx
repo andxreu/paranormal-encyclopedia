@@ -1,3 +1,4 @@
+
 // components/SearchBar.tsx
 import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
@@ -5,12 +6,7 @@ import { useRouter } from 'expo-router';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { HapticFeedback } from '@/utils/haptics';
 
-interface SearchBarProps {
-  // kept for compatibility; not used in button-mode
-  onResultPress?: (result: any) => void;
-}
-
-export const SearchBar: React.FC<SearchBarProps> = () => {
+export const SearchBar: React.FC = () => {
   const { theme, textScale } = useAppTheme();
   const router = useRouter();
 
@@ -26,8 +22,7 @@ export const SearchBar: React.FC<SearchBarProps> = () => {
   const handlePress = useCallback(() => {
     try {
       HapticFeedback.light();
-
-      // Navigate to your search screen. If your route is different, update only this line.
+      console.log('[SearchBar] Navigating to search screen');
       router.push('/(tabs)/search' as any);
     } catch (error) {
       console.error('[SearchBar] ❌ Navigation error:', error);

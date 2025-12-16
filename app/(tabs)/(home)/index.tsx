@@ -1,7 +1,7 @@
 
 // app/(tabs)/(home)/index.tsx
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text, InteractionManager } from 'react-native';
+import { ScrollView, StyleSheet, View, RefreshControl, TouchableOpacity, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import Animated, {
@@ -26,7 +26,6 @@ import { HomeLoadingSkeleton } from '@/components/LoadingSkeleton';
 import { categories } from '@/data/paranormal/categories';
 import { getRandomFact, ParanormalFact } from '@/data/paranormal/facts';
 import { storage } from '@/utils/storage';
-import { fuzzySearch } from '@/utils/fuzzySearch';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { HapticFeedback } from '@/utils/haptics';
@@ -127,18 +126,6 @@ export default function HomeScreen() {
         easing: Easing.inOut(Easing.ease),
       });
 
-      // ✅ PERFORMANCE FIX: Initialize search index AFTER screen is interactive
-      // This prevents blocking the UI thread during navigation
-      InteractionManager.runAfterInteractions(() => {
-        setTimeout(() => {
-          fuzzySearch.initialize().then(() => {
-            console.log('[Home] ✓ Search index initialized (deferred)');
-          }).catch((error) => {
-            console.error('[Home] ⚠️ Search initialization failed:', error);
-          });
-        }, 500);
-      });
-
       // Check for first launch after onboarding
       const firstLaunchAfterOnboarding = await storage.getData<boolean>('@first_launch_after_onboarding');
       if (firstLaunchAfterOnboarding === true) {
@@ -212,21 +199,6 @@ export default function HomeScreen() {
       console.error('[Home] ✗ Error showing random fact:', error);
     }
   }, []);
-
-  /**
-   * Handles search result selection
-   */
-  const handleSearchResultPress = useCallback((result: any) => {
-    try {
-      HapticFeedback.light();
-      console.log('[Home] 🔍 Search result pressed:', result.title);
-      if (result.route && result.route !== '/') {
-        router.push(result.route as any);
-      }
-    } catch (error) {
-      console.error('[Home] ✗ Error navigating to search result:', error);
-    }
-  }, [router]);
 
   /**
    * Handles resource card press
@@ -363,9 +335,9 @@ export default function HomeScreen() {
             {/* Header */}
             <SpaceHeader />
 
-            {/* Search */}
+            {/* Search - Navigation only */}
             <View style={styles.searchBarContainer}>
-              <SearchBar onResultPress={handleSearchResultPress} />
+              <SearchBar />
             </View>
 
             {/* Today's Mysteries */}
