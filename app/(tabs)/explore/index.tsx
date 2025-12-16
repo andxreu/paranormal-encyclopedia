@@ -1,15 +1,13 @@
 
 // app/(tabs)/explore/index.tsx
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
   Easing,
   FadeIn,
 } from 'react-native-reanimated';
@@ -31,12 +29,10 @@ const FADE_IN_DURATION = 600;
 // ──────────────────────────────────────────────────────────────
 export default function ExploreScreen() {
   const { theme, textScale } = useAppTheme();
-  const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
 
   const fadeOpacity = useSharedValue(0);
-  const searchScale = useSharedValue(0);
 
   // Fade in on mount
   React.useEffect(() => {
@@ -48,10 +44,6 @@ export default function ExploreScreen() {
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: fadeOpacity.value,
-  }));
-
-  const animatedSearchStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: searchScale.value }],
   }));
 
   /**
@@ -74,29 +66,6 @@ export default function ExploreScreen() {
       setRefreshing(false);
     }
   }, []);
-
-  /**
-   * Handle search button press
-   */
-  const handleSearchPress = useCallback(() => {
-    try {
-      console.log('[Explore] 🔥 Search button pressed');
-      HapticFeedback.light();
-      
-      // Animate button press
-      searchScale.value = withSpring(0.9, { damping: 15, stiffness: 300 });
-      setTimeout(() => {
-        searchScale.value = withSpring(1, { damping: 15, stiffness: 300 });
-      }, 100);
-
-      // ✅ CRITICAL FIX: Use explicit route path
-      const pathname = '/(tabs)/search' as const;
-      console.log('[Explore] 🔥 Navigating to:', pathname);
-      router.push(pathname);
-    } catch (error) {
-      console.error('[Explore] ❌ Search navigation error:', error);
-    }
-  }, [router, searchScale]);
 
   /**
    * Memoized gradient colors
@@ -145,26 +114,6 @@ export default function ExploreScreen() {
                   Discover paranormal mysteries
                 </Text>
               </View>
-
-              {/* Search Button */}
-              <Animated.View style={animatedSearchStyle}>
-                <TouchableOpacity
-                  onPress={handleSearchPress}
-                  style={[
-                    styles.searchButton,
-                    {
-                      backgroundColor: theme.colors.cardBg,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                  activeOpacity={0.7}
-                  accessibilityLabel="Search"
-                  accessibilityHint="Open search screen"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.searchIcon}>🔍</Text>
-                </TouchableOpacity>
-              </Animated.View>
             </View>
 
             {/* Scrollable Content */}
@@ -269,22 +218,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'SpaceMono',
     marginTop: 4,
-  },
-  searchButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  searchIcon: {
-    fontSize: 22,
   },
   scrollView: {
     flex: 1,
