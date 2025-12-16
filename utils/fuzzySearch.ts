@@ -123,7 +123,7 @@ function buildExploreTopicRoute(categoryId: any, topicId: any): string {
 }
 
 // ──────────────────────────────────────────────────────────────
-// Lazy Initialization (Async, runs once)
+// Lazy Initialization (Async, runs once, only from Search screen)
 // ──────────────────────────────────────────────────────────────
 
 async function initialize(): Promise<void> {

@@ -32,6 +32,7 @@ export default function SearchScreen() {
   const router = useRouter();
   const inputRef = useRef<TextInput>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const latestQueryRef = useRef<string>('');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categorizedResults, setCategorizedResults] = useState<Record<string, SearchResult[]>>({});
@@ -49,6 +50,13 @@ export default function SearchScreen() {
 
     // Load search history
     loadSearchHistory();
+
+    // Initialize search index when screen mounts
+    fuzzySearch.initialize().then(() => {
+      console.log('[Search] ✓ Search index initialized');
+    }).catch((error) => {
+      console.error('[Search] ⚠️ Search initialization failed:', error);
+    });
 
     // Auto-focus input after screen transition completes
     const task = InteractionManager.runAfterInteractions(() => {
@@ -71,12 +79,14 @@ export default function SearchScreen() {
 
   const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query);
+    latestQueryRef.current = query;
 
     // Clear previous debounce timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
+    // Empty query - clear results immediately
     if (query.trim() === '') {
       setCategorizedResults({});
       setIsSearching(false);
@@ -87,21 +97,33 @@ export default function SearchScreen() {
 
     // Debounce search
     debounceTimerRef.current = setTimeout(async () => {
+      const currentQuery = query;
+
       try {
         // Save to history if query is long enough
-        if (query.trim().length >= 2) {
-          await storage.saveSearchHistory(query.trim());
+        if (currentQuery.trim().length >= 2) {
+          await storage.saveSearchHistory(currentQuery.trim());
           await loadSearchHistory();
         }
 
         // Perform search
-        const results = await fuzzySearch.getCategorizedResults(query);
-        setCategorizedResults(results);
+        const results = await fuzzySearch.getCategorizedResults(currentQuery);
+
+        // Stale query guard - only commit results if this is still the latest query
+        if (latestQueryRef.current === currentQuery) {
+          setCategorizedResults(results);
+        } else {
+          console.log('[Search] Discarding stale results for:', currentQuery);
+        }
       } catch (error) {
         console.error('[Search] Error searching:', error);
-        setCategorizedResults({});
+        if (latestQueryRef.current === currentQuery) {
+          setCategorizedResults({});
+        }
       } finally {
-        setIsSearching(false);
+        if (latestQueryRef.current === currentQuery) {
+          setIsSearching(false);
+        }
       }
     }, DEBOUNCE_MS);
   }, []);
